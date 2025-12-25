@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NAS Stack Orchestrator</title>
+    <style>
+      :root {
+        --bg: #0f172a;
+        --bg-panel: #111c34;
+        --bg-card: #132544;
+        --bg-card-alt: rgba(15, 23, 42, 0.9);
+        --accent: #38bdf8;
+        --accent-soft: rgba(56, 189, 248, 0.15);
+        --text: #e2e8f0;
+        --text-soft: #94a3b8;
+        --outline: rgba(148, 163, 184, 0.25);
+        --success: #22c55e;
+        --success-soft: rgba(34, 197, 94, 0.15);
+        --danger: #fb7185;
+        --danger-soft: rgba(248, 113, 113, 0.15);
+        --warning: #fbbf24;
+        --warning-soft: rgba(251, 191, 36, 0.15);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: radial-gradient(circle at top left, rgba(56, 189, 248, 0.18), transparent 50%),
+          radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.14), transparent 45%),
+          var(--bg);
+        color: var(--text);
+        min-height: 100vh;
+      }
+
+      header {
+        padding: 3rem 5vw 2.5rem;
+      }
+
+      header h1 {
+        margin: 0 0 0.6rem;
+        font-size: clamp(2.4rem, 4vw, 3.3rem);
+        font-weight: 700;
+      }
+
+      header p {
+        max-width: 760px;
+        margin: 0;
+        color: var(--text-soft);
+        line-height: 1.65;
+        font-size: 1.05rem;
+      }
+
+      .pill-group {
+        display: flex;
+        gap: 0.6rem;
+        margin-top: 1.4rem;
+        flex-wrap: wrap;
+      }
+
+      .pill {
+        padding: 0.4rem 0.9rem;
+        border-radius: 999px;
+        border: 1px solid var(--outline);
+        background: rgba(148, 163, 184, 0.12);
+        font-size: 0.75rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+      }
+
+      main.layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1.75fr) minmax(0, 1.05fr);
+        gap: 2.75rem;
+        padding: 0 5vw 5rem;
+      }
+
+      .panel {
+        background: var(--bg-panel);
+        border: 1px solid var(--outline);
+        border-radius: 22px;
+        padding: 2.4rem;
+        box-shadow: 0 26px 55px rgba(7, 16, 32, 0.5);
+      }
+
+      .panel h2 {
+        font-size: 1.18rem;
+        margin: 2.6rem 0 0.9rem;
+        font-weight: 600;
+      }
+
+      .panel h2:first-of-type {
+        margin-top: 0.4rem;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+        color: var(--text);
+        font-size: 0.95rem;
+      }
+
+      input, select, textarea {
+        border-radius: 14px;
+        border: 1px solid var(--outline);
+        background: var(--bg-card);
+        color: var(--text);
+        padding: 0.75rem 0.9rem;
+        font-size: 0.95rem;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      input:focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+      }
+
+      .grid {
+        display: grid;
+        gap: 1.1rem;
+      }
+
+      .grid.two {
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      }
+
+      .grid.three {
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      }
+
+      .service-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 1.1rem;
+      }
+
+      .service-tile {
+        border-radius: 16px;
+        background: var(--bg-card-alt);
+        border: 1px solid var(--outline);
+        padding: 1.1rem 1.2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        transition: border-color 0.2s ease, transform 0.2s ease;
+      }
+
+      .service-tile:hover {
+        border-color: var(--accent);
+        transform: translateY(-2px);
+      }
+
+      .service-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-weight: 600;
+        color: var(--text);
+      }
+
+      .service-heading span {
+        font-size: 0.82rem;
+        color: var(--text-soft);
+        letter-spacing: 0.02em;
+      }
+
+      .service-tile input[type="checkbox"] {
+        accent-color: var(--accent);
+        transform: scale(1.15);
+      }
+
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.85rem;
+        margin-top: 2.3rem;
+      }
+
+      button {
+        border: none;
+        border-radius: 999px;
+        padding: 0.8rem 1.6rem;
+        font-weight: 600;
+        font-size: 0.92rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+      }
+
+      button.primary {
+        background: linear-gradient(135deg, var(--accent), #6366f1);
+        color: #0b1120;
+        box-shadow: 0 18px 40px rgba(56, 189, 248, 0.35);
+      }
+
+      button.secondary {
+        background: rgba(148, 163, 184, 0.14);
+        color: var(--text);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      button:not(:disabled):hover {
+        transform: translateY(-1px);
+      }
+
+      .status-alert {
+        margin-top: 1.7rem;
+        border-radius: 14px;
+        padding: 1rem 1.15rem;
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        background: rgba(148, 163, 184, 0.1);
+        display: none;
+        font-size: 0.95rem;
+      }
+
+      .status-alert.visible {
+        display: block;
+      }
+
+      .status-alert.success {
+        border-color: rgba(34, 197, 94, 0.45);
+        background: var(--success-soft);
+        color: #bbf7d0;
+      }
+
+      .status-alert.error {
+        border-color: rgba(248, 113, 113, 0.45);
+        background: var(--danger-soft);
+        color: #fecdd3;
+      }
+
+      aside.sidebar {
+        display: flex;
+        flex-direction: column;
+        gap: 1.9rem;
+      }
+
+      .card {
+        border-radius: 22px;
+        padding: 2rem;
+        border: 1px solid var(--outline);
+        background: linear-gradient(155deg, rgba(17, 28, 52, 0.92), rgba(15, 28, 52, 0.72));
+        box-shadow: 0 18px 40px rgba(4, 9, 21, 0.55);
+      }
+
+      .card h3 {
+        margin: 0 0 1.1rem;
+        font-size: 1rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+      }
+
+      .summary-list,
+      .storage-list,
+      .quicklinks,
+      .history-list,
+      .tips-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+        font-size: 0.92rem;
+      }
+
+      .summary-list li,
+      .storage-list li,
+      .quicklinks li,
+      .tips-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.65rem 0.75rem;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(148, 163, 184, 0.12);
+      }
+
+      .summary-list li.on {
+        border-color: rgba(56, 189, 248, 0.3);
+        background: rgba(56, 189, 248, 0.08);
+      }
+
+      .summary-list li.off {
+        border-color: rgba(148, 163, 184, 0.2);
+        color: var(--text-soft);
+      }
+
+      .badge {
+        font-size: 0.72rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        border-radius: 999px;
+        padding: 0.2rem 0.45rem;
+        background: rgba(148, 163, 184, 0.18);
+        border: 1px solid rgba(148, 163, 184, 0.2);
+      }
+
+      .badge.on {
+        background: rgba(56, 189, 248, 0.2);
+        border-color: rgba(56, 189, 248, 0.4);
+        color: var(--accent);
+      }
+
+      .badge.off {
+        color: var(--text-soft);
+      }
+
+      .quicklinks a {
+        color: var(--accent);
+        text-decoration: none;
+        font-weight: 600;
+      }
+
+      .history-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.4rem;
+        padding: 0.75rem 0.85rem;
+      }
+
+      .history-list li.ok {
+        border-color: rgba(34, 197, 94, 0.32);
+        background: rgba(34, 197, 94, 0.1);
+      }
+
+      .history-list li.fail {
+        border-color: rgba(248, 113, 113, 0.32);
+        background: rgba(248, 113, 113, 0.1);
+      }
+
+      .history-list li .meta {
+        display: flex;
+        justify-content: space-between;
+        width: 100%;
+        font-size: 0.78rem;
+        color: var(--text-soft);
+      }
+
+      .history-list li .summary {
+        font-size: 0.9rem;
+      }
+
+      .empty-state {
+        color: var(--text-soft);
+        font-style: italic;
+      }
+
+      .tips-list li {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.3rem;
+      }
+
+      .tips-list span {
+        color: var(--text-soft);
+        font-size: 0.85rem;
+        line-height: 1.5;
+      }
+
+      .log-output {
+        flex: 1;
+        border-radius: 16px;
+        background: rgba(12, 18, 34, 0.8);
+        border: 1px solid rgba(148, 163, 184, 0.22);
+        padding: 1rem;
+        overflow-y: auto;
+        font-family: "Fira Code", "SFMono-Regular", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        font-size: 0.85rem;
+        line-height: 1.5;
+        white-space: pre-wrap;
+        color: #cbd5f5;
+      }
+
+      @media (max-width: 1120px) {
+        main.layout {
+          grid-template-columns: 1fr;
+        }
+
+        aside.sidebar {
+          flex-direction: column;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>NAS Stack Orchestrator</h1>
+      <p>
+        Guided configuration for Jellyfin, *arr services, qBittorrent, and the language-aware
+        post-processing pipeline. Fill in your storage, toggle services, and orchestrate the entire
+        stack in a single click.
+      </p>
+      <div class="pill-group">
+        <span class="pill">Docker Compose</span>
+        <span class="pill">FastAPI</span>
+        <span class="pill">Automated Bootstrap</span>
+        <span class="pill">Language-Aware Pipeline</span>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="panel" aria-label="Configuration form">
+        <h2>Storage Paths</h2>
+        <div class="grid two">
+          <label>Library pool
+            <input id="pool" name="pool" placeholder="/mnt/pool" />
+          </label>
+          <label>Scratch volume
+            <input id="scratch" name="scratch" placeholder="/mnt/scratch" />
+          </label>
+          <label>Appdata root
+            <input id="appdata" name="appdata" placeholder="/srv/appdata" />
+          </label>
+        </div>
+
+        <h2>Runtime</h2>
+        <div class="grid three">
+          <label>PUID
+            <input id="runtime-user" type="number" min="0" value="1000" />
+          </label>
+          <label>PGID
+            <input id="runtime-group" type="number" min="0" value="1000" />
+          </label>
+          <label>Timezone
+            <input id="runtime-timezone" placeholder="UTC" />
+          </label>
+        </div>
+
+        <h2>Service Ports</h2>
+        <div class="grid three">
+          <label>qBittorrent
+            <input id="port-qb" type="number" min="1" max="65535" value="8080" />
+          </label>
+          <label>Radarr
+            <input id="port-radarr" type="number" min="1" max="65535" value="7878" />
+          </label>
+          <label>Sonarr
+            <input id="port-sonarr" type="number" min="1" max="65535" value="8989" />
+          </label>
+          <label>Prowlarr
+            <input id="port-prowlarr" type="number" min="1" max="65535" value="9696" />
+          </label>
+          <label>Jellyseerr
+            <input id="port-jellyseerr" type="number" min="1" max="65535" value="5055" />
+          </label>
+          <label>Jellyfin HTTP
+            <input id="port-jellyfin" type="number" min="1" max="65535" value="8096" />
+          </label>
+          <label>Orchestrator UI
+            <input id="ui-port" type="number" min="1" max="65535" value="8443" />
+          </label>
+        </div>
+
+        <h2>Service Toggles</h2>
+        <div class="service-grid">
+          <label class="service-tile">
+            <div class="service-heading">qBittorrent <span>Downloader</span></div>
+            <input type="checkbox" id="svc-qb" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Radarr <span>Movies</span></div>
+            <input type="checkbox" id="svc-radarr" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Sonarr <span>Series</span></div>
+            <input type="checkbox" id="svc-sonarr" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Prowlarr <span>Indexers</span></div>
+            <input type="checkbox" id="svc-prowlarr" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Jellyseerr <span>Requests</span></div>
+            <input type="checkbox" id="svc-jellyseerr" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Jellyfin <span>Library</span></div>
+            <input type="checkbox" id="svc-jellyfin" checked />
+          </label>
+          <label class="service-tile">
+            <div class="service-heading">Pipeline <span>Post-processing</span></div>
+            <input type="checkbox" id="svc-pipeline" checked />
+          </label>
+        </div>
+
+        <h2>Download Categories & Policy</h2>
+        <div class="grid three">
+          <label>Radarr category
+            <input id="cat-radarr" placeholder="movies" />
+          </label>
+          <label>Sonarr category
+            <input id="cat-sonarr" placeholder="tv" />
+          </label>
+          <label>Anime category
+            <input id="cat-anime" placeholder="anime" />
+          </label>
+          <label>Never seed torrents
+            <select id="policy-neverseed">
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </label>
+        </div>
+
+        <h2>Media Language Policy</h2>
+        <div class="grid two">
+          <label>Movies / TV audio (comma separated ISO codes)
+            <input id="movies-audio" value="eng,und" />
+          </label>
+          <label>Movies / TV subtitles
+            <input id="movies-subs" value="eng,forced" />
+          </label>
+          <label>Anime audio
+            <input id="anime-audio" value="jpn,eng,und" />
+          </label>
+          <label>Anime subtitles
+            <input id="anime-subs" value="eng" />
+          </label>
+        </div>
+
+        <h2>Credentials</h2>
+        <div class="grid two">
+          <label>qBittorrent username
+            <input id="cred-qb-user" value="admin" />
+          </label>
+          <label>qBittorrent password (leave blank to auto-generate)
+            <input id="cred-qb-pass" type="password" placeholder="auto-generated" />
+          </label>
+        </div>
+
+        <div class="button-row">
+          <button id="load" class="secondary" type="button">Load Current</button>
+          <button id="save" class="secondary" type="button">Save Config</button>
+          <button id="validate" class="secondary" type="button">Validate</button>
+          <button id="render" class="secondary" type="button">Render Compose</button>
+          <button id="apply" class="primary" type="button">Apply Stack</button>
+        </div>
+
+        <div id="status" class="status-alert" role="status"></div>
+      </section>
+
+      <aside class="sidebar">
+        <section class="card" aria-label="Service summary">
+          <h3>Service Summary</h3>
+          <ul id="summary-services" class="summary-list"></ul>
+        </section>
+
+        <section class="card" aria-label="Storage summary">
+          <h3>Storage & Mounts</h3>
+          <ul id="summary-storage" class="storage-list"></ul>
+        </section>
+
+        <section class="card" aria-label="Quick links">
+          <h3>Quick Links</h3>
+          <ul id="quicklinks" class="quicklinks"></ul>
+        </section>
+
+        <section class="card" aria-label="Run history">
+          <h3>Apply History</h3>
+          <ul id="history" class="history-list"></ul>
+        </section>
+
+        <section class="card" aria-label="Tips">
+          <h3>Setup Tips</h3>
+          <ul class="tips-list">
+            <li>
+              <strong>Existing containers?</strong>
+              <span>Stop or rename legacy qBittorrent / *arr containers before applying. Compose will otherwise report name conflicts.</span>
+            </li>
+            <li>
+              <strong>First run credentials</strong>
+              <span>The orchestrator auto-generates admin secrets; view them in the log summary after Apply completes.</span>
+            </li>
+            <li>
+              <strong>Proxy integrations</strong>
+              <span>Planning Traefik/Homarr? Point them to the ports above; we can automate Traefik labels in a future pass.</span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="card log-card" aria-label="Apply progress log">
+          <h3>Apply Log</h3>
+          <div id="apply-log" class="log-output" hidden></div>
+        </section>
+      </aside>
+    </main>
+
+    <script>
+      const loadBtn = document.getElementById('load');
+      const saveBtn = document.getElementById('save');
+      const validateBtn = document.getElementById('validate');
+      const renderBtn = document.getElementById('render');
+      const applyBtn = document.getElementById('apply');
+      const statusAlert = document.getElementById('status');
+      const logOutput = document.getElementById('apply-log');
+      const summaryServices = document.getElementById('summary-services');
+      const summaryStorage = document.getElementById('summary-storage');
+      const quickLinks = document.getElementById('quicklinks');
+      const historyList = document.getElementById('history');
+      const HISTORY_KEY = 'nas-orchestrator-history';
+
+      function setStatus(message, variant = 'info') {
+        statusAlert.textContent = message;
+        statusAlert.classList.toggle('visible', Boolean(message));
+        statusAlert.classList.remove('success', 'error');
+        if (variant === 'success') statusAlert.classList.add('success');
+        if (variant === 'error') statusAlert.classList.add('error');
+      }
+
+      async function fetchConfig() {
+        const res = await fetch('/api/config');
+        if (!res.ok) throw new Error('Unable to load config');
+        return await res.json();
+      }
+
+      function populateForm(config) {
+        document.getElementById('pool').value = config.paths.pool ?? '';
+        document.getElementById('scratch').value = config.paths.scratch ?? '';
+        document.getElementById('appdata').value = config.paths.appdata ?? '';
+
+        document.getElementById('runtime-user').value = config.runtime?.user_id ?? 1000;
+        document.getElementById('runtime-group').value = config.runtime?.group_id ?? 1000;
+        document.getElementById('runtime-timezone').value = config.runtime?.timezone ?? 'UTC';
+
+        document.getElementById('port-qb').value = config.ports?.qbittorrent ?? 8080;
+        document.getElementById('port-radarr').value = config.ports?.radarr ?? 7878;
+        document.getElementById('port-sonarr').value = config.ports?.sonarr ?? 8989;
+        document.getElementById('port-prowlarr').value = config.ports?.prowlarr ?? 9696;
+        document.getElementById('port-jellyseerr').value = config.ports?.jellyseerr ?? 5055;
+        document.getElementById('port-jellyfin').value = config.ports?.jellyfin_http ?? 8096;
+        document.getElementById('ui-port').value = config.ui?.port ?? 8443;
+
+        const services = config.services ?? {};
+        document.getElementById('svc-qb').checked = services.qbittorrent ?? true;
+        document.getElementById('svc-radarr').checked = services.radarr ?? true;
+        document.getElementById('svc-sonarr').checked = services.sonarr ?? true;
+        document.getElementById('svc-prowlarr').checked = services.prowlarr ?? true;
+        document.getElementById('svc-jellyseerr').checked = services.jellyseerr ?? true;
+        document.getElementById('svc-jellyfin').checked = services.jellyfin ?? true;
+        document.getElementById('svc-pipeline').checked = services.pipeline ?? true;
+
+        document.getElementById('cat-radarr').value = config.download_policy?.categories?.radarr ?? 'movies';
+        document.getElementById('cat-sonarr').value = config.download_policy?.categories?.sonarr ?? 'tv';
+        document.getElementById('cat-anime').value = config.download_policy?.categories?.anime ?? 'anime';
+        document.getElementById('policy-neverseed').value = String(config.download_policy?.never_seed ?? true);
+
+        const moviesPolicy = config.media_policy?.movies ?? { keep_audio: ['eng', 'und'], keep_subs: ['eng', 'forced'] };
+        const animePolicy = config.media_policy?.anime ?? { keep_audio: ['jpn', 'eng', 'und'], keep_subs: ['eng'] };
+        document.getElementById('movies-audio').value = (moviesPolicy.keep_audio || []).join(',');
+        document.getElementById('movies-subs').value = (moviesPolicy.keep_subs || []).join(',');
+        document.getElementById('anime-audio').value = (animePolicy.keep_audio || []).join(',');
+        document.getElementById('anime-subs').value = (animePolicy.keep_subs || []).join(',');
+
+        document.getElementById('cred-qb-user').value = config.credentials?.qbittorrent?.username ?? 'admin';
+        document.getElementById('cred-qb-pass').value = config.credentials?.qbittorrent?.password ?? '';
+
+        updateSummary();
+      }
+
+      function getFormConfig() {
+        return {
+          version: 1,
+          paths: {
+            pool: document.getElementById('pool').value,
+            scratch: document.getElementById('scratch').value,
+            appdata: document.getElementById('appdata').value,
+          },
+          runtime: {
+            user_id: Number(document.getElementById('runtime-user').value) || 1000,
+            group_id: Number(document.getElementById('runtime-group').value) || 1000,
+            timezone: document.getElementById('runtime-timezone').value || 'UTC',
+          },
+          ports: {
+            qbittorrent: Number(document.getElementById('port-qb').value) || 8080,
+            radarr: Number(document.getElementById('port-radarr').value) || 7878,
+            sonarr: Number(document.getElementById('port-sonarr').value) || 8989,
+            prowlarr: Number(document.getElementById('port-prowlarr').value) || 9696,
+            jellyseerr: Number(document.getElementById('port-jellyseerr').value) || 5055,
+            jellyfin_http: Number(document.getElementById('port-jellyfin').value) || 8096,
+          },
+          services: {
+            qbittorrent: document.getElementById('svc-qb').checked,
+            radarr: document.getElementById('svc-radarr').checked,
+            sonarr: document.getElementById('svc-sonarr').checked,
+            prowlarr: document.getElementById('svc-prowlarr').checked,
+            jellyseerr: document.getElementById('svc-jellyseerr').checked,
+            jellyfin: document.getElementById('svc-jellyfin').checked,
+            pipeline: document.getElementById('svc-pipeline').checked,
+          },
+          download_policy: {
+            never_seed: document.getElementById('policy-neverseed').value === 'true',
+            categories: {
+              radarr: document.getElementById('cat-radarr').value || 'movies',
+              sonarr: document.getElementById('cat-sonarr').value || 'tv',
+              anime: document.getElementById('cat-anime').value || 'anime',
+            },
+          },
+          media_policy: {
+            movies: {
+              keep_audio: document.getElementById('movies-audio').value.split(',').map(v => v.trim()).filter(Boolean),
+              keep_subs: document.getElementById('movies-subs').value.split(',').map(v => v.trim()).filter(Boolean),
+            },
+            anime: {
+              keep_audio: document.getElementById('anime-audio').value.split(',').map(v => v.trim()).filter(Boolean),
+              keep_subs: document.getElementById('anime-subs').value.split(',').map(v => v.trim()).filter(Boolean),
+            },
+          },
+          quality: { preset: 'balanced' },
+          ui: { port: Number(document.getElementById('ui-port').value) || 8443 },
+          credentials: {
+            qbittorrent: {
+              username: document.getElementById('cred-qb-user').value || 'admin',
+              password: document.getElementById('cred-qb-pass').value || null,
+            },
+          },
+          users: [],
+        };
+      }
+
+      function updateSummary() {
+        const pool = document.getElementById('pool').value || '—';
+        const scratch = document.getElementById('scratch').value || '—';
+        const appdata = document.getElementById('appdata').value || '—';
+        summaryStorage.innerHTML = `
+          <li><span>Library pool</span><span>${pool}</span></li>
+          <li><span>Scratch</span><span>${scratch}</span></li>
+          <li><span>Appdata</span><span>${appdata}</span></li>
+        `;
+
+        const host = window.location.hostname || 'localhost';
+        const services = [
+          { id: 'svc-qb', label: 'qBittorrent', portInput: 'port-qb', path: '', category: 'Downloader' },
+          { id: 'svc-radarr', label: 'Radarr', portInput: 'port-radarr', path: '', category: 'Movies' },
+          { id: 'svc-sonarr', label: 'Sonarr', portInput: 'port-sonarr', path: '', category: 'Series' },
+          { id: 'svc-prowlarr', label: 'Prowlarr', portInput: 'port-prowlarr', path: '', category: 'Indexers' },
+          { id: 'svc-jellyseerr', label: 'Jellyseerr', portInput: 'port-jellyseerr', path: '', category: 'Requests' },
+          { id: 'svc-jellyfin', label: 'Jellyfin', portInput: 'port-jellyfin', path: '', category: 'Library' },
+          { id: 'svc-pipeline', label: 'Pipeline', portInput: null, path: '', category: 'Post-processing' },
+        ];
+
+        summaryServices.innerHTML = services
+          .map(service => {
+            const enabled = document.getElementById(service.id).checked;
+            const port = service.portInput ? Number(document.getElementById(service.portInput).value) : null;
+            return `
+              <li class="${enabled ? 'on' : 'off'}">
+                <div>
+                  <strong>${service.label}</strong>
+                  <span class="badge ${enabled ? 'on' : 'off'}">${service.category}</span>
+                </div>
+                <span>${enabled ? (port ? `:${port}` : 'enabled') : 'disabled'}</span>
+              </li>
+            `;
+          })
+          .join('');
+
+        quickLinks.innerHTML = services
+          .filter(service => service.portInput && document.getElementById(service.id).checked)
+          .map(service => {
+            const port = Number(document.getElementById(service.portInput).value);
+            const url = `http://${host}:${port}`;
+            return `<li><a href="${url}" target="_blank" rel="noopener">${service.label}</a><span class="badge on">:${port}</span></li>`;
+          })
+          .join('');
+
+        if (!quickLinks.innerHTML) {
+          quickLinks.innerHTML = '<li class="empty-state">Enable a service to see its quick link.</li>';
+        }
+      }
+
+      function appendLog(line) {
+        logOutput.hidden = false;
+        logOutput.textContent += line + '\n';
+        logOutput.scrollTop = logOutput.scrollHeight;
+      }
+
+      function loadHistory() {
+        try {
+          return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+        } catch (err) {
+          return [];
+        }
+      }
+
+      function saveHistory(history) {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(history.slice(0, 25)));
+      }
+
+      function renderHistory() {
+        const history = loadHistory();
+        if (!history.length) {
+          historyList.innerHTML = '<li class="empty-state">No runs recorded yet.</li>';
+          return;
+        }
+        historyList.innerHTML = history
+          .map(entry => {
+            const date = new Date(entry.timestamp);
+            const formatted = isNaN(date.getTime()) ? entry.timestamp : date.toLocaleString();
+            return `
+              <li class="${entry.ok ? 'ok' : 'fail'}">
+                <div class="meta">
+                  <span>#${entry.id.slice(0, 8)}</span>
+                  <span>${formatted}</span>
+                </div>
+                <div class="summary">${entry.summary || (entry.ok ? 'Success' : 'Failed')}</div>
+              </li>
+            `;
+          })
+          .join('');
+      }
+
+      function pushHistory(entry) {
+        const history = loadHistory();
+        history.unshift(entry);
+        saveHistory(history);
+        renderHistory();
+      }
+
+      loadBtn.addEventListener('click', async () => {
+        try {
+          const config = await fetchConfig();
+          populateForm(config);
+          setStatus('Configuration loaded.', 'success');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      saveBtn.addEventListener('click', async () => {
+        try {
+          const payload = getFormConfig();
+          const res = await fetch('/api/config', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error('Save failed');
+          const saved = await res.json();
+          populateForm(saved);
+          setStatus('Configuration saved to stack.yaml.', 'success');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      validateBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getFormConfig()),
+          });
+          if (!res.ok) throw new Error('Validation failed');
+          const payload = await res.json();
+          const problems = Object.entries(payload.checks).filter(([, status]) => status !== 'ok');
+          if (problems.length) {
+            setStatus('Validation issues: ' + problems.map(([k, v]) => `${k}=${v}`).join(', '), 'error');
+          } else {
+            setStatus('All validations passed.', 'success');
+          }
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      renderBtn.addEventListener('click', async () => {
+        try {
+          const res = await fetch('/api/render', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getFormConfig()),
+          });
+          if (!res.ok) throw new Error('Render failed');
+          const payload = await res.json();
+          setStatus(`Rendered compose to ${payload.compose_path} and env to ${payload.env_path}`, 'success');
+        } catch (error) {
+          setStatus(error.message, 'error');
+        }
+      });
+
+      applyBtn.addEventListener('click', async () => {
+        let eventSource;
+        let runId;
+        try {
+          setStatus('Applying stack configuration...', 'info');
+          logOutput.textContent = 'Running apply...\n';
+          logOutput.hidden = false;
+          applyBtn.disabled = true;
+
+          const res = await fetch('/api/apply', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(getFormConfig()),
+          });
+          if (!res.ok) throw new Error('Apply failed to start');
+          const payload = await res.json();
+          runId = payload.run_id;
+          appendLog(`Run ${payload.run_id} started.`);
+
+          eventSource = new EventSource(`/api/runs/${payload.run_id}/events`);
+          eventSource.addEventListener('stage', evt => {
+            try {
+              const data = JSON.parse(evt.data);
+              appendLog(`${data.stage}: ${data.status}${data.detail ? ' - ' + data.detail : ''}`);
+            } catch (err) {
+              appendLog(`stage: ${evt.data}`);
+            }
+          });
+
+          eventSource.addEventListener('status', evt => {
+            try {
+              const data = JSON.parse(evt.data);
+              const timestamp = new Date().toISOString();
+              appendLog(`status: ${data.ok ? 'success' : 'failed'}${data.summary ? ' - ' + data.summary : ''}`);
+              setStatus(data.ok ? 'Apply finished successfully.' : `Apply failed: ${data.summary || 'see log.'}`, data.ok ? 'success' : 'error');
+              pushHistory({ id: runId || 'unknown', ok: data.ok, summary: data.summary || '', timestamp });
+              fetchConfig().then(populateForm).catch(() => {});
+            } catch (err) {
+              appendLog(`status: ${evt.data}`);
+              setStatus('Apply finished (status unknown).', 'info');
+            } finally {
+              if (eventSource) eventSource.close();
+              applyBtn.disabled = false;
+              updateSummary();
+            }
+          });
+
+          eventSource.addEventListener('error', () => {
+            appendLog('event stream closed');
+            setStatus('Apply stream ended unexpectedly.', 'error');
+            if (eventSource) eventSource.close();
+            applyBtn.disabled = false;
+          });
+        } catch (error) {
+          appendLog(`Error: ${error.message}`);
+          setStatus(error.message, 'error');
+          if (eventSource) eventSource.close();
+          applyBtn.disabled = false;
+        }
+      });
+
+      document.addEventListener('DOMContentLoaded', () => {
+        renderHistory();
+        loadBtn.click();
+        const formPanel = document.querySelector('.panel');
+        formPanel.addEventListener('input', event => {
+          if (event.target.matches('input, select, textarea')) updateSummary();
+        });
+        formPanel.addEventListener('change', event => {
+          if (event.target.matches('input[type="checkbox"]')) updateSummary();
+        });
+      });
+    </script>
+  </body>
+</html>

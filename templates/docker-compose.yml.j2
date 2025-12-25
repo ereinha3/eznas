@@ -1,0 +1,216 @@
+{% set paths = config.paths %}
+{% set services = config.services %}
+{% set runtime = config.runtime %}
+{% set scratch_host = paths.scratch if paths.scratch else paths.pool ~ "/downloads" %}
+services:
+{% if services.qbittorrent.enabled %}
+  qbittorrent:
+    image: {{ config.get("images", {}).get("qbittorrent", "lscr.io/linuxserver/qbittorrent:latest") }}
+    container_name: qbittorrent
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+      - WEBUI_PORT={{ services.qbittorrent.port }}
+    volumes:
+      - {{ paths.appdata }}/qbittorrent:/config
+      - {{ scratch_host }}:/downloads
+      - {{ paths.pool }}:/data
+{% if services.qbittorrent.port %}
+    ports:
+      - "{{ services.qbittorrent.port }}:8080"
+{% endif %}
+{% if services.qbittorrent.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.qbittorrent.rule=Host(`{{ services.qbittorrent.proxy_url }}`)"
+      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
+      - "traefik.http.routers.qbittorrent.tls=true"
+      - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.radarr.enabled %}
+  radarr:
+    image: {{ config.get("images", {}).get("radarr", "lscr.io/linuxserver/radarr:latest") }}
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/radarr:/config
+      - {{ paths.pool }}:/data
+      - {{ scratch_host }}:/scratch
+{% if services.radarr.port %}
+    ports:
+      - "{{ services.radarr.port }}:7878"
+{% endif %}
+{% if services.radarr.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.radarr.rule=Host(`{{ services.radarr.proxy_url }}`)"
+      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.tls=true"
+      - "traefik.http.services.radarr.loadbalancer.server.port=7878"
+{% endif %}
+    depends_on:
+{% if services.qbittorrent.enabled %}
+      - qbittorrent
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.sonarr.enabled %}
+  sonarr:
+    image: {{ config.get("images", {}).get("sonarr", "lscr.io/linuxserver/sonarr:latest") }}
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/sonarr:/config
+      - {{ paths.pool }}:/data
+      - {{ scratch_host }}:/scratch
+{% if services.sonarr.port %}
+    ports:
+      - "{{ services.sonarr.port }}:8989"
+{% endif %}
+{% if services.sonarr.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.sonarr.rule=Host(`{{ services.sonarr.proxy_url }}`)"
+      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.tls=true"
+      - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
+{% endif %}
+    depends_on:
+{% if services.qbittorrent.enabled %}
+      - qbittorrent
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.prowlarr.enabled %}
+  prowlarr:
+    image: {{ config.get("images", {}).get("prowlarr", "lscr.io/linuxserver/prowlarr:latest") }}
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/prowlarr:/config
+{% if services.prowlarr.port %}
+    ports:
+      - "{{ services.prowlarr.port }}:9696"
+{% endif %}
+{% if services.prowlarr.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prowlarr.rule=Host(`{{ services.prowlarr.proxy_url }}`)"
+      - "traefik.http.routers.prowlarr.entrypoints=websecure"
+      - "traefik.http.routers.prowlarr.tls=true"
+      - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.jellyseerr.enabled %}
+  jellyseerr:
+    image: {{ config.get("images", {}).get("jellyseerr", "fallenbagel/jellyseerr:latest") }}
+    container_name: jellyseerr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/jellyseerr:/app/config
+{% if services.jellyseerr.port %}
+    ports:
+      - "{{ services.jellyseerr.port }}:5055"
+{% endif %}
+{% if services.jellyseerr.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyseerr.rule=Host(`{{ services.jellyseerr.proxy_url }}`)"
+      - "traefik.http.routers.jellyseerr.entrypoints=websecure"
+      - "traefik.http.routers.jellyseerr.tls=true"
+      - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
+{% endif %}
+    depends_on:
+{% if services.radarr.enabled %}
+      - radarr
+{% endif %}
+{% if services.sonarr.enabled %}
+      - sonarr
+{% endif %}
+{% if services.jellyfin.enabled %}
+      - jellyfin
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.jellyfin.enabled %}
+  jellyfin:
+    image: {{ config.get("images", {}).get("jellyfin", "lscr.io/linuxserver/jellyfin:latest") }}
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/jellyfin:/config
+      - {{ scratch_host }}/transcode:/transcode
+      - {{ paths.pool }}:/data
+{% if services.jellyfin.port %}
+    ports:
+      - "{{ services.jellyfin.port }}:8096"
+{% endif %}
+{% if services.jellyfin.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jellyfin.rule=Host(`{{ services.jellyfin.proxy_url }}`)"
+      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.tls=true"
+      - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.pipeline.enabled %}
+  pipeline-worker:
+    image: {{ config.get("images", {}).get("pipeline", "python:3.13-alpine") }}
+    container_name: pipeline-worker
+    restart: unless-stopped
+    environment:
+      - TZ={{ runtime.timezone }}
+    command: ["sh", "-c", "sleep 3600"]
+    volumes:
+      - {{ paths.pool }}:/data
+      - {{ scratch_host }}:/scratch
+      - {{ paths.appdata }}/pipeline:/config
+    depends_on:
+{% if services.qbittorrent.enabled %}
+      - qbittorrent
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+networks:
+  nas_net:
+    driver: bridge

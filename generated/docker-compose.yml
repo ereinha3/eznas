@@ -1,0 +1,174 @@
+
+
+
+
+services:
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+      - WEBUI_PORT=8080
+    volumes:
+      - /home/ethan/eznas/test_appdata/qbittorrent:/config
+      - /home/ethan/eznas/test_scratch:/downloads
+      - /home/ethan/eznas/test_pool:/data
+
+    ports:
+      - "8080:8080"
+
+
+    networks:
+      - nas_net
+
+
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - /home/ethan/eznas/test_appdata/radarr:/config
+      - /home/ethan/eznas/test_pool:/data
+      - /home/ethan/eznas/test_scratch:/scratch
+
+    ports:
+      - "7878:7878"
+
+
+    depends_on:
+
+      - qbittorrent
+
+    networks:
+      - nas_net
+
+
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - /home/ethan/eznas/test_appdata/sonarr:/config
+      - /home/ethan/eznas/test_pool:/data
+      - /home/ethan/eznas/test_scratch:/scratch
+
+    ports:
+      - "8989:8989"
+
+
+    depends_on:
+
+      - qbittorrent
+
+    networks:
+      - nas_net
+
+
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - /home/ethan/eznas/test_appdata/prowlarr:/config
+
+    ports:
+      - "9696:9696"
+
+
+    networks:
+      - nas_net
+
+
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr
+    restart: unless-stopped
+    environment:
+      - LOG_LEVEL=info
+      - TZ=UTC
+    volumes:
+      - /home/ethan/eznas/test_appdata/jellyseerr:/app/config
+
+    ports:
+      - "5055:5055"
+
+
+    depends_on:
+
+      - radarr
+
+
+      - sonarr
+
+
+      - jellyfin
+
+    networks:
+      - nas_net
+
+
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin
+    restart: unless-stopped
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    volumes:
+      - /home/ethan/eznas/test_appdata/jellyfin:/config
+      - /home/ethan/eznas/test_scratch/transcode:/transcode
+      - /home/ethan/eznas/test_pool:/data
+
+    ports:
+      - "8096:8096"
+
+
+    networks:
+      - nas_net
+
+
+
+  pipeline-worker:
+    image: python:3.13-alpine
+    container_name: pipeline-worker
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    command: ["sh", "-c", "sleep 3600"]
+    volumes:
+      - /home/ethan/eznas/test_pool:/data
+      - /home/ethan/eznas/test_scratch:/scratch
+      - /home/ethan/eznas/test_appdata/pipeline:/config
+    depends_on:
+
+      - qbittorrent
+
+    networks:
+      - nas_net
+
+
+networks:
+  nas_net:
+    driver: bridge

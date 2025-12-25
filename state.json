@@ -1,0 +1,774 @@
+{
+  "runs": [
+    {
+      "run_id": "9115e6be-48f2-4133-839f-98c2cf3cc684",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        }
+      ],
+      "summary": "Rendered compose bundle"
+    },
+    {
+      "run_id": "19cb004d-56e3-4f56-afef-19c79c682225",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        }
+      ],
+      "summary": "Rendered compose bundle"
+    },
+    {
+      "run_id": "8f310fa9-baf5-45e5-bd0f-a29f84661342",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "connected=radarr,sonarr"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "categories=radarr:movies,sonarr:tv,anime:anime"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "root=/home/ethan/eznas/test_pool/media/movies"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "roots=/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "apps=radarr,sonarr"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyfin, jellyseerr, qbittorrent, radarr, sonarr, prowlarr"
+    },
+    {
+      "run_id": "b347d1e7-68f5-4700-acda-3d05865245f5",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "connected=radarr,sonarr"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv,anime:anime"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "root=/home/ethan/eznas/test_pool/media/movies"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "roots=/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "apps=radarr,sonarr"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyfin, jellyseerr, qbittorrent, radarr, sonarr, prowlarr"
+    },
+    {
+      "run_id": "d5fce305-487a-4c82-8bbb-0d68e1c1abcb",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "connected=radarr,sonarr"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "failed",
+          "detail": "Client error '409 Conflict' for url 'http://127.0.0.1:8080/api/v2/torrents/editCategory'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/409"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/radarr"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/sonarr"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyfin, jellyseerr"
+    },
+    {
+      "run_id": "5da01717-ccf2-4182-82f5-0dbceeb6f29a",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "connected=radarr,sonarr"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv,anime:anime"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/radarr"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/sonarr"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "config.xml missing or ApiKey not set in /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyfin, jellyseerr, qbittorrent"
+    },
+    {
+      "run_id": "7138bcdd-e196-484e-98fc-0d6a4f2ffb9f",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_scratch/downloads/complete, created /home/ethan/eznas/test_scratch/downloads/incomplete, created /home/ethan/eznas/test_scratch/downloads/complete/movies, created /home/ethan/eznas/test_scratch/downloads/complete/tv, created /home/ethan/eznas/test_scratch/downloads/complete/anime, created /home/ethan/eznas/test_pool/media/tv, created /home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "generated jellyseerr admin password, generated jellyfin admin password"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2025-12-21T01:52:26Z\" level=warning msg=\"/home/ethan/eznas/nas_orchestrator/generated/docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion\"\n Image python:3.13-alpine Pulling \n 34a945589e3f  \n fbe816074e42  \n 1d6a5f48389f  \n 1074353eec0d  \n 90f892caa70e  \n 34a945589e3f  \n ec28d10392bb  \n fbe816074e42  \n 1d6a5f48389f [====>                                              ]  1.049MB/12.5MB \n 1074353eec0d [=============>                                     ]  1.049MB/3.86MB \n 1d6a5f48389f [====>                                              ]  1.049MB/12.5MB \n 1074353eec0d [=============>                                     ]  1.049MB/3.86MB \n 1d6a5f48389f [========>                                          ]  2.097MB/12.5MB \n 1074353eec0d [===========================>                       ]  2.097MB/3.86MB \n 1d6a5f48389f [============>                                      ]  3.146MB/12.5MB \n 1074353eec0d [===========================>                       ]  2.097MB/3.86MB \n 1d6a5f48389f [============>                                      ]  3.146MB/12.5MB \n 1074353eec0d [========================================>          ]  3.146MB/3.86MB \n 1d6a5f48389f [================>                                  ]  4.194MB/12.5MB \n 1074353eec0d  \n fbe816074e42 1 s \n 1074353eec0d  \n 1d6a5f48389f [====================>                              ]  5.243MB/12.5MB \n fbe816074e42  \n 1d6a5f48389f [=============================>                     ]   7.34MB/12.5MB \n 1d6a5f48389f [=================================>                 ]  8.389MB/12.5MB \n 1d6a5f48389f [=====================================>             ]  9.437MB/12.5MB \n 1d6a5f48389f [==============================================>    ]  11.53MB/12.5MB \n 1d6a5f48389f  \n 1d6a5f48389f 1 s \n 1d6a5f48389f 1 s \n 34a945589e3f  \n 1d6a5f48389f  \n Image python:3.13-alpine Pulled \n Network nas_orchestrator_nas_net Creating \n Network nas_orchestrator_nas_net Created \n Container prowlarr Creating \n Container jellyfin Creating \n Container qbittorrent Creating \n Container prowlarr Error response from daemon: Conflict. The container name \"/prowlarr\" is already in use by container \"015448d7b0a669b2e36fa12377114e84ec493f2422a152c0469bd37bb912e1fe\". You have to remove (or rename) that container to be able to reuse that name. \n Container qbittorrent Error response from daemon: Conflict. The container name \"/qbittorrent\" is already in use by container \"b72c99acfa7fb6556a9526fd7fc5a0401d08c9f50e897edeb3cc546a849086f9\". You have to remove (or rename) that container to be able to reuse that name. \nError response from daemon: Conflict. The container name \"/prowlarr\" is already in use by container \"015448d7b0a669b2e36fa12377114e84ec493f2422a152c0469bd37bb912e1fe\". You have to remove (or rename) that container to be able to reuse that name."
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "ddceaa2b-4eec-4367-b42c-20fc74745c01",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=in_use, services.radarr.port=in_use, services.sonarr.port=in_use, services.prowlarr.port=in_use, services.jellyseerr.port=in_use, services.jellyfin.port=in_use, services.pipeline.port=not_set, docker.cli=present"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "29b76f5d-f2b2-45e9-b0f4-301449a6bc92",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=in_use, services.radarr.port=in_use, services.sonarr.port=in_use, services.prowlarr.port=in_use, services.jellyseerr.port=in_use, services.jellyfin.port=in_use, services.pipeline.port=optional, docker.cli=present"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "fde81c90-5c2d-4556-af4b-285a5e4d460b",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=in_use, services.radarr.port=in_use, services.sonarr.port=in_use, services.prowlarr.port=in_use, services.jellyseerr.port=in_use, services.jellyfin.port=in_use, services.pipeline.port=optional, docker.cli=present"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "b75030d4-3c78-46be-a564-e80a590e69ee",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "qbittorrent password set, jellyseerr admin username set, jellyseerr admin password set, jellyfin admin username set, jellyfin admin password set"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "port=7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "port=8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "port=9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "port=5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "port=8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "failed",
+          "detail": "authentication failed (unable to login with known credentials)"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "failed",
+          "detail": "waiting for Radarr config.xml at /home/ethan/eznas/test_appdata/radarr"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "failed",
+          "detail": "waiting for Sonarr config.xml at /home/ethan/eznas/test_appdata/sonarr"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "waiting for Prowlarr config.xml at /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "admin_password set; linked=radarr.sonarr"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime; admin_password set"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyseerr, jellyfin"
+    },
+    {
+      "run_id": "01dd4f21-aaf8-4c8c-82fb-09470e88c5f6",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=in_use, services.radarr.port=in_use, services.sonarr.port=in_use, services.prowlarr.port=in_use, services.jellyseerr.port=in_use, services.jellyfin.port=in_use, services.pipeline.port=optional, docker.cli=present"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "fed8b401-8b64-475b-b2e7-7d15e6a570da",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, services.qbittorrent.port=in_use_by_stack, services.radarr.port=in_use_by_stack, services.sonarr.port=in_use_by_stack, services.prowlarr.port=in_use_by_stack, services.jellyseerr.port=in_use_by_stack, services.jellyfin.port=in_use_by_stack, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/home/ethan/eznas/nas_orchestrator/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "port=7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "port=8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "port=9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "port=5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "port=8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "failed",
+          "detail": "authentication failed (unable to login with known credentials)"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "failed",
+          "detail": "Radarr API error 400: [\n  {\n    \"propertyName\": \"Path\",\n    \"errorMessage\": \"Path \\u0027/home/ethan/eznas/test_pool/media/movies\\u0027 does not exist\",\n    \"attemptedValue\": \"/home/ethan/eznas/test_pool/media/movies\",\n    \"severity\": \"error\",\n    \"errorCode\": \"PathExistsValidator\",\n    \"formattedMessageArguments\": [],\n    \"formattedMessagePlaceholderValues\": {\n      \"path\": \"/home/ethan/eznas/test_pool/media/movies\",\n      \"propertyName\": \"Path\",\n      \"propertyValue\": \"/home/ethan/eznas/test_pool/media/movies\"\n    }\n  }\n]"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "failed",
+          "detail": "Sonarr API error 400: [\n  {\n    \"propertyName\": \"Path\",\n    \"errorMessage\": \"Path \\u0027/home/ethan/eznas/test_pool/media/tv\\u0027 does not exist\",\n    \"attemptedValue\": \"/home/ethan/eznas/test_pool/media/tv\",\n    \"severity\": \"error\",\n    \"errorCode\": \"PathExistsValidator\",\n    \"formattedMessageArguments\": [],\n    \"formattedMessagePlaceholderValues\": {\n      \"path\": \"/home/ethan/eznas/test_pool/media/tv\",\n      \"propertyName\": \"Path\",\n      \"propertyValue\": \"/home/ethan/eznas/test_pool/media/tv\"\n    }\n  }\n]"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "Prowlarr API error 400: [\n  {\n    \"isWarning\": false,\n    \"propertyName\": \"BaseUrl\",\n    \"errorMessage\": \"Invalid Url: \\u0027\\u0027\",\n    \"attemptedValue\": \"\",\n    \"severity\": \"error\"\n  }\n]"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "admin_password set; linked=radarr.sonarr"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=/home/ethan/eznas/test_pool/media/movies,/home/ethan/eznas/test_pool/media/tv,/home/ethan/eznas/test_pool/media/anime; admin_password set"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured jellyseerr, jellyfin"
+    }
+  ],
+  "services": {
+    "qbittorrent": {
+      "username": "admin",
+      "password": "adminadmin"
+    },
+    "jellyseerr": {
+      "admin_password": "adminadmin",
+      "admin_username": "admin"
+    },
+    "jellyfin": {
+      "admin_password": "adminadmin",
+      "admin_username": "admin"
+    },
+    "radarr": {
+      "api_key": "11fb432866294d3188c41f4e00cc796b"
+    },
+    "sonarr": {
+      "api_key": "dc3403b8f06d4a0287ea7aeacca6d90f"
+    },
+    "prowlarr": {
+      "api_key": "86ee42ddb2e94dc3a98f523bfcb454df"
+    }
+  },
+  "secrets": {
+    "qbittorrent": {
+      "username": "admin",
+      "password": "adminadmin"
+    }
+  }
+}
