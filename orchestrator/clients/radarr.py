@@ -333,7 +333,7 @@ class RadarrClient(ServiceClient):
             meta_profiles = api.get_json("/metadataprofile")
         except httpx.HTTPStatusError:
             meta_profiles = []
-        quality_id = profiles[0]["id"] if profiles else 1
+        quality_id = self._select_quality_profile_id(profiles, config)
         metadata_id = meta_profiles[0]["id"] if meta_profiles else 1
 
         payload: Dict[str, object] = {
@@ -346,6 +346,28 @@ class RadarrClient(ServiceClient):
         created = api.post_json("/rootfolder", payload)
         folder_id = created.get("id") if isinstance(created, dict) else None
         return True, f"root folder created {target}", folder_id
+
+    def _select_quality_profile_id(
+        self, profiles: List[Dict[str, object]], config: StackConfig
+    ) -> int:
+        if not profiles:
+            return 1
+        target = config.quality.target_resolution
+        preset = config.quality.preset
+        candidates = [profile for profile in profiles if isinstance(profile, dict)]
+        if target:
+            token = str(target.value).lower()
+            for profile in candidates:
+                name = str(profile.get("name", "")).lower()
+                if token in name or token.replace("p", "") in name:
+                    return int(profile.get("id", candidates[0].get("id", 1)))
+        if preset and preset != "balanced":
+            token = str(preset).lower()
+            for profile in candidates:
+                name = str(profile.get("name", "")).lower()
+                if token in name or token.replace("p", "") in name:
+                    return int(profile.get("id", candidates[0].get("id", 1)))
+        return int(candidates[0].get("id", 1))
 
     def _ensure_download_client(
         self,

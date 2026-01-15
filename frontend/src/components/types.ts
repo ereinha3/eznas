@@ -82,6 +82,9 @@ export interface StackConfig {
   media_policy: MediaPolicy
   quality: {
     preset: string
+    target_resolution: string | null
+    max_bitrate_mbps: number | null
+    preferred_container: string
   }
   ui: UIConfig
   users: Array<{ username: string; email?: string; role: string }>

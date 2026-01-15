@@ -52,10 +52,17 @@ const DEFAULT_CONFIG: StackConfig = {
     movies: { keep_audio: ['eng', 'und'], keep_subs: ['eng', 'forced'] },
     anime: { keep_audio: ['jpn', 'eng', 'und'], keep_subs: ['eng'] },
   },
-  quality: { preset: 'balanced' },
+  quality: {
+    preset: 'balanced',
+    target_resolution: null,
+    max_bitrate_mbps: null,
+    preferred_container: 'mkv',
+  },
   ui: { port: 8443 },
   users: [],
 }
+
+type TabKey = 'setup' | 'services' | 'preferences'
 
 function App() {
   const [config, setConfig] = useState<StackConfig>(DEFAULT_CONFIG)
@@ -66,6 +73,7 @@ function App() {
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus[]>([])
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
   const [credentialsLoading, setCredentialsLoading] = useState(false)
+  const [activeTab, setActiveTab] = useState<TabKey>('setup')
 
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
@@ -255,6 +263,29 @@ function App() {
 
       <main className="grid-layout">
         <section className="panel">
+          <nav className="tab-nav">
+            <button
+              type="button"
+              className={`tab-button${activeTab === 'setup' ? ' active' : ''}`}
+              onClick={() => setActiveTab('setup')}
+            >
+              Setup
+            </button>
+            <button
+              type="button"
+              className={`tab-button${activeTab === 'services' ? ' active' : ''}`}
+              onClick={() => setActiveTab('services')}
+            >
+              Services
+            </button>
+            <button
+              type="button"
+              className={`tab-button${activeTab === 'preferences' ? ' active' : ''}`}
+              onClick={() => setActiveTab('preferences')}
+            >
+              Preferences
+            </button>
+          </nav>
           <ConfigForm
             config={config}
             onChange={setConfig}
@@ -266,6 +297,7 @@ function App() {
             status={status}
             statusVariant={statusVariant}
             isApplying={isApplying}
+            activeTab={activeTab}
           />
         </section>
         <aside className="sidebar">

@@ -32,6 +32,9 @@
 - Hooks from qBittorrent (post-download) into pipeline.
 - Media rename policies + optional transcoding.
 - Library refresh on completion (Jellyfin).
+- User-configurable remux preferences (audio/subtitle language allowlists).
+- User-configurable quality targets (1080p/2k/4k) and bitrate caps.
+- Lossless remux path (`-c copy`) with fallback handling for unusual formats.
 
 ## Docker / Packaging
 - Add `docker compose` example for local builds (single command).

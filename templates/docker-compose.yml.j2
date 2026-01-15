@@ -259,20 +259,25 @@ services:
 
 {% if services.pipeline.enabled %}
   pipeline-worker:
-    image: {{ config.get("images", {}).get("pipeline", "python:3.13-alpine") }}
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: pipeline-worker
     restart: unless-stopped
     environment:
       - TZ={{ runtime.timezone }}
-    command: ["sh", "-c", "sleep 3600"]
+      - ORCH_ROOT=/config
+      - PIPELINE_INTERVAL=60
+    command: ["python", "-m", "orchestrator.pipeline.runner"]
     volumes:
       - {{ paths.pool }}:/data
       - {{ scratch_host }}:/scratch
-      - {{ paths.appdata }}/pipeline:/config
+      - {{ paths.appdata }}/orchestrator:/config
     depends_on:
 {% if services.qbittorrent.enabled %}
       - qbittorrent
 {% endif %}
+      - orchestrator
     networks:
       - nas_net
 {% endif %}

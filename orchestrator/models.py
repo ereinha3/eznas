@@ -57,8 +57,18 @@ class QualityPreset(str, Enum):
     balanced = "balanced"
 
 
+class ResolutionPreset(str, Enum):
+    p720 = "720p"
+    p1080 = "1080p"
+    p1440 = "1440p"
+    p2160 = "2160p"
+
+
 class QualityConfig(BaseModel):
     preset: QualityPreset = QualityPreset.balanced
+    target_resolution: Optional[ResolutionPreset] = None
+    max_bitrate_mbps: Optional[int] = Field(default=None, ge=1)
+    preferred_container: str = "mkv"
 
 
 class UIConfig(BaseModel):

@@ -142,7 +142,7 @@ class SonarrClient(ServiceClient):
 
                 rf_changes = []
                 tv_changed, tv_msg, tv_id = self._ensure_root_folder(
-                    api, "/data/media/tv", "Standard"
+                    api, config, "/data/media/tv"
                 )
                 rf_changes.append((tv_changed, tv_msg))
                 if tv_id is not None:
@@ -150,7 +150,7 @@ class SonarrClient(ServiceClient):
                     state_dirty = True
 
                 anime_changed, anime_msg, anime_id = self._ensure_root_folder(
-                    api, "/data/media/anime", "Anime"
+                    api, config, "/data/media/anime", anime=True
                 )
                 rf_changes.append((anime_changed, anime_msg))
                 if anime_id is not None:
@@ -336,8 +336,9 @@ class SonarrClient(ServiceClient):
     def _ensure_root_folder(
         self,
         api: ArrAPI,
+        config: StackConfig,
         target: str,
-        default_profile_name: str,
+        anime: bool = False,
     ) -> Tuple[bool, str, Optional[int]]:
         existing = api.get_json("/rootfolder")
         for entry in existing:
@@ -349,8 +350,11 @@ class SonarrClient(ServiceClient):
             language_profiles = api.get_json("/languageprofile")
         except httpx.HTTPStatusError:
             language_profiles = []
-        default_quality = self._find_profile_id(quality_profiles, default_profile_name)
-        default_language = language_profiles[0]["id"] if language_profiles else 1
+        default_quality = self._select_quality_profile_id(quality_profiles, config)
+        preferred_languages = (
+            config.media_policy.anime.keep_audio if anime else config.media_policy.movies.keep_audio
+        )
+        default_language = self._select_language_profile_id(language_profiles, preferred_languages)
 
         payload: Dict[str, object] = {
             "path": target,
@@ -439,3 +443,52 @@ class SonarrClient(ServiceClient):
             if str(profile.get("name", "")) == name:
                 return int(profile.get("id", 1))
         return int(profiles[0]["id"]) if profiles else 1
+
+    def _select_quality_profile_id(
+        self, profiles: List[Dict[str, object]], config: StackConfig
+    ) -> int:
+        if not profiles:
+            return 1
+        target = config.quality.target_resolution
+        preset = config.quality.preset
+        candidates = [profile for profile in profiles if isinstance(profile, dict)]
+        if target:
+            token = str(target.value).lower()
+            for profile in candidates:
+                name = str(profile.get("name", "")).lower()
+                if token in name or token.replace("p", "") in name:
+                    return int(profile.get("id", candidates[0].get("id", 1)))
+        if preset and preset != "balanced":
+            token = str(preset).lower()
+            for profile in candidates:
+                name = str(profile.get("name", "")).lower()
+                if token in name or token.replace("p", "") in name:
+                    return int(profile.get("id", candidates[0].get("id", 1)))
+        return int(candidates[0].get("id", 1))
+
+    def _select_language_profile_id(
+        self, profiles: List[Dict[str, object]], preferred: List[str]
+    ) -> int:
+        if not profiles:
+            return 1
+        if not preferred:
+            return int(profiles[0].get("id", 1))
+
+        language_map = {
+            "eng": "english",
+            "jpn": "japanese",
+            "spa": "spanish",
+            "fra": "french",
+            "deu": "german",
+            "ita": "italian",
+            "kor": "korean",
+            "chi": "chinese",
+            "por": "portuguese",
+            "rus": "russian",
+        }
+        preferred_names = {language_map.get(code, code).lower() for code in preferred}
+        for profile in profiles:
+            name = str(profile.get("name", "")).lower()
+            if any(token in name for token in preferred_names):
+                return int(profile.get("id", profiles[0].get("id", 1)))
+        return int(profiles[0].get("id", 1))
