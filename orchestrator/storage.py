@@ -77,6 +77,16 @@ class ConfigRepository:
                 target.mkdir(parents=True, exist_ok=True)
                 changes.append(f"created {target}")
 
+        if config.proxy.enabled:
+            traefik_dir = appdata / "traefik"
+            if not traefik_dir.exists():
+                traefik_dir.mkdir(parents=True, exist_ok=True)
+                changes.append(f"created {traefik_dir}")
+            certs_dir = traefik_dir / "certs"
+            if not certs_dir.exists():
+                certs_dir.mkdir(parents=True, exist_ok=True)
+                changes.append(f"created {certs_dir}")
+
         download_root = (
             scratch_root / "downloads" if scratch_config is not None else scratch_root
         )

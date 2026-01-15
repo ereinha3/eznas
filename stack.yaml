@@ -6,35 +6,42 @@ paths:
 services:
   qbittorrent:
     enabled: true
-    port: 8080
-    proxy_url: null
+    port: 8077
+    proxy_url: torrent.home.lab
     stop_after_download: true
     username: admin
     password: adminadmin
   radarr:
     enabled: true
     port: 7878
-    proxy_url: null
+    proxy_url: radarr.home.lab
   sonarr:
     enabled: true
     port: 8989
-    proxy_url: null
+    proxy_url: sonarr.home.lab
   prowlarr:
     enabled: true
     port: 9696
-    proxy_url: null
+    proxy_url: prowlarr.home.lab
   jellyseerr:
     enabled: true
     port: 5055
-    proxy_url: null
+    proxy_url: jellyseer.home.lab
   jellyfin:
     enabled: true
     port: 8096
-    proxy_url: null
+    proxy_url: jellyfin.home.lab
   pipeline:
     enabled: true
     port: null
     proxy_url: null
+proxy:
+  enabled: true
+  image: traefik:v3.1
+  http_port: 80
+  https_port: 8001
+  dashboard: true
+  additional_args: []
 download_policy:
   categories:
     radarr: movies
@@ -44,15 +51,13 @@ media_policy:
   movies:
     keep_audio:
     - eng
-    - und
     keep_subs:
     - eng
     - forced
   anime:
     keep_audio:
-    - jpn
     - eng
-    - und
+    - jpn
     keep_subs:
     - eng
 quality:

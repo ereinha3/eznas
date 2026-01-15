@@ -2,7 +2,62 @@
 {% set services = config.services %}
 {% set runtime = config.runtime %}
 {% set scratch_host = paths.scratch if paths.scratch else paths.pool ~ "/downloads" %}
+{% set proxy = config.proxy %}
+{% set traefik_tls_enabled = proxy.https_port is not none %}
+{% set traefik_entrypoint = "websecure" if traefik_tls_enabled else "web" %}
 services:
+  orchestrator:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    container_name: nas-orchestrator
+    restart: unless-stopped
+    environment:
+      - ORCH_ROOT=/config
+    ports:
+      - "{{ config.ui.port }}:8443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - {{ paths.appdata }}/orchestrator:/config
+      - {{ paths.pool }}:{{ paths.pool }}
+      - {{ paths.appdata }}:{{ paths.appdata }}
+{% if paths.scratch %}
+      - {{ paths.scratch }}:{{ paths.scratch }}
+{% endif %}
+    networks:
+      - nas_net
+{% if proxy.enabled %}
+  traefik:
+    image: {{ proxy.image }}
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.file.directory=/config"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+{% if traefik_tls_enabled %}
+      - "--entrypoints.websecure.address=:443"
+{% endif %}
+{% if proxy.dashboard %}
+      - "--api.dashboard=true"
+      - "--api.insecure=true"
+{% endif %}
+{% for arg in proxy.additional_args %}
+      - "{{ arg }}"
+{% endfor %}
+    ports:
+      - "{{ proxy.http_port }}:80"
+{% if traefik_tls_enabled %}
+      - "{{ proxy.https_port }}:443"
+{% endif %}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - {{ paths.appdata }}/traefik:/config
+    networks:
+      - nas_net
+{% endif %}
 {% if services.qbittorrent.enabled %}
   qbittorrent:
     image: {{ config.get("images", {}).get("qbittorrent", "lscr.io/linuxserver/qbittorrent:latest") }}
@@ -12,7 +67,6 @@ services:
       - PUID={{ runtime.user_id }}
       - PGID={{ runtime.group_id }}
       - TZ={{ runtime.timezone }}
-      - WEBUI_PORT={{ services.qbittorrent.port }}
     volumes:
       - {{ paths.appdata }}/qbittorrent:/config
       - {{ scratch_host }}:/downloads
@@ -25,8 +79,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.qbittorrent.rule=Host(`{{ services.qbittorrent.proxy_url }}`)"
-      - "traefik.http.routers.qbittorrent.entrypoints=websecure"
+      - "traefik.http.routers.qbittorrent.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.qbittorrent.tls=true"
+{% endif %}
       - "traefik.http.services.qbittorrent.loadbalancer.server.port=8080"
 {% endif %}
     networks:
@@ -54,8 +110,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.radarr.rule=Host(`{{ services.radarr.proxy_url }}`)"
-      - "traefik.http.routers.radarr.entrypoints=websecure"
+      - "traefik.http.routers.radarr.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.radarr.tls=true"
+{% endif %}
       - "traefik.http.services.radarr.loadbalancer.server.port=7878"
 {% endif %}
     depends_on:
@@ -87,8 +145,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.sonarr.rule=Host(`{{ services.sonarr.proxy_url }}`)"
-      - "traefik.http.routers.sonarr.entrypoints=websecure"
+      - "traefik.http.routers.sonarr.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.sonarr.tls=true"
+{% endif %}
       - "traefik.http.services.sonarr.loadbalancer.server.port=8989"
 {% endif %}
     depends_on:
@@ -118,8 +178,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prowlarr.rule=Host(`{{ services.prowlarr.proxy_url }}`)"
-      - "traefik.http.routers.prowlarr.entrypoints=websecure"
+      - "traefik.http.routers.prowlarr.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.prowlarr.tls=true"
+{% endif %}
       - "traefik.http.services.prowlarr.loadbalancer.server.port=9696"
 {% endif %}
     networks:
@@ -144,8 +206,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyseerr.rule=Host(`{{ services.jellyseerr.proxy_url }}`)"
-      - "traefik.http.routers.jellyseerr.entrypoints=websecure"
+      - "traefik.http.routers.jellyseerr.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.jellyseerr.tls=true"
+{% endif %}
       - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
 {% endif %}
     depends_on:
@@ -183,8 +247,10 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jellyfin.rule=Host(`{{ services.jellyfin.proxy_url }}`)"
-      - "traefik.http.routers.jellyfin.entrypoints=websecure"
+      - "traefik.http.routers.jellyfin.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
       - "traefik.http.routers.jellyfin.tls=true"
+{% endif %}
       - "traefik.http.services.jellyfin.loadbalancer.server.port=8096"
 {% endif %}
     networks:

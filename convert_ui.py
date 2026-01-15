@@ -249,7 +249,6 @@ function App() {
 }
 
 export default App;
-""")
+"""))
 
 print("App.tsx written")
-PY

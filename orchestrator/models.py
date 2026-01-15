@@ -115,6 +115,15 @@ class PipelineConfig(ServiceBaseConfig):
     proxy_url: Optional[str] = None
 
 
+class TraefikConfig(BaseModel):
+    enabled: bool = False
+    image: str = "traefik:v3.1"
+    http_port: int = Field(default=80, ge=1, le=65535)
+    https_port: Optional[int] = Field(default=None, ge=1, le=65535)
+    dashboard: bool = False
+    additional_args: List[str] = Field(default_factory=list)
+
+
 class ServicesConfig(BaseModel):
     qbittorrent: QbittorrentConfig = Field(default_factory=QbittorrentConfig)
     radarr: RadarrConfig = Field(default_factory=RadarrConfig)
@@ -135,6 +144,7 @@ class StackConfig(BaseModel):
     version: int = 1
     paths: PathConfig
     services: ServicesConfig = Field(default_factory=ServicesConfig)
+    proxy: TraefikConfig = Field(default_factory=TraefikConfig)
     download_policy: DownloadPolicy = Field(default_factory=DownloadPolicy)
     media_policy: MediaPolicy = Field(default_factory=MediaPolicy)
     quality: QualityConfig = Field(default_factory=QualityConfig)

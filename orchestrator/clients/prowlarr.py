@@ -3,13 +3,13 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 import httpx
 
-from .arr import ArrAPI, set_field_values
+from .arr import ArrAPI, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
-from .util import read_arr_api_key, wait_for_arr_config
+from .util import read_arr_api_key, read_arr_port, read_arr_url_base, wait_for_arr_config
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -20,6 +20,7 @@ class ProwlarrClient(ServiceClient):
     """Provision and link Prowlarr applications."""
 
     name = "prowlarr"
+    INTERNAL_PORT = 9696
 
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
@@ -80,6 +81,18 @@ class ProwlarrClient(ServiceClient):
             )
 
         base_url = f"http://127.0.0.1:{prowlarr_cfg.port}/api/v1"
+        status_url = f"{base_url}/system/status"
+        ok, status_detail = wait_for_http_ready(
+            status_url,
+            timeout=180.0,
+            interval=5.0,
+        )
+        if not ok:
+            return EnsureOutcome(
+                detail=f"Prowlarr not ready ({status_detail})",
+                changed=changed,
+                success=False,
+            )
         try:
             with ArrAPI(base_url, api_key) as api:
                 status = api.get_json("/system/status")
@@ -89,22 +102,22 @@ class ProwlarrClient(ServiceClient):
                 )
 
                 app_changes: List[Tuple[bool, str]] = []
-                if radarr_cfg.enabled and radarr_key and radarr_cfg.port:
+                if radarr_cfg.enabled and radarr_key:
                     changed_app, msg = self._ensure_application(
                         api,
-                        "Radarr",
-                        radarr_key,
-                        host="radarr",
-                        port=radarr_cfg.port,
+                        config,
+                        display_name="Radarr",
+                        service_name="radarr",
+                        api_key=radarr_key,
                     )
                     app_changes.append((changed_app, msg))
-                if sonarr_cfg.enabled and sonarr_key and sonarr_cfg.port:
+                if sonarr_cfg.enabled and sonarr_key:
                     changed_app, msg = self._ensure_application(
                         api,
-                        "Sonarr",
-                        sonarr_key,
-                        host="sonarr",
-                        port=sonarr_cfg.port,
+                        config,
+                        display_name="Sonarr",
+                        service_name="sonarr",
+                        api_key=sonarr_key,
                     )
                     app_changes.append((changed_app, msg))
 
@@ -138,41 +151,145 @@ class ProwlarrClient(ServiceClient):
 
         return EnsureOutcome(detail=detail_combined, changed=changed, success=True)
 
+    def verify(self, config: StackConfig) -> EnsureOutcome:
+        state = self.repo.load_state()
+        secrets_state = state.get("secrets", {})
+        prowlarr_secrets = secrets_state.get("prowlarr", {})
+
+        api_key = prowlarr_secrets.get("api_key")
+        if not api_key:
+            return EnsureOutcome(detail="missing api key", changed=False, success=False)
+
+        prowlarr_cfg = config.services.prowlarr
+        base_url = f"http://127.0.0.1:{prowlarr_cfg.port}/api/v1"
+
+        try:
+            with ArrAPI(base_url, api_key) as api:
+                existing = api.get_json("/applications") or []
+        except httpx.RequestError as exc:
+            return EnsureOutcome(
+                detail=f"connection failed ({exc.__class__.__name__}: {exc})",
+                changed=False,
+                success=False,
+            )
+        except httpx.HTTPStatusError as exc:
+            return EnsureOutcome(
+                detail=f"api error {exc.response.status_code}",
+                changed=False,
+                success=False,
+            )
+
+        expected_apps = []
+        if config.services.radarr.enabled:
+            expected_apps.append(("Radarr", "radarr"))
+        if config.services.sonarr.enabled:
+            expected_apps.append(("Sonarr", "sonarr"))
+
+        missing = []
+        mismatched = []
+        for display_name, service_name in expected_apps:
+            prowlarr_config_dir = Path(config.paths.appdata) / "prowlarr"
+            prowlarr_url = self._build_service_url(
+                service_name="prowlarr",
+                host="prowlarr",
+                config_dir=prowlarr_config_dir,
+                default_port=self.INTERNAL_PORT,
+            )
+            service_config_dir = Path(config.paths.appdata) / service_name
+            service_url = self._build_service_url(
+                service_name=service_name,
+                host=service_name,
+                config_dir=service_config_dir,
+                default_port=self._default_service_port(service_name),
+            )
+            expected_fields = {
+                "baseUrl": self._normalize_base_url(service_url),
+                "prowlarrUrl": self._normalize_base_url(prowlarr_url),
+            }
+
+            found = None
+            for entry in existing:
+                if (entry.get("implementation") or "").lower() == display_name.lower():
+                    found = entry
+                    break
+            if not found:
+                missing.append(display_name)
+                continue
+
+            fields = {f["name"]: f.get("value") for f in found.get("fields", [])}
+            current_base = self._normalize_base_url(fields.get("baseUrl"))
+            current_prowlarr = self._normalize_base_url(fields.get("prowlarrUrl"))
+            if current_base != expected_fields["baseUrl"] or current_prowlarr != expected_fields["prowlarrUrl"]:
+                mismatched.append(display_name)
+
+        detail_parts = []
+        if missing:
+            detail_parts.append(f"missing apps: {', '.join(missing)}")
+        if mismatched:
+            detail_parts.append(f"mismatched apps: {', '.join(mismatched)}")
+        if detail_parts:
+            return EnsureOutcome(detail="; ".join(detail_parts), changed=False, success=False)
+
+        return EnsureOutcome(detail="applications ok", changed=False, success=True)
+
     # ------------------------------------------------------------------ helpers
 
     def _ensure_application(
         self,
         api: ArrAPI,
-        name: str,
-        api_key: str,
+        config: StackConfig,
         *,
-        host: str,
-        port: int,
+        display_name: str,
+        service_name: str,
+        api_key: str,
     ) -> Tuple[bool, str]:
-        implementation = name
+        implementation = display_name
+        prowlarr_config_dir = Path(config.paths.appdata) / "prowlarr"
+        prowlarr_url = self._build_service_url(
+            service_name="prowlarr",
+            host="prowlarr",
+            config_dir=prowlarr_config_dir,
+            default_port=self.INTERNAL_PORT,
+        )
+
+        service_config_dir = Path(config.paths.appdata) / service_name
+        service_url = self._build_service_url(
+            service_name=service_name,
+            host=service_name,
+            config_dir=service_config_dir,
+            default_port=self._default_service_port(service_name),
+        )
+
+        desired_fields = {
+            "prowlarrUrl": prowlarr_url,
+            "baseUrl": service_url,
+            "apiKey": api_key,
+        }
+        normalized_targets = {
+            key: self._normalize_base_url(value)
+            for key, value in desired_fields.items()
+            if key != "apiKey"
+        }
+
         existing = api.get_json("/applications")
         for entry in existing:
             if (entry.get("implementation") or "").lower() == implementation.lower():
                 app_id = entry.get("id")
                 fields = {f["name"]: f.get("value") for f in entry.get("fields", [])}
+                current_base_url = self._normalize_base_url(fields.get("baseUrl"))
+                current_prowlarr_url = self._normalize_base_url(fields.get("prowlarrUrl"))
                 if (
-                    fields.get("host") == host
-                    and str(fields.get("port")) == str(port)
+                    current_base_url == normalized_targets.get("baseUrl")
+                    and current_prowlarr_url == normalized_targets.get("prowlarrUrl")
                     and fields.get("apiKey") == api_key
-                    and (fields.get("baseUrl") or "/") == "/"
                 ):
-                    return False, f"application {name} ready"
+                    return False, f"application {display_name} ready"
 
                 updated = dict(entry)
-                overrides = {
-                    "host": host,
-                    "port": port,
-                    "apiKey": api_key,
-                    "baseUrl": "/",
-                }
+                overrides = dict(desired_fields)
                 updated["fields"] = set_field_values(entry.get("fields", []), overrides)
                 api.put_json(f"/applications/{app_id}", updated)
-                return True, f"updated {name} application"
+                return True, f"updated {display_name} application"
 
         schema = api.get_json("/applications/schema")
         template = next(
@@ -184,14 +301,9 @@ class ProwlarrClient(ServiceClient):
             None,
         )
         if not template:
-            return False, f"schema for {name} not found"
+            return False, f"schema for {display_name} not found"
 
-        overrides = {
-            "host": host,
-            "port": port,
-            "apiKey": api_key,
-            "baseUrl": "/",
-        }
+        overrides = dict(desired_fields)
         payload: Dict[str, object] = {
             key: value
             for key, value in template.items()
@@ -199,9 +311,9 @@ class ProwlarrClient(ServiceClient):
         }
         payload.update(
             {
-                "name": name,
-                "implementation": template.get("implementation", name),
-                "implementationName": template.get("implementationName", name),
+                "name": display_name,
+                "implementation": template.get("implementation", display_name),
+                "implementationName": template.get("implementationName", display_name),
                 "protocol": template.get("protocol", "torrent"),
                 "configContract": template.get("configContract"),
                 "enable": True,
@@ -211,4 +323,40 @@ class ProwlarrClient(ServiceClient):
         )
         payload["fields"] = set_field_values(template.get("fields", []), overrides)
         api.post_json("/applications", payload)
-        return True, f"created {name} application"
+        return True, f"created {display_name} application"
+
+
+    def _build_service_url(
+        self,
+        *,
+        service_name: str,
+        host: str,
+        config_dir: Path,
+        default_port: int,
+    ) -> str:
+        port = read_arr_port(config_dir) or default_port
+        url_base = read_arr_url_base(config_dir)
+        base = f"http://{host}:{port}"
+        if url_base:
+            base = f"{base}/{url_base}"
+        return base
+
+    @staticmethod
+    def _default_service_port(service_name: str) -> int:
+        mapping = {
+            "radarr": 7878,
+            "sonarr": 8989,
+            "prowlarr": 9696,
+        }
+        return mapping.get(service_name.lower(), 80)
+
+    @staticmethod
+    def _normalize_base_url(value: Optional[str]) -> Optional[str]:
+        if value is None:
+            return None
+        sanitized = str(value).strip()
+        if sanitized in {"", "/"}:
+            return None
+        sanitized = sanitized.rstrip("/")
+        return sanitized or None
+

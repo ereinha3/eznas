@@ -7,16 +7,28 @@ import {
   renderConfig,
   saveConfig,
   validateConfig,
+  fetchServiceCredentials,
+  updateQbCredentials,
+  createJellyfinUser,
 } from './api'
 import { ApplyLog } from './components/ApplyLog'
 import { ConfigForm } from './components/ConfigForm'
 import { SummaryPanel } from './components/SummaryPanel'
-import type { ServiceStatus, StackConfig } from './components/types'
+import { CredentialsPanel } from './components/CredentialsPanel'
+import type { CredentialsResponse, ServiceStatus, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
   version: 1,
   paths: { pool: '', scratch: null, appdata: '' },
   runtime: { user_id: 1000, group_id: 1000, timezone: 'UTC' },
+  proxy: {
+    enabled: false,
+    image: 'traefik:v3.1',
+    http_port: 80,
+    https_port: null,
+    dashboard: false,
+    additional_args: [],
+  },
   services: {
     qbittorrent: {
       enabled: true,
@@ -52,10 +64,26 @@ function App() {
   const [logEntries, setLogEntries] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
   const [serviceStatus, setServiceStatus] = useState<ServiceStatus[]>([])
+  const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
+  const [credentialsLoading, setCredentialsLoading] = useState(false)
+
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     setStatus(message)
     setStatusVariant(variant)
+  }
+
+  const loadCredentials = async () => {
+    setCredentialsLoading(true)
+    try {
+      const data = await fetchServiceCredentials()
+      setCredentials(data)
+    } catch (error: any) {
+      setStatusMessage(error.message || 'Failed to load credentials.', 'error')
+      throw error
+    } finally {
+      setCredentialsLoading(false)
+    }
   }
 
   const refreshConfig = async () => {
@@ -63,6 +91,7 @@ function App() {
       const loaded = await loadConfig()
       setConfig(loaded)
       setStatusMessage('Configuration loaded.', 'success')
+      await loadCredentials()
     } catch (error: any) {
       setStatusMessage(error.message || 'Failed to load config', 'error')
     }
@@ -74,6 +103,30 @@ function App() {
       setServiceStatus(data.services)
     } catch (error) {
       // backend may not expose /api/status yet: ignore
+    }
+  }
+
+  const handleUpdateQbCredentials = async (username: string, password: string) => {
+    try {
+      await updateQbCredentials({ username, password })
+      setStatusMessage('qBittorrent credentials updated.', 'success')
+      const updated = await loadConfig()
+      setConfig(updated)
+      await loadCredentials()
+    } catch (error: any) {
+      setStatusMessage(error.message || 'Failed to update qBittorrent credentials.', 'error')
+      throw error
+    }
+  }
+
+  const handleAddJellyfinUser = async (username: string, password: string) => {
+    try {
+      await createJellyfinUser({ username, password })
+      setStatusMessage(`Created Jellyfin user ${username}.`, 'success')
+      await loadCredentials()
+    } catch (error: any) {
+      setStatusMessage(error.message || 'Failed to create Jellyfin user.', 'error')
+      throw error
     }
   }
 
@@ -168,6 +221,7 @@ function App() {
         eventSource?.close()
         setIsApplying(false)
         refreshStatus()
+        loadCredentials()
       })
     } catch (error: any) {
       appendLog(`Error: ${error.message}`)
@@ -215,6 +269,13 @@ function App() {
           />
         </section>
         <aside className="sidebar">
+          <CredentialsPanel
+            credentials={credentials}
+            loading={credentialsLoading}
+            onRefresh={loadCredentials}
+            onUpdateQb={handleUpdateQbCredentials}
+            onAddJellyfinUser={handleAddJellyfinUser}
+          />
           <SummaryPanel config={config} serviceStatus={serviceStatus} />
           <ApplyLog entries={logEntries} />
         </aside>

@@ -53,6 +53,15 @@ export interface RuntimeConfig {
   timezone: string
 }
 
+export interface ProxyConfig {
+  enabled: boolean
+  image: string
+  http_port: number
+  https_port: number | null
+  dashboard: boolean
+  additional_args: string[]
+}
+
 export interface UIConfig {
   port: number
 }
@@ -67,6 +76,7 @@ export interface StackConfig {
   version: number
   paths: PathConfig
   runtime: RuntimeConfig
+  proxy: ProxyConfig
   services: ServicesConfig
   download_policy: DownloadPolicy
   media_policy: MediaPolicy
@@ -103,4 +113,25 @@ export interface ServiceStatus {
 
 export interface StatusResponse {
   services: ServiceStatus[]
+}
+
+export interface CredentialUser {
+  username: string
+  password?: string | null
+}
+
+export interface ServiceCredential {
+  service: string
+  label: string
+  username?: string | null
+  password?: string | null
+  editable: boolean
+  canViewPassword: boolean
+  multiUser: boolean
+  supportsUserCreation: boolean
+  users: CredentialUser[]
+}
+
+export interface CredentialsResponse {
+  services: ServiceCredential[]
 }

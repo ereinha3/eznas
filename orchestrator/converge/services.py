@@ -31,7 +31,17 @@ class ServiceConfigurator:
     def ensure(self, config: StackConfig) -> List[StageEvent]:
         events: List[StageEvent] = []
         service_map = config.services.model_dump(mode="python")
-        for name, settings in service_map.items():
+        ordered_services = [
+            "qbittorrent",
+            "radarr",
+            "sonarr",
+            "prowlarr",
+            "jellyfin",
+            "jellyseerr",
+            "pipeline",
+        ]
+        for name in ordered_services:
+            settings = service_map.get(name, {})
             is_enabled = settings.get("enabled", True)
             stage_name = f"configure.{name}"
             if not is_enabled:
@@ -57,6 +67,49 @@ class ServiceConfigurator:
                 continue
 
             outcome = self._safe_ensure(client, config)
+            status = "ok" if outcome.success else "failed"
+            detail = outcome.detail or ""
+            events.append(StageEvent(stage=stage_name, status=status, detail=detail))
+
+        return events
+
+    def verify(self, config: StackConfig) -> List[StageEvent]:
+        events: List[StageEvent] = []
+        service_map = config.services.model_dump(mode="python")
+        ordered_services = [
+            "qbittorrent",
+            "radarr",
+            "sonarr",
+            "prowlarr",
+            "jellyfin",
+            "jellyseerr",
+            "pipeline",
+        ]
+        for name in ordered_services:
+            settings = service_map.get(name, {})
+            is_enabled = settings.get("enabled", True)
+            stage_name = f"verify.{name}"
+            if not is_enabled:
+                events.append(
+                    StageEvent(stage=stage_name, status="ok", detail="skipped (disabled)")
+                )
+                continue
+
+            client = self.clients.get(name)
+            if client is None:
+                events.append(
+                    StageEvent(stage=stage_name, status="ok", detail="skipped (no client)")
+                )
+                continue
+
+            verify = getattr(client, "verify", None)
+            if verify is None:
+                events.append(
+                    StageEvent(stage=stage_name, status="ok", detail="skipped (no verification)")
+                )
+                continue
+
+            outcome = verify(config)
             status = "ok" if outcome.success else "failed"
             detail = outcome.detail or ""
             events.append(StageEvent(stage=stage_name, status=status, detail=detail))

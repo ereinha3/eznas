@@ -45,6 +45,29 @@ def run_validation(config: StackConfig) -> ValidationResult:
         overall_ok = False
     checks["ui.port"] = port_status
 
+    if config.proxy.enabled:
+        proxy_http_key = "proxy.http_port"
+        if _port_available(config.proxy.http_port):
+            checks[proxy_http_key] = "ok"
+        elif _port_owned_by_container("traefik", config.proxy.http_port):
+            checks[proxy_http_key] = "in_use_by_stack"
+        else:
+            checks[proxy_http_key] = "in_use"
+            overall_ok = False
+
+        https_port = config.proxy.https_port
+        proxy_https_key = "proxy.https_port"
+        if https_port is None:
+            checks[proxy_https_key] = "skipped"
+        else:
+            if _port_available(int(https_port)):
+                checks[proxy_https_key] = "ok"
+            elif _port_owned_by_container("traefik", int(https_port)):
+                checks[proxy_https_key] = "in_use_by_stack"
+            else:
+                checks[proxy_https_key] = "in_use"
+                overall_ok = False
+
     port_optional = {"pipeline"}
     for name, service in config.services.model_dump(mode="python").items():
         port = service.get("port")

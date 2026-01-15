@@ -4,6 +4,9 @@ import type {
   StackConfig,
   StatusResponse,
   ValidationResult,
+  CredentialsResponse,
+  ServiceCredential,
+  CredentialUser,
 } from './components/types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -62,5 +65,28 @@ export async function fetchStatus(): Promise<StatusResponse> {
   if (response.status === 404) {
     return { services: [] }
   }
+  return handleResponse(response)
+}
+
+export async function fetchServiceCredentials(): Promise<CredentialsResponse> {
+  const response = await fetch('/api/secrets')
+  return handleResponse(response)
+}
+
+export async function updateQbCredentials(payload: { username: string; password: string }): Promise<ServiceCredential> {
+  const response = await fetch('/api/services/qbittorrent/credentials', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
+  })
+  return handleResponse(response)
+}
+
+export async function createJellyfinUser(payload: { username: string; password: string }): Promise<CredentialUser> {
+  const response = await fetch('/api/services/jellyfin/users', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(payload),
+  })
   return handleResponse(response)
 }

@@ -1,11 +1,17 @@
 """qBittorrent service configuration client."""
 from __future__ import annotations
 
+import base64
+import hashlib
+import hmac
 import json
 import logging
+import os
 import re
 import secrets
 import subprocess
+import time
+from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
 import httpx
@@ -30,6 +36,8 @@ class QBittorrentClient(ServiceClient):
         r"temporary password (?:is provided )?for this session: (?P<password>\S+)",
         re.IGNORECASE,
     )
+    INTERNAL_PORT = 8080
+    PBKDF2_ITERATIONS = 100_000
 
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
@@ -37,6 +45,8 @@ class QBittorrentClient(ServiceClient):
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
         base_url = f"http://127.0.0.1:{qb_cfg.port}"
+        internal_host = f"localhost:{self.INTERNAL_PORT}"
+        internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
 
         state = self.repo.load_state()
@@ -61,32 +71,69 @@ class QBittorrentClient(ServiceClient):
             password_candidates.append(("admin", temp_password))
 
         default_headers = {
-            "Referer": f"{base_url}/",
-            "Origin": base_url,
+            "Referer": f"{internal_origin}/",
+            "Origin": internal_origin,
             "User-Agent": "nas-orchestrator/1.0",
+            "Host": internal_host,
         }
 
+        client: Optional[httpx.Client] = None
         try:
-            with httpx.Client(
+            client = httpx.Client(
                 base_url=base_url,
                 timeout=timeout,
                 follow_redirects=True,
                 headers=default_headers,
-            ) as client:
+            )
+            try:
+                active_username, active_password = self._authenticate(
+                    client, password_candidates
+                )
+            except AuthenticationError:
+                client.close()
+                target_password = (
+                    desired_password or stored_password or "adminadmin"
+                )
+                if not self._repair_credentials(
+                    config=config,
+                    username=desired_username,
+                    password=target_password,
+                ):
+                    return EnsureOutcome(
+                        detail="authentication failed (unable to reconcile credentials)",
+                        changed=False,
+                        success=False,
+                    )
+
+                stored_username = desired_username
+                stored_password = target_password
+                password_candidates = self._login_candidates(
+                    desired_username=desired_username,
+                    desired_password=desired_password,
+                    stored_username=stored_username,
+                    stored_password=stored_password,
+                )
+
+                client = httpx.Client(
+                    base_url=base_url,
+                    timeout=timeout,
+                    follow_redirects=True,
+                    headers=default_headers,
+                )
                 active_username, active_password = self._authenticate(
                     client, password_candidates
                 )
 
-                update_result, updated_password = self._configure_preferences(
-                    client=client,
-                    config=config,
-                    current_username=active_username,
-                    current_password=active_password,
-                    desired_username=desired_username,
-                    desired_password=desired_password,
-                )
+            update_result, updated_password = self._configure_preferences(
+                client=client,
+                config=config,
+                current_username=active_username,
+                current_password=active_password,
+                desired_username=desired_username,
+                desired_password=desired_password,
+            )
 
-                categories_changed = self._ensure_categories(client, config)
+            categories_changed = self._ensure_categories(client, config)
 
         except httpx.RequestError as exc:
             return EnsureOutcome(
@@ -100,6 +147,9 @@ class QBittorrentClient(ServiceClient):
                 changed=False,
                 success=False,
             )
+        finally:
+            if client is not None:
+                client.close()
 
         state_dirty = False
         if qb_state.get("username") != desired_username:
@@ -119,6 +169,116 @@ class QBittorrentClient(ServiceClient):
             f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr},anime:{categories.anime}"
         )
         return EnsureOutcome(detail=detail, changed=update_result.changed or categories_changed)
+
+    def verify(self, config: StackConfig) -> EnsureOutcome:
+        qb_cfg = config.services.qbittorrent
+        base_url = f"http://127.0.0.1:{qb_cfg.port}"
+        internal_host = f"localhost:{self.INTERNAL_PORT}"
+        internal_origin = f"http://{internal_host}"
+        timeout = httpx.Timeout(10.0, connect=5.0)
+
+        state = self.repo.load_state()
+        secrets_state = state.get("secrets", {})
+        qb_state = secrets_state.get("qbittorrent", {})
+
+        desired_username = qb_cfg.username
+        desired_password = qb_cfg.password
+        stored_username = qb_state.get("username", desired_username)
+        stored_password = qb_state.get("password")
+
+        password_candidates = self._login_candidates(
+            desired_username=desired_username,
+            desired_password=desired_password,
+            stored_username=stored_username,
+            stored_password=stored_password,
+        )
+        temp_password = self._fetch_temporary_password()
+        if temp_password:
+            password_candidates.append(("admin", temp_password))
+
+        default_headers = {
+            "Referer": f"{internal_origin}/",
+            "Origin": internal_origin,
+            "User-Agent": "nas-orchestrator/1.0",
+            "Host": internal_host,
+        }
+
+        client: Optional[httpx.Client] = None
+        try:
+            client = httpx.Client(
+                base_url=base_url,
+                timeout=timeout,
+                follow_redirects=True,
+                headers=default_headers,
+            )
+            try:
+                active_username, _ = self._authenticate(client, password_candidates)
+            except AuthenticationError:
+                return EnsureOutcome(
+                    detail="auth failed (unable to login with known credentials)",
+                    changed=False,
+                    success=False,
+                )
+
+            detail_parts: List[str] = [f"auth=ok ({active_username})"]
+            verification_ok = True
+
+            preferences = None
+            pref_response = client.get("/api/v2/app/preferences")
+            if pref_response.status_code == 200:
+                preferences = pref_response.json()
+            if isinstance(preferences, dict):
+                ui_username = preferences.get("web_ui_username")
+                if ui_username and ui_username != desired_username:
+                    verification_ok = False
+                    detail_parts.append(
+                        f"web_ui_username mismatch (expected {desired_username}, got {ui_username})"
+                    )
+
+            categories_response = client.get("/api/v2/torrents/categories")
+            categories_response.raise_for_status()
+            categories_payload = categories_response.json() or {}
+
+            expected = {
+                config.download_policy.categories.radarr: "/downloads/complete/movies",
+                config.download_policy.categories.sonarr: "/downloads/complete/tv",
+                config.download_policy.categories.anime: "/downloads/complete/anime",
+            }
+            missing = []
+            mismatched = []
+            for name, path in expected.items():
+                record = categories_payload.get(name)
+                if not record:
+                    missing.append(name)
+                    continue
+                current_path = record.get("savePath")
+                if current_path != path:
+                    mismatched.append(f"{name}=>{current_path or 'unset'}")
+
+            if missing:
+                verification_ok = False
+                detail_parts.append(f"missing categories: {', '.join(missing)}")
+            if mismatched:
+                verification_ok = False
+                detail_parts.append(f"category paths mismatch: {', '.join(mismatched)}")
+
+            if verification_ok:
+                detail_parts.append("categories=ok")
+
+            return EnsureOutcome(
+                detail="; ".join(detail_parts),
+                changed=False,
+                success=verification_ok,
+            )
+        except httpx.RequestError as exc:
+            return EnsureOutcome(
+                detail=f"connection failed ({exc.__class__.__name__}: {exc})",
+                changed=False,
+                success=False,
+            )
+        finally:
+            if client is not None:
+                client.close()
 
     def _login_candidates(
         self,
@@ -192,6 +352,169 @@ class QBittorrentClient(ServiceClient):
                 log.debug("Captured qBittorrent temporary password from logs")
                 return password
         return None
+
+    def _repair_credentials(
+        self,
+        *,
+        config: StackConfig,
+        username: str,
+        password: str,
+    ) -> bool:
+        config_dir = Path(config.paths.appdata) / "qbittorrent"
+        config_dir.mkdir(parents=True, exist_ok=True)
+        candidate_paths = [
+            config_dir / "qBittorrent" / "qBittorrent.conf",
+            config_dir / "qbittorrent" / "qBittorrent.conf",
+            config_dir / "config" / "qBittorrent.conf",
+            config_dir / "qBittorrent.conf",
+        ]
+        config_path = next((path for path in candidate_paths if path.exists()), None)
+        if config_path is None:
+            log.debug(
+                "qBittorrent config not found (checked: %s)",
+                ", ".join(str(path) for path in candidate_paths),
+            )
+            return False
+
+        try:
+            raw_text = config_path.read_text(encoding="utf-8")
+        except FileNotFoundError:
+            log.debug("qBittorrent config missing at %s", config_path)
+            return False
+        except OSError as exc:
+            log.debug("Unable to read qBittorrent config: %s", exc, exc_info=True)
+            return False
+
+        lines = raw_text.splitlines()
+        changed = False
+
+        changed |= self._set_config_value(lines, "WebUI\\Username", username)
+
+        stored_hash = self._get_config_value(lines, "WebUI\\Password_PBKDF2")
+        if not stored_hash or not self._password_matches(stored_hash, password):
+            new_hash = self._generate_password_hash(password)
+            changed |= self._set_config_value(
+                lines, "WebUI\\Password_PBKDF2", new_hash
+            )
+
+        changed |= self._set_config_value(lines, "WebUI\\Password_ha1", "")
+        changed |= self._set_config_value(lines, "WebUI\\Port", str(self.INTERNAL_PORT))
+
+        if changed:
+            try:
+                config_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            except OSError as exc:
+                log.debug("Unable to write qBittorrent config: %s", exc, exc_info=True)
+                return False
+
+        if not self._restart_container():
+            return False
+
+        return self._wait_for_ready(
+            f"http://127.0.0.1:{config.services.qbittorrent.port}"
+        )
+
+    def _restart_container(self) -> bool:
+        try:
+            result = subprocess.run(
+                ["docker", "restart", "qbittorrent"],
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+        except OSError as exc:
+            log.debug("Unable to restart qBittorrent container: %s", exc, exc_info=True)
+            return False
+
+        if result.returncode != 0:
+            log.debug(
+                "docker restart qbittorrent failed with %s: %s",
+                result.returncode,
+                result.stderr.strip(),
+            )
+            return False
+        return True
+
+    def _wait_for_ready(self, base_url: str, timeout: float = 60.0) -> bool:
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                response = httpx.get(
+                    f"{base_url}/api/v2/app/version",
+                    timeout=5.0,
+                    headers={"Host": f"localhost:{self.INTERNAL_PORT}"},
+                )
+            except httpx.HTTPError:
+                time.sleep(1.0)
+                continue
+
+            if response.status_code == 200 and response.text.strip():
+                return True
+            if response.status_code in {401, 403}:
+                return True
+            time.sleep(1.0)
+        return False
+
+    def _set_config_value(self, lines: List[str], key: str, value: str) -> bool:
+        if value is None:
+            return False
+        target = f"{key}={value}"
+        prefix = f"{key}="
+        for idx, line in enumerate(lines):
+            if line.startswith(prefix):
+                if line == target:
+                    return False
+                lines[idx] = target
+                return True
+
+        try:
+            insert_index = lines.index("[Preferences]") + 1
+        except ValueError:
+            insert_index = len(lines)
+
+        lines.insert(insert_index, target)
+        return True
+
+    def _get_config_value(self, lines: Iterable[str], key: str) -> Optional[str]:
+        prefix = f"{key}="
+        for line in lines:
+            if line.startswith(prefix):
+                value = line[len(prefix) :].strip()
+                if len(value) >= 2 and value[0] == value[-1] == '"':
+                    value = value[1:-1]
+                return value
+        return None
+
+    def _password_matches(self, encoded: str, password: str) -> bool:
+        if not encoded.startswith("@ByteArray(") or not encoded.endswith(")"):
+            return False
+        try:
+            inner = encoded[len("@ByteArray(") : -1]
+            salt_b64, digest_b64 = inner.split(":", 1)
+            salt = base64.b64decode(salt_b64)
+            digest = base64.b64decode(digest_b64)
+        except (ValueError, base64.binascii.Error):
+            return False
+
+        candidate = hashlib.pbkdf2_hmac(
+            "sha512",
+            password.encode("utf-8"),
+            salt,
+            self.PBKDF2_ITERATIONS,
+        )
+        return hmac.compare_digest(candidate, digest)
+
+    def _generate_password_hash(self, password: str) -> str:
+        salt = os.urandom(16)
+        digest = hashlib.pbkdf2_hmac(
+            "sha512",
+            password.encode("utf-8"),
+            salt,
+            self.PBKDF2_ITERATIONS,
+        )
+        salt_b64 = base64.b64encode(salt).decode("ascii")
+        digest_b64 = base64.b64encode(digest).decode("ascii")
+        return f"@ByteArray({salt_b64}:{digest_b64})"
 
     def _configure_preferences(
         self,

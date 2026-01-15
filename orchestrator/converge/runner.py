@@ -13,6 +13,7 @@ from ..runtime.docker import DockerComposeRunner
 from ..storage import ConfigRepository
 from ..validators import run_validation
 from .services import ServiceConfigurator
+from ..proxy import ensure_traefik_assets
 
 
 @dataclass
@@ -37,6 +38,15 @@ class ApplyRunner:
         fs_changes = self.repo.ensure_directories(config)
         fs_detail = ", ".join(fs_changes) if fs_changes else "directories ready"
         self._record(run_id, events, "prepare.paths", "ok", fs_detail)
+
+        try:
+            _, proxy_detail = ensure_traefik_assets(self.repo, config)
+            self._record(run_id, events, "prepare.proxy", "ok", proxy_detail)
+        except RuntimeError as exc:
+            detail = str(exc)
+            self._record(run_id, events, "prepare.proxy", "failed", detail)
+            self.repo.finalize_run(run_id, ok=False, summary="Proxy preparation failed")
+            return False, events
 
         secrets_detail, secret_values = self._ensure_secrets(config)
         self._record(run_id, events, "prepare.secrets", "ok", secrets_detail)
@@ -104,9 +114,27 @@ class ApplyRunner:
             )
             secret_values = latest_secrets
 
+        verify_events = self.services.verify(config)
+        verify_ok = True
+        verified_summary = []
+        for event in verify_events:
+            self._record(run_id, events, event.stage, event.status, event.detail)
+            if event.status == "failed":
+                verify_ok = False
+            if event.status == "ok" and (event.detail or "").startswith("skipped"):
+                continue
+            if event.status == "ok":
+                verified_summary.append(event.stage.replace("verify.", ""))
+
+        if not verify_ok:
+            self.repo.finalize_run(run_id, ok=False, summary="Verification failed")
+            return False, events
+
         summary = "Rendered compose bundle"
         if configured_summary:
             summary += f"; configured {', '.join(configured_summary)}"
+        if verified_summary:
+            summary += f"; verified {', '.join(verified_summary)}"
 
         self.repo.finalize_run(run_id, ok=True, summary=summary)
         return True, events

@@ -2,18 +2,22 @@
 from __future__ import annotations
 
 import logging
+import secrets
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 import httpx
 
-from .arr import ArrAPI, describe_changes, set_field_values
+from .arr import ArrAPI, describe_changes, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
-from .util import read_arr_api_key, wait_for_arr_config
+from .qb import QBittorrentClient
+from .util import arr_password_matches, read_arr_api_key, wait_for_arr_config
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
+
 log = logging.getLogger(__name__)
+
 
 
 class RadarrClient(ServiceClient):
@@ -57,13 +61,50 @@ class RadarrClient(ServiceClient):
             state_dirty = True
             detail_messages.append("stored API key")
 
+        ui_username = radarr_secrets.get("ui_username")
+        if not ui_username:
+            ui_username = "radarr-admin"
+            radarr_secrets["ui_username"] = ui_username
+            state_dirty = True
+
+        ui_password = radarr_secrets.get("ui_password")
+        if not ui_password:
+            ui_password = secrets.token_urlsafe(12)
+            radarr_secrets["ui_password"] = ui_password
+            state_dirty = True
+
         if state_dirty:
             self.repo.save_state(state)
             state_dirty = False
 
         radarr_cfg = config.services.radarr
+        db_path = config_dir / "radarr.db"
+
         base_url = f"http://127.0.0.1:{radarr_cfg.port}/api/v3"
+        status_url = f"{base_url}/system/status"
+        ok, status_detail = wait_for_http_ready(
+            status_url,
+            timeout=180.0,
+            interval=5.0,
+        )
+        if not ok:
+            return EnsureOutcome(
+                detail=f"Radarr not ready ({status_detail})",
+                changed=changed,
+                success=False,
+            )
         try:
+            host_changed = self._ensure_host_settings(
+                base_url=base_url,
+                port=radarr_cfg.port,
+                api_key=api_key,
+                db_path=db_path,
+                username=ui_username,
+                password=ui_password,
+            )
+            if host_changed:
+                detail_messages.append("ui credentials synced")
+                changed = True
             with ArrAPI(base_url, api_key) as api:
                 status = api.get_json("/system/status")
                 version = status.get("version")
@@ -71,12 +112,42 @@ class RadarrClient(ServiceClient):
                     f"online (v{version})" if version else "online"
                 )
 
+                host_config = api.get_json("/config/host")
+                password_matches = arr_password_matches(db_path, ui_username, ui_password)
+                desired_method = "forms"
+                desired_required = "enabled"
+                analytics_flag = host_config.get("analyticsEnabled")
+                host_update_required = (
+                    host_config.get("authenticationMethod") != desired_method
+                    or host_config.get("authenticationRequired") != desired_required
+                    or host_config.get("username") != ui_username
+                    or bool(analytics_flag)
+                    or not password_matches
+                )
+                if host_update_required:
+                    payload = dict(host_config)
+                    payload.update(
+                        {
+                            "authenticationMethod": desired_method,
+                            "authenticationRequired": desired_required,
+                            "analyticsEnabled": False,
+                            "username": ui_username,
+                            "password": ui_password,
+                            "passwordConfirmation": ui_password,
+                        }
+                    )
+                    api.put_json("/config/host", payload)
+                    detail_messages.append("ui credentials synced")
+                    changed = True
+
                 qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
                 qb_password = qb_secrets.get("password", config.services.qbittorrent.password)
 
                 rf_changed, rf_msg, folder_id = self._ensure_root_folder(api, config)
+                prev_dl_username = radarr_state.get("download_client_username")
+                prev_dl_password = radarr_state.get("download_client_password")
                 dl_changed, dl_msg, client_id = self._ensure_download_client(
-                    api, config, qb_username, qb_password
+                    api, config, qb_username, qb_password, prev_dl_username, prev_dl_password
                 )
                 changed_any, aggregated = describe_changes(
                     [(rf_changed, rf_msg), (dl_changed, dl_msg)]
@@ -90,6 +161,12 @@ class RadarrClient(ServiceClient):
                     state_dirty = True
                 if client_id is not None:
                     radarr_state["download_client_id"] = client_id
+                    state_dirty = True
+                if radarr_state.get("download_client_username") != qb_username:
+                    radarr_state["download_client_username"] = qb_username
+                    state_dirty = True
+                if radarr_state.get("download_client_password") != qb_password:
+                    radarr_state["download_client_password"] = qb_password
                     state_dirty = True
 
         except httpx.RequestError as exc:
@@ -106,6 +183,12 @@ class RadarrClient(ServiceClient):
                 changed=changed,
                 success=False,
             )
+        except RuntimeError as exc:
+            return EnsureOutcome(
+                detail=f"host settings sync failed ({exc})",
+                changed=changed,
+                success=False,
+            )
 
         if state_dirty:
             self.repo.save_state(state)
@@ -116,7 +199,125 @@ class RadarrClient(ServiceClient):
             success=True,
         )
 
+    def verify(self, config: StackConfig) -> EnsureOutcome:
+        state = self.repo.load_state()
+        secrets_state = state.get("secrets", {})
+        radarr_secrets = secrets_state.get("radarr", {})
+        qb_secrets = secrets_state.get("qbittorrent", {})
+
+        api_key = radarr_secrets.get("api_key")
+        if not api_key:
+            return EnsureOutcome(detail="missing api key", changed=False, success=False)
+
+        radarr_cfg = config.services.radarr
+        base_url = f"http://127.0.0.1:{radarr_cfg.port}/api/v3"
+
+        qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
+        desired_fields = {
+            "host": "qbittorrent",
+            "port": QBittorrentClient.INTERNAL_PORT,
+            "useSsl": False,
+            "urlBase": "",
+            "username": qb_username,
+            "category": config.download_policy.categories.radarr,
+        }
+
+        try:
+            with ArrAPI(base_url, api_key) as api:
+                clients = api.get_json("/downloadclient") or []
+        except httpx.RequestError as exc:
+            return EnsureOutcome(
+                detail=f"connection failed ({exc.__class__.__name__}: {exc})",
+                changed=False,
+                success=False,
+            )
+        except httpx.HTTPStatusError as exc:
+            return EnsureOutcome(
+                detail=f"api error {exc.response.status_code}",
+                changed=False,
+                success=False,
+            )
+
+        for client in clients:
+            if (client.get("implementation") or "").lower() != "qbittorrent":
+                continue
+            current = {f["name"]: f.get("value") for f in client.get("fields", [])}
+            mismatches = []
+            for key, expected in desired_fields.items():
+                if str(current.get(key)) != str(expected):
+                    mismatches.append(f"{key}={current.get(key)}")
+            if mismatches:
+                return EnsureOutcome(
+                    detail="download client mismatch: " + ", ".join(mismatches),
+                    changed=False,
+                    success=False,
+                )
+            return EnsureOutcome(detail="download client ok", changed=False, success=True)
+
+        return EnsureOutcome(
+            detail="download client missing (qbittorrent)",
+            changed=False,
+            success=False,
+        )
+
     # ------------------------------------------------------------------ helpers
+    def _ensure_host_settings(
+        self,
+        base_url: str,
+        port: int,
+        api_key: str,
+        db_path: Path,
+        username: str,
+        password: str,
+    ) -> bool:
+        import httpx
+
+        with httpx.Client(
+            base_url=base_url.rstrip('/'),
+            headers={"X-Api-Key": api_key},
+            timeout=httpx.Timeout(15.0, connect=5.0),
+        ) as client:
+            response = client.get("/config/host")
+            response.raise_for_status()
+            host_config = response.json()
+
+            password_matches = arr_password_matches(db_path, username, password)
+            desired_method = "forms"
+            desired_required = "enabled"
+            analytics_flag = host_config.get("analyticsEnabled")
+            needs_update = (
+                host_config.get("authenticationMethod") != desired_method
+                or host_config.get("authenticationRequired") != desired_required
+                or host_config.get("username") != username
+                or bool(analytics_flag)
+                or not password_matches
+            )
+
+            if not needs_update:
+                return False
+
+            payload = dict(host_config)
+            payload.update(
+                {
+                    "authenticationMethod": desired_method,
+                    "authenticationRequired": desired_required,
+                    "analyticsEnabled": False,
+                    "username": username,
+                    "password": password,
+                    "passwordConfirmation": password,
+                }
+            )
+            client.put("/config/host", json=payload).raise_for_status()
+
+        ok, message = wait_for_http_ready(
+            f"http://127.0.0.1:{port}/api/v3/system/status",
+            timeout=120.0,
+            interval=5.0,
+        )
+        if not ok:
+            raise RuntimeError(message)
+        return True
+
 
     def _ensure_root_folder(
         self, api: ArrAPI, config: StackConfig
@@ -152,10 +353,12 @@ class RadarrClient(ServiceClient):
         config: StackConfig,
         username: str,
         password: str,
+        previous_username: Optional[str],
+        previous_password: Optional[str],
     ) -> Tuple[bool, str, Optional[int]]:
         desired_fields = {
             "host": "qbittorrent",
-            "port": config.services.qbittorrent.port,
+            "port": QBittorrentClient.INTERNAL_PORT,
             "useSsl": False,
             "urlBase": "",
             "username": username,
@@ -169,11 +372,14 @@ class RadarrClient(ServiceClient):
                 continue
             client_id = client.get("id")
             current = {f["name"]: f.get("value") for f in client.get("fields", [])}
-            if (
-                current.get("host") == "qbittorrent"
-                and str(current.get("port")) == str(config.services.qbittorrent.port)
-                and current.get("category") == config.download_policy.categories.radarr
-            ):
+            host_ok = current.get("host") == "qbittorrent"
+            port_ok = str(current.get("port")) == str(QBittorrentClient.INTERNAL_PORT)
+            category_ok = current.get("category") == config.download_policy.categories.radarr
+            url_base_ok = (current.get("urlBase") or "") == ""
+            username_ok = current.get("username") == username
+            password_ok = previous_password is not None and previous_password == password
+
+            if host_ok and port_ok and category_ok and url_base_ok and username_ok and password_ok:
                 return False, "download client ready", client_id
 
             updated = dict(client)

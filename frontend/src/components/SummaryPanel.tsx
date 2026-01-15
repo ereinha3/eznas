@@ -29,6 +29,7 @@ const SERVICE_LABELS: Record<keyof StackConfig['services'], string> = {
 export function SummaryPanel({ config, serviceStatus }: SummaryPanelProps) {
   const links = useMemo(() => {
     const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
+    const preferHttps = config.proxy.https_port !== null
     const services = [
       { id: 'qbittorrent' as const },
       { id: 'radarr' as const },
@@ -44,7 +45,11 @@ export function SummaryPanel({ config, serviceStatus }: SummaryPanelProps) {
         const port = svc.port ?? undefined
         let url: string | null = null
         if (proxy) {
-          url = proxy.startsWith('http') ? proxy : `https://${proxy}`
+          if (proxy.startsWith('http://') || proxy.startsWith('https://')) {
+            url = proxy
+          } else {
+            url = `${preferHttps ? 'https' : 'http'}://${proxy}`
+          }
         } else if (port) {
           url = `http://${host}:${port}`
         }

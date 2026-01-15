@@ -82,6 +82,16 @@ export function ConfigForm({
     })
   }
 
+  const updateProxy = (patch: Partial<StackConfig['proxy']>) => {
+    onChange({
+      ...config,
+      proxy: {
+        ...config.proxy,
+        ...patch,
+      },
+    })
+  }
+
   const updateUiPort = (value: string) => {
     onChange({
       ...config,
@@ -118,6 +128,38 @@ export function ConfigForm({
   const handleServiceProxy = (key: ServiceKey, value: string) => {
     const trimmed = value.trim()
     updateService(key, { proxy_url: trimmed === '' ? null : trimmed })
+  }
+
+  const handleProxyHttpPort = (value: string) => {
+    const trimmed = value.trim()
+    const parsed = Number(trimmed)
+    if (trimmed === '') {
+      updateProxy({ http_port: 80 })
+      return
+    }
+    if (!Number.isNaN(parsed)) {
+      updateProxy({ http_port: parsed })
+    }
+  }
+
+  const handleProxyHttpsPort = (value: string) => {
+    const trimmed = value.trim()
+    if (trimmed === '') {
+      updateProxy({ https_port: null })
+      return
+    }
+    const parsed = Number(trimmed)
+    if (!Number.isNaN(parsed)) {
+      updateProxy({ https_port: parsed })
+    }
+  }
+
+  const handleProxyArgs = (value: string) => {
+    const entries = value
+      .split('\n')
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0)
+    updateProxy({ additional_args: entries })
   }
 
   const updateCategory = (
@@ -225,6 +267,71 @@ export function ConfigForm({
         </label>
       </div>
 
+      <h2>Traefik Proxy</h2>
+      <div className={`service-tile${config.proxy.enabled ? '' : ' disabled'}`}>
+        <div className="service-heading">
+          <div>
+            <span className="service-name">Traefik</span>
+            <span>Reverse proxy & routing</span>
+          </div>
+          <div className="service-toggle">
+            <input
+              type="checkbox"
+              checked={config.proxy.enabled}
+              onChange={(e) => updateProxy({ enabled: e.target.checked })}
+            />
+          </div>
+        </div>
+        <div className="service-fields">
+          <label>
+            Image
+            <input
+              value={config.proxy.image}
+              disabled={!config.proxy.enabled}
+              onChange={(e) => updateProxy({ image: e.target.value })}
+            />
+          </label>
+          <label>
+            HTTP port
+            <input
+              type="number"
+              value={config.proxy.http_port}
+              disabled={!config.proxy.enabled}
+              onChange={(e) => handleProxyHttpPort(e.target.value)}
+            />
+          </label>
+          <label>
+            HTTPS port (optional)
+            <input
+              type="number"
+              value={config.proxy.https_port ?? ''}
+              placeholder="Disabled"
+              disabled={!config.proxy.enabled}
+              onChange={(e) => handleProxyHttpsPort(e.target.value)}
+            />
+          </label>
+          <label className="checkbox-inline">
+            <input
+              type="checkbox"
+              checked={config.proxy.dashboard}
+              disabled={!config.proxy.enabled}
+              onChange={(e) => updateProxy({ dashboard: e.target.checked })}
+            />
+            <span>Expose Traefik dashboard (insecure)</span>
+          </label>
+          <label>
+            Extra command arguments (one per line)
+            <textarea
+              rows={3}
+              value={config.proxy.additional_args.join('\n')}
+              placeholder="--certificatesresolvers.myresolver.acme.email=you@example.com"
+              disabled={!config.proxy.enabled}
+              onChange={(e) => handleProxyArgs(e.target.value)}
+            />
+          </label>
+        </div>
+      </div>
+
       <h2>Services</h2>
       <div className="service-grid service-grid--detailed">
         {SERVICE_ORDER.map((key) => {
@@ -274,44 +381,19 @@ export function ConfigForm({
                 {key === 'qbittorrent' && (() => {
                   const qb = config.services.qbittorrent
                   return (
-                    <>
-                      <label className="checkbox-inline">
-                        <input
-                          type="checkbox"
-                          checked={qb.stop_after_download}
-                          disabled={!qb.enabled}
-                          onChange={(e) =>
-                            updateService('qbittorrent', {
-                              stop_after_download: e.target.checked,
-                            })
-                          }
-                        />
-                        <span>Stop seeding after completion</span>
-                      </label>
-                      <div className="grid two">
-                        <label>
-                          Username
-                          <input
-                            value={qb.username}
-                            disabled={!qb.enabled}
-                            onChange={(e) =>
-                              updateService('qbittorrent', { username: e.target.value })
-                            }
-                          />
-                        </label>
-                        <label>
-                          Password
-                          <input
-                            type="text"
-                            value={qb.password}
-                            disabled={!qb.enabled}
-                            onChange={(e) =>
-                              updateService('qbittorrent', { password: e.target.value })
-                            }
-                          />
-                        </label>
-                      </div>
-                    </>
+                    <label className="checkbox-inline">
+                      <input
+                        type="checkbox"
+                        checked={qb.stop_after_download}
+                        disabled={!qb.enabled}
+                        onChange={(e) =>
+                          updateService('qbittorrent', {
+                            stop_after_download: e.target.checked,
+                          })
+                        }
+                      />
+                      <span>Stop seeding after completion</span>
+                    </label>
                   )
                 })()}
               </div>
