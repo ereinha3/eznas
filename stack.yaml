@@ -10,7 +10,7 @@ services:
     proxy_url: torrent.home.lab
     stop_after_download: true
     username: admin
-    password: adminadmin
+    password: admin12345
   radarr:
     enabled: true
     port: 7878
