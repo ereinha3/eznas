@@ -31,7 +31,12 @@ class QbittorrentAPI:
         self.base_url = base_url.rstrip("/")
         self.username = username
         self.password = password
-        self.client = httpx.Client(timeout=httpx.Timeout(20.0, connect=5.0))
+        # Add Host header for qBittorrent CSRF protection when using port mapping
+        headers = {"Host": "localhost:8080"}
+        self.client = httpx.Client(
+            timeout=httpx.Timeout(20.0, connect=5.0),
+            headers=headers,
+        )
 
     def close(self) -> None:
         self.client.close()

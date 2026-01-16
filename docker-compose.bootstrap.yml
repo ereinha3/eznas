@@ -1,0 +1,62 @@
+# Bootstrap compose - zero-touch deployment of orchestrator + UI
+# Usage: docker compose -f docker-compose.bootstrap.yml up -d
+#
+# This brings up the NAS Orchestrator with its web UI.
+# After startup, visit http://localhost:8443 to configure and deploy
+# your media stack through the UI.
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nas-orchestrator
+    restart: unless-stopped
+    ports:
+      - "${ORCH_PORT:-8443}:8443"
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+    volumes:
+      # Config persistence
+      - orchestrator_config:/config
+      # Access to host paths (configured via UI)
+      - ${POOL_PATH:?POOL_PATH required}:/data
+      - ${SCRATCH_PATH:?SCRATCH_PATH required}:/scratch
+      - ${APPDATA_PATH:?APPDATA_PATH required}:/appdata
+      # Docker socket for managing containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Generated compose output
+      - ./generated:/config/generated
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8443/api/config"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Pipeline worker - processes completed downloads
+  pipeline-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nas-pipeline
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+      - PIPELINE_INTERVAL=${PIPELINE_INTERVAL:-60}
+    volumes:
+      - orchestrator_config:/config:ro
+      - ${POOL_PATH}:/data
+      - ${SCRATCH_PATH}:/scratch
+    command: ["python", "-m", "orchestrator.pipeline.runner"]
+    depends_on:
+      orchestrator:
+        condition: service_healthy
+    profiles:
+      - pipeline
+
+volumes:
+  orchestrator_config:
+    driver: local
