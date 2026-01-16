@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Generated files
+generated/
+state.json
+PLAN.md
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets (should use .secrets/ in generated/)
+*.pem
+*.key
+.env.local
+
+# Test artifacts
+/tmp/
+*.log
