@@ -23,6 +23,7 @@ services:
     enabled: true
     port: 9696
     proxy_url: prowlarr.home.lab
+    language_filter: false
   jellyseerr:
     enabled: true
     port: 5055
@@ -62,6 +63,9 @@ media_policy:
     - eng
 quality:
   preset: balanced
+  target_resolution: null
+  max_bitrate_mbps: null
+  preferred_container: mkv
 ui:
   port: 8443
 runtime:

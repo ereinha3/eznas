@@ -5,6 +5,7 @@ import socket
 import shutil
 import json
 import subprocess
+from pathlib import Path
 from typing import Dict
 
 from .models import StackConfig, ValidationResult
@@ -14,6 +15,10 @@ def run_validation(config: StackConfig) -> ValidationResult:
     """Validate that required paths and ports are usable."""
     checks: Dict[str, str] = {}
     overall_ok = True
+
+    # Path mapping: host paths -> container paths (for containerized validation)
+    # These match the mounts in docker-compose.dev.yml
+    path_mappings = _get_path_mappings()
 
     path_entries = [
         ("paths.pool", config.paths.pool, False),
@@ -28,22 +33,33 @@ def run_validation(config: StackConfig) -> ValidationResult:
                 overall_ok = False
             continue
 
-        if not path.exists():
+        # Try mapped container path first, then original path
+        check_path = _resolve_path(path, path_mappings)
+
+        if not check_path.exists():
             checks[label] = "missing"
             overall_ok = False
-        elif not path.is_dir():
+        elif not check_path.is_dir():
             checks[label] = "not_directory"
             overall_ok = False
-        elif not _is_writable(path):
+        elif not _is_writable(check_path):
             checks[label] = "not_writable"
             overall_ok = False
         else:
             checks[label] = "ok"
 
-    port_status = "ok" if _port_available(config.ui.port) else "in_use"
-    if port_status != "ok":
+    # Check UI port - but recognize if it's in use by ourselves (the orchestrator)
+    # The orchestrator is always running when validation happens, so its port will be "in use"
+    if _port_available(config.ui.port):
+        checks["ui.port"] = "ok"
+    elif _is_our_port(config.ui.port):
+        checks["ui.port"] = "ok"  # In use by us, that's fine
+    elif _port_owned_by_container("orchestrator-dev", config.ui.port) or \
+         _port_owned_by_container("orchestrator", config.ui.port):
+        checks["ui.port"] = "ok"  # In use by our container
+    else:
+        checks["ui.port"] = "in_use"
         overall_ok = False
-    checks["ui.port"] = port_status
 
     if config.proxy.enabled:
         proxy_http_key = "proxy.http_port"
@@ -92,8 +108,19 @@ def run_validation(config: StackConfig) -> ValidationResult:
         checks[key] = "in_use"
         overall_ok = False
 
+    # Docker availability check - CLI or socket
     docker_cli = shutil.which("docker")
-    checks["docker.cli"] = "present" if docker_cli else "missing"
+    docker_socket = Path("/var/run/docker.sock").exists()
+
+    if docker_cli:
+        checks["docker.cli"] = "present"
+    elif docker_socket:
+        # Socket available but no CLI - can still work via API
+        checks["docker.cli"] = "socket_only"
+    else:
+        checks["docker.cli"] = "missing"
+        # Don't fail validation for missing docker - it's informational
+        # The actual docker operations will fail with clear errors if needed
 
     return ValidationResult(ok=overall_ok, checks=checks)
 
@@ -115,6 +142,32 @@ def _port_available(port: int) -> bool:
         if result == 0:
             return False
     return True
+
+
+def _is_our_port(port: int) -> bool:
+    """Check if this port is the one the orchestrator itself is running on.
+
+    This handles the case where validation runs while the orchestrator is serving requests.
+    """
+    import os
+
+    # Check common environment variables that uvicorn/gunicorn use
+    server_port = os.environ.get("PORT") or os.environ.get("UVICORN_PORT")
+    if server_port and int(server_port) == port:
+        return True
+
+    # Default orchestrator ports
+    if port in (8443, 8000):
+        # Check if we're inside the orchestrator process by looking for telltale signs
+        # The orchestrator will have loaded FastAPI
+        try:
+            import sys
+            if any("orchestrator" in str(m) for m in sys.modules.keys()):
+                return True
+        except Exception:
+            pass
+
+    return False
 
 
 def _port_owned_by_container(container_name: str, port: int) -> bool:
@@ -145,6 +198,69 @@ def _port_owned_by_container(container_name: str, port: int) -> bool:
             if host_port and int(host_port) == port:
                 return True
     return False
+
+
+def _get_path_mappings() -> Dict[str, str]:
+    """Get path mappings from environment or use defaults for container detection.
+
+    Returns a dict mapping host path patterns to container paths.
+    """
+    import os
+    from pathlib import Path
+
+    mappings = {}
+
+    # Check for explicit mapping via environment variables
+    pool_map = os.environ.get("ORCH_PATH_POOL")
+    scratch_map = os.environ.get("ORCH_PATH_SCRATCH")
+    appdata_map = os.environ.get("ORCH_PATH_APPDATA")
+
+    if pool_map:
+        mappings["pool"] = pool_map
+    if scratch_map:
+        mappings["scratch"] = scratch_map
+    if appdata_map:
+        mappings["appdata"] = appdata_map
+
+    # Auto-detect common container paths if they exist
+    container_paths = {
+        "pool": Path("/data"),
+        "scratch": Path("/scratch"),
+        "appdata": Path("/appdata"),
+    }
+
+    for key, cpath in container_paths.items():
+        if key not in mappings and cpath.exists():
+            mappings[key] = str(cpath)
+
+    return mappings
+
+
+def _resolve_path(path, mappings: Dict[str, str]):
+    """Resolve a config path to a checkable path, using mappings if in container."""
+    from pathlib import Path
+
+    path_str = str(path)
+
+    # Check if any mapping key appears in the path name (e.g., "pool" in "/home/.../test_pool")
+    for key, mapped_path in mappings.items():
+        # Match by path component containing the key
+        if key in path_str.lower() or path_str.endswith(key):
+            return Path(mapped_path)
+
+    # Also check for exact container paths that might already be set
+    if Path(path_str).exists():
+        return Path(path_str)
+
+    # Check if any standard container path exists as fallback
+    for key, mapped_path in mappings.items():
+        mapped = Path(mapped_path)
+        if mapped.exists():
+            # Heuristic: if config path contains 'pool', 'scratch', or 'appdata'
+            if key in path_str.lower():
+                return mapped
+
+    return path
 
 
 

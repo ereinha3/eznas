@@ -3685,6 +3685,875 @@
         }
       ],
       "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyseerr, jellyfin"
+    },
+    {
+      "run_id": "0fd32319-9762-449c-b428-28f3f929b4ef",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "83453e6d-132e-4668-9501-13852678f51d",
+      "ok": null,
+      "events": []
+    },
+    {
+      "run_id": "773aa0e3-2bcc-45b0-a63c-1f80747b4a3d",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "36079bc9-107e-4d10-bb4a-d914ec415ea5",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "1236f0fc-61ba-423c-90a8-f646e79041ea",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "1782d5f4-3c10-4339-973f-b85285b48c80",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "bffaf55a-a4c1-446c-9402-ecc771cd2ec8",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "74323ed5-49ab-447d-9101-08f824ce3cdd",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "2dcccc9c-47ec-4947-8bd6-09318289478e",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "8e580cf8-a18d-4f60-8410-4666a742847d",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "7430c291-9b6b-4423-90a8-1aa37b86d1ba",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "0f1af5d9-2a40-4202-b20f-4c7be29a1bc6",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "96404e3e-61c5-49dc-9d57-a10754fcaffe",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "7cd43b0c-285d-4e98-a5be-9b5423ef87ad",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "dabd38a1-9005-44d8-8517-b01db1050c8c",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "failed",
+          "detail": "paths.pool=missing, paths.scratch=missing, paths.appdata=missing, ui.port=in_use, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=missing"
+        }
+      ],
+      "summary": "Validation failed"
+    },
+    {
+      "run_id": "edc9ad2c-5301-48b8-b57b-2f144f9a68e4",
+      "ok": null,
+      "events": []
+    },
+    {
+      "run_id": "22c5fc80-abe0-4b9e-834e-5f54feb0d19b",
+      "ok": null,
+      "events": []
+    },
+    {
+      "run_id": "f497f72d-556d-4f3c-8943-304f5da765cf",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=socket_only"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /home/ethan/eznas/test_pool, created /home/ethan/eznas/test_appdata, created /home/ethan/eznas/test_scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /home/ethan/eznas/test_scratch/downloads, created /home/ethan/eznas/test_scratch/downloads/complete, created /home/ethan/eznas/test_scratch/downloads/incomplete, created /home/ethan/eznas/test_scratch/postproc, created /home/ethan/eznas/test_scratch/transcode, created /home/ethan/eznas/test_scratch/downloads/complete/movies, created /home/ethan/eznas/test_scratch/downloads/complete/tv, created /home/ethan/eznas/test_scratch/downloads/complete/anime, created /home/ethan/eznas/test_pool/media/movies, created /home/ethan/eznas/test_pool/media/tv, created /home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "qbittorrent password set"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "run_id": "7f285aa7-6383-4663-a195-85070eba5522",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /home/ethan/eznas/test_pool, created /home/ethan/eznas/test_appdata, created /home/ethan/eznas/test_scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /home/ethan/eznas/test_scratch/downloads, created /home/ethan/eznas/test_scratch/downloads/complete, created /home/ethan/eznas/test_scratch/downloads/incomplete, created /home/ethan/eznas/test_scratch/postproc, created /home/ethan/eznas/test_scratch/transcode, created /home/ethan/eznas/test_scratch/downloads/complete/movies, created /home/ethan/eznas/test_scratch/downloads/complete/tv, created /home/ethan/eznas/test_scratch/downloads/complete/anime, created /home/ethan/eznas/test_pool/media/movies, created /home/ethan/eznas/test_pool/media/tv, created /home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T04:41:54Z\" level=warning msg=\"Docker Compose requires buildx plugin to be installed\"\n Image nas_orchestrator-pipeline-worker Building \nunable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /config/Dockerfile: no such file or directory"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "921c938c-f39b-4c53-8e19-002e57bbff4d",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /home/ethan/eznas/test_pool, created /home/ethan/eznas/test_appdata, created /home/ethan/eznas/test_scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /home/ethan/eznas/test_scratch/downloads, created /home/ethan/eznas/test_scratch/downloads/complete, created /home/ethan/eznas/test_scratch/downloads/incomplete, created /home/ethan/eznas/test_scratch/postproc, created /home/ethan/eznas/test_scratch/transcode, created /home/ethan/eznas/test_scratch/downloads/complete/movies, created /home/ethan/eznas/test_scratch/downloads/complete/tv, created /home/ethan/eznas/test_scratch/downloads/complete/anime, created /home/ethan/eznas/test_pool/media/movies, created /home/ethan/eznas/test_pool/media/tv, created /home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T04:49:24Z\" level=warning msg=\"Docker Compose requires buildx plugin to be installed\"\n Image nas_orchestrator-pipeline-worker Building \nunable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /config/Dockerfile: no such file or directory"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "e2271531-8227-4f37-9ad3-86cdd38e971c",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T05:04:59Z\" level=warning msg=\"Docker Compose requires buildx plugin to be installed\"\n Image nas_orchestrator-pipeline-worker Building \nunable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /config/Dockerfile: no such file or directory"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "5e1a7272-a279-47c0-aef3-24245ef0271b",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T05:07:33Z\" level=warning msg=\"Docker Compose requires buildx plugin to be installed\"\n Image nas_media_stack-orchestrator Building \nunable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /config/Dockerfile: no such file or directory"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "2127f901-c5cc-4607-9d25-e56cf1fa942e",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T05:12:05Z\" level=warning msg=\"No services to build\"\n Network nas_media_stack_nas_net Creating \n Network nas_media_stack_nas_net Created \n Container prowlarr Creating \n Container jellyfin Creating \n Container traefik Creating \n Container qbittorrent Creating \n Container traefik Error response from daemon: Conflict. The container name \"/traefik\" is already in use by container \"b26d179c7131b3cbe6e03cf36d8a6fef41788b8a2274e399cef59d9ccd3e1d63\". You have to remove (or rename) that container to be able to reuse that name. \nError response from daemon: Conflict. The container name \"/traefik\" is already in use by container \"b26d179c7131b3cbe6e03cf36d8a6fef41788b8a2274e399cef59d9ccd3e1d63\". You have to remove (or rename) that container to be able to reuse that name."
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "3960b2ae-88c4-446a-96a3-189795081aa9",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T05:14:02Z\" level=warning msg=\"No services to build\"\n Container traefik Creating \n Container pipeline-worker Creating \n Container radarr Creating \n Container sonarr Creating \n Container sonarr Created \n Container radarr Created \n Container jellyseerr Creating \n Container traefik Created \n Container pipeline-worker Created \n Container jellyseerr Created \n Container qbittorrent Starting \n Container jellyfin Starting \n Container traefik Starting \n Container prowlarr Starting \n Container traefik Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint prowlarr (7d9981f9f9c63b730a7a56268eb1d9b4c4dc1c197dfc25420dbfb4b1fdef6ee3): Bind for 0.0.0.0:9696 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "74ea90fb-c8c6-4a02-ba47-699ef1f5c55f",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /home/ethan/eznas/test_pool, created /home/ethan/eznas/test_appdata, created /home/ethan/eznas/test_scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /home/ethan/eznas/test_scratch/downloads, created /home/ethan/eznas/test_scratch/downloads/complete, created /home/ethan/eznas/test_scratch/downloads/incomplete, created /home/ethan/eznas/test_scratch/postproc, created /home/ethan/eznas/test_scratch/transcode, created /home/ethan/eznas/test_scratch/downloads/complete/movies, created /home/ethan/eznas/test_scratch/downloads/complete/tv, created /home/ethan/eznas/test_scratch/downloads/complete/anime, created /home/ethan/eznas/test_pool/media/movies, created /home/ethan/eznas/test_pool/media/tv, created /home/ethan/eznas/test_pool/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T06:39:03Z\" level=warning msg=\"No services to build\"\n Container prowlarr Creating \n Container qbittorrent Creating \n Container traefik Creating \n Container jellyfin Creating \n Container prowlarr Created \n Container qbittorrent Created \n Container radarr Creating \n Container pipeline-worker Creating \n Container sonarr Creating \n Container jellyfin Created \n Container traefik Created \n Container sonarr Created \n Container radarr Created \n Container jellyseerr Creating \n Container pipeline-worker Created \n Container jellyseerr Created \n Container qbittorrent Starting \n Container traefik Starting \n Container prowlarr Starting \n Container jellyfin Starting \n Container traefik Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint jellyfin (1ee9253e3d57ee06aad649d27b12abe47f5be37ee60abfb811459d161dc2ec17): Bind for 0.0.0.0:8096 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "8a036cc2-6304-476f-b56a-725debfb3640",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T06:39:11Z\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container jellyfin Starting \n Container prowlarr Starting \n Container qbittorrent Starting \n Container jellyfin Started \n Container qbittorrent Started \n Container sonarr Starting \n Container radarr Starting \n Container pipeline-worker Starting \n Container prowlarr Started \n Container pipeline-worker Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint sonarr (2eabc228e1da7a7541ec065980284cbbf0c231d389c3c2900dc797bf7acbe2aa): Bind for 0.0.0.0:8989 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "fd0796eb-5476-4677-aef0-36963c8f9a67",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T06:39:20Z\" level=warning msg=\"No services to build\"\n Container prowlarr Recreate \n Container qbittorrent Recreate \n Container traefik Running \n Container jellyfin Recreate \n Container jellyfin Recreated \n Container qbittorrent Recreated \n Container pipeline-worker Running \n Container prowlarr Recreated \n Container prowlarr Starting \n Container qbittorrent Starting \n Container jellyfin Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (c4afae542ad1ecb73354b30588c62b53dba0e06b094bf4c938e84031fc89af84): Bind for 0.0.0.0:8077 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "41d04217-3a6e-4ac4-8276-db3713c8387f",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-20T06:39:36Z\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container pipeline-worker Running \n Container jellyfin Starting \n Container qbittorrent Starting \n Container prowlarr Starting \n Container qbittorrent Started \n Container radarr Starting \n Container sonarr Starting \n Container prowlarr Started \n Container jellyfin Started \n Container radarr Started \n Container sonarr Started \n Container jellyseerr Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint jellyseerr (36b505cf4089560363f052159d58e92c14aead806a54e669019e29b6b6bed46e): Bind for 0.0.0.0:5055 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
     }
   ],
   "services": {
@@ -3722,7 +4591,7 @@
   "secrets": {
     "qbittorrent": {
       "username": "admin",
-      "password": "adminadmin"
+      "password": "admin12345"
     },
     "jellyseerr": {
       "admin_username": "admin",
@@ -3743,7 +4612,9 @@
       "ui_password": "W-BZhmYrGWuokd7r"
     },
     "prowlarr": {
-      "api_key": "86ee42ddb2e94dc3a98f523bfcb454df"
+      "api_key": "0ff26a4e4bd34b60b53f6ea0df706c23",
+      "ui_username": "prowlarr-admin",
+      "ui_password": "7IFSp0LAk6u9dr4z"
     }
   }
 }

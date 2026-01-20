@@ -3,13 +3,16 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import os
+import socket
+import traceback
 from pathlib import Path
 from uuid import uuid4
 from typing import List, Optional
 
-from fastapi import FastAPI, HTTPException
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel, Field, ConfigDict
@@ -18,16 +21,26 @@ from .converge.runner import ApplyRunner
 from .converge.services import ServiceConfigurator
 from .clients.jellyfin import JellyfinClient
 from .models import (
+    AddIndexersRequest,
     ApplyResponse,
+    AvailableIndexersResponse,
+    ConfiguredIndexersResponse,
+    HealthCheck,
+    HealthResponse,
+    IndexerInfo,
+    IndexerSchema,
     RenderResult,
     StackConfig,
     StatusResponse,
     ServiceStatus,
     ValidationResult,
 )
+from .clients.prowlarr import ProwlarrClient
 from .rendering import ComposeRenderer
 from .storage import ConfigRepository
 from .validators import run_validation
+
+logger = logging.getLogger(__name__)
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 CONFIG_ROOT = Path(os.getenv("ORCH_ROOT", ROOT_DIR))
@@ -36,21 +49,45 @@ UI_FALLBACK_DIR = ROOT_DIR / "ui"
 UI_DIR = FRONTEND_DIST_DIR if FRONTEND_DIST_DIR.exists() else UI_FALLBACK_DIR
 
 app = FastAPI(title="NAS Orchestrator", version="0.1.0")
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Global error handler to prevent crashes and return useful error info."""
+    error_id = str(uuid4())[:8]
+    logger.error(f"Unhandled error [{error_id}]: {exc}\n{traceback.format_exc()}")
+
+    # Don't expose internal details in production, but be helpful in dev
+    detail = str(exc) if os.getenv("DEBUG", "").lower() in ("1", "true") else "Internal server error"
+
+    return JSONResponse(
+        status_code=500,
+        content={
+            "detail": detail,
+            "error_id": error_id,
+            "hint": "Check server logs for more details",
+        },
+    )
+
+
 repo = ConfigRepository(CONFIG_ROOT)
 renderer = ComposeRenderer(ROOT_DIR / "templates")
 services = ServiceConfigurator(repo=repo)
 runner = ApplyRunner(repo=repo, renderer=renderer, services=services)
-app.mount(
-    "/ui",
-    StaticFiles(directory=UI_DIR, html=True),
-    name="ui",
-)
-if (UI_DIR / "assets").exists():
+
+# Only mount static files if the directory exists (not in dev mode with separate frontend)
+if UI_DIR.exists():
     app.mount(
-        "/assets",
-        StaticFiles(directory=UI_DIR / "assets"),
-        name="assets",
+        "/ui",
+        StaticFiles(directory=UI_DIR, html=True),
+        name="ui",
     )
+    if (UI_DIR / "assets").exists():
+        app.mount(
+            "/assets",
+            StaticFiles(directory=UI_DIR / "assets"),
+            name="assets",
+        )
 
 
 class CredentialUser(BaseModel):
@@ -156,6 +193,19 @@ def _build_service_credentials(config: StackConfig, state: dict) -> ServiceCrede
             )
         )
 
+    # Prowlarr UI credentials
+    prowlarr_secret = secrets.get("prowlarr", {})
+    if prowlarr_secret.get("ui_username"):
+        services_credentials.append(
+            ServiceCredential(
+                service="prowlarr-ui",
+                label="Prowlarr UI",
+                username=prowlarr_secret.get("ui_username"),
+                password=prowlarr_secret.get("ui_password"),
+                can_view_password=prowlarr_secret.get("ui_password") is not None,
+            )
+        )
+
     jellyfin_secret = secrets.get("jellyfin", {})
     jellyfin_users = jellyfin_secret.get("users", [])
     services_credentials.append(
@@ -232,6 +282,85 @@ def get_status() -> StatusResponse:
         )
     return StatusResponse(services=services)
 
+
+def _check_port(host: str, port: int, timeout: float = 2.0) -> bool:
+    """Check if a port is accepting connections."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+# Default internal ports for services (used for container-to-container health checks)
+_SERVICE_INTERNAL_PORTS: dict[str, int] = {
+    "qbittorrent": 8080,
+    "radarr": 7878,
+    "sonarr": 8989,
+    "prowlarr": 9696,
+    "jellyseerr": 5055,
+    "jellyfin": 8096,
+}
+
+
+@app.get("/api/health", response_model=HealthResponse)
+def get_health() -> HealthResponse:
+    """Return health status with actual port connectivity checks."""
+    cfg = repo.load_stack()
+    checks: List[HealthCheck] = []
+    healthy_count = 0
+    total_enabled = 0
+
+    for name, settings in cfg.services.model_dump(mode="python").items():
+        enabled = settings.get("enabled", True)
+        port = settings.get("port")
+
+        if not enabled:
+            checks.append(HealthCheck(
+                name=name,
+                healthy=False,
+                port=port,
+                message="disabled",
+            ))
+            continue
+
+        total_enabled += 1
+
+        if not port:
+            checks.append(HealthCheck(
+                name=name,
+                healthy=True,
+                port=None,
+                message="no port configured",
+            ))
+            healthy_count += 1
+            continue
+
+        # Use container name as host and internal port for container-to-container checks
+        # Fall back to localhost if not in Docker or service unknown
+        internal_port = _SERVICE_INTERNAL_PORTS.get(name, port)
+        is_healthy = _check_port(name, internal_port) or _check_port("127.0.0.1", port)
+        checks.append(HealthCheck(
+            name=name,
+            healthy=is_healthy,
+            port=port,
+            message="responding" if is_healthy else "not responding",
+        ))
+        if is_healthy:
+            healthy_count += 1
+
+    if total_enabled == 0:
+        overall = "unhealthy"
+    elif healthy_count == total_enabled:
+        overall = "healthy"
+    elif healthy_count > 0:
+        overall = "degraded"
+    else:
+        overall = "unhealthy"
+
+    return HealthResponse(status=overall, services=checks)
+
+
 @app.get("/api/secrets", response_model=ServiceCredentialsResponse)
 def get_service_credentials() -> ServiceCredentialsResponse:
     config = repo.load_stack()
@@ -280,6 +409,127 @@ def create_jellyfin_user(payload: JellyfinUserRequest) -> CredentialUser:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
     return CredentialUser(username=created["username"], password=created.get("password"))
+
+
+# Indexer management endpoints
+prowlarr_client = ProwlarrClient(repo)
+
+
+@app.get("/api/indexers/available", response_model=AvailableIndexersResponse)
+def get_available_indexers() -> AvailableIndexersResponse:
+    """Get list of available public indexers that can be added."""
+    try:
+        config = repo.load_stack()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stack configuration not found")
+
+    if not config.services.prowlarr.enabled:
+        raise HTTPException(status_code=400, detail="Prowlarr is not enabled")
+
+    indexers = prowlarr_client.get_available_indexers(config)
+    return AvailableIndexersResponse(indexers=indexers)
+
+
+@app.get("/api/indexers", response_model=ConfiguredIndexersResponse)
+def get_configured_indexers() -> ConfiguredIndexersResponse:
+    """Get list of currently configured indexers in Prowlarr."""
+    try:
+        config = repo.load_stack()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stack configuration not found")
+
+    if not config.services.prowlarr.enabled:
+        raise HTTPException(status_code=400, detail="Prowlarr is not enabled")
+
+    indexers = prowlarr_client.get_configured_indexers(config)
+    return ConfiguredIndexersResponse(indexers=indexers)
+
+
+class AddIndexersResponse(BaseModel):
+    added: List[str]
+    failed: List[str]
+
+
+@app.post("/api/indexers", response_model=AddIndexersResponse)
+def add_indexers(payload: AddIndexersRequest) -> AddIndexersResponse:
+    """Add indexers by their definition names."""
+    try:
+        config = repo.load_stack()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stack configuration not found")
+
+    if not config.services.prowlarr.enabled:
+        raise HTTPException(status_code=400, detail="Prowlarr is not enabled")
+
+    if not payload.indexers:
+        raise HTTPException(status_code=400, detail="No indexers specified")
+
+    added, failed = prowlarr_client.add_indexers(config, payload.indexers)
+    return AddIndexersResponse(added=added, failed=failed)
+
+
+@app.delete("/api/indexers/{indexer_id}")
+def remove_indexer(indexer_id: int):
+    """Remove an indexer by ID."""
+    try:
+        config = repo.load_stack()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stack configuration not found")
+
+    if not config.services.prowlarr.enabled:
+        raise HTTPException(status_code=400, detail="Prowlarr is not enabled")
+
+    success = prowlarr_client.remove_indexer(config, indexer_id)
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to remove indexer")
+
+    return {"ok": True}
+
+
+class AutoPopulateIndexersResponse(BaseModel):
+    """Response from auto-populating indexers."""
+    added: List[str]
+    skipped: List[str]
+    failed: List[str]
+    message: str
+
+
+@app.post("/api/indexers/auto-populate", response_model=AutoPopulateIndexersResponse)
+def auto_populate_indexers() -> AutoPopulateIndexersResponse:
+    """Auto-populate indexers based on user language preferences.
+
+    This endpoint will:
+    - Find all public indexers that support Movies (2000) and/or TV (5000) categories
+    - Filter by the user's language preferences from media_policy
+    - Add all matching indexers that aren't already configured
+    """
+    try:
+        config = repo.load_stack()
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Stack configuration not found")
+
+    if not config.services.prowlarr.enabled:
+        raise HTTPException(status_code=400, detail="Prowlarr is not enabled")
+
+    added, skipped, failed = prowlarr_client.auto_populate_indexers(config)
+
+    # Build summary message
+    parts = []
+    if added:
+        parts.append(f"Added {len(added)} indexer{'s' if len(added) != 1 else ''}")
+    if skipped:
+        parts.append(f"{len(skipped)} already configured")
+    if failed:
+        parts.append(f"{len(failed)} failed")
+
+    message = "; ".join(parts) if parts else "No matching indexers found"
+
+    return AutoPopulateIndexersResponse(
+        added=added,
+        skipped=skipped,
+        failed=failed,
+        message=message,
+    )
 
 
 @app.post("/api/render", response_model=RenderResult)

@@ -6,26 +6,6 @@
 {% set traefik_tls_enabled = proxy.https_port is not none %}
 {% set traefik_entrypoint = "websecure" if traefik_tls_enabled else "web" %}
 services:
-  orchestrator:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: nas-orchestrator
-    restart: unless-stopped
-    environment:
-      - ORCH_ROOT=/config
-    ports:
-      - "{{ config.ui.port }}:8443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - {{ paths.appdata }}/orchestrator:/config
-      - {{ paths.pool }}:{{ paths.pool }}
-      - {{ paths.appdata }}:{{ paths.appdata }}
-{% if paths.scratch %}
-      - {{ paths.scratch }}:{{ paths.scratch }}
-{% endif %}
-    networks:
-      - nas_net
 {% if proxy.enabled %}
   traefik:
     image: {{ proxy.image }}
@@ -259,25 +239,20 @@ services:
 
 {% if services.pipeline.enabled %}
   pipeline-worker:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: python:3.13-alpine
     container_name: pipeline-worker
     restart: unless-stopped
     environment:
       - TZ={{ runtime.timezone }}
-      - ORCH_ROOT=/config
-      - PIPELINE_INTERVAL=60
-    command: ["python", "-m", "orchestrator.pipeline.runner"]
+    command: ["sh", "-c", "sleep 3600"]
     volumes:
       - {{ paths.pool }}:/data
       - {{ scratch_host }}:/scratch
-      - {{ paths.appdata }}/orchestrator:/config
+      - {{ paths.appdata }}/pipeline:/config
     depends_on:
 {% if services.qbittorrent.enabled %}
       - qbittorrent
 {% endif %}
-      - orchestrator
     networks:
       - nas_net
 {% endif %}

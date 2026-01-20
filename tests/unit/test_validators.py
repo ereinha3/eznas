@@ -9,11 +9,8 @@ from unittest.mock import patch, MagicMock
 import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from orchestrator.validators import (
-    validate_config,
-    ValidationResult,
-)
-from orchestrator.models import StackConfig
+from orchestrator.validators import run_validation
+from orchestrator.models import StackConfig, ValidationResult
 
 
 class TestPathValidation:
@@ -23,9 +20,13 @@ class TestPathValidation:
         """Valid paths should pass validation."""
         with patch("pathlib.Path.exists", return_value=True):
             with patch("pathlib.Path.is_dir", return_value=True):
-                config = StackConfig.model_validate(sample_config)
-                result = validate_config(config)
-                assert result.valid or "path" not in str(result.errors).lower()
+                with patch("orchestrator.validators.os_access", return_value=True):
+                    with patch("orchestrator.validators._port_available", return_value=True):
+                        config = StackConfig.model_validate(sample_config)
+                        result = run_validation(config)
+                        # Check path-related checks are all "ok"
+                        for key in ["paths.pool", "paths.scratch", "paths.appdata"]:
+                            assert result.checks.get(key) == "ok"
 
     def test_empty_pool_path(self, sample_config: Dict[str, Any]):
         """Empty pool path should fail validation."""
@@ -34,12 +35,10 @@ class TestPathValidation:
             StackConfig.model_validate(sample_config)
 
     def test_relative_path_handling(self, sample_config: Dict[str, Any]):
-        """Relative paths should be handled appropriately."""
+        """Relative paths should be rejected (must be absolute)."""
         sample_config["paths"]["pool"] = "./relative/path"
-        # Should either convert to absolute or reject
-        config = StackConfig.model_validate(sample_config)
-        # Validation should handle this
-        assert config.paths.pool is not None
+        with pytest.raises(Exception):  # Pydantic rejects relative paths
+            StackConfig.model_validate(sample_config)
 
     def test_path_with_spaces(self, sample_config: Dict[str, Any]):
         """Paths with spaces should be handled."""
@@ -91,9 +90,9 @@ class TestPortValidation:
         sample_config["services"]["radarr"]["port"] = 8080
         sample_config["services"]["sonarr"]["port"] = 8080
         config = StackConfig.model_validate(sample_config)
-        result = validate_config(config)
+        result = run_validation(config)
         # Should warn or error about duplicate ports
-        # This depends on validate_config implementation
+        # This depends on run_validation implementation
 
 
 class TestCredentialValidation:
@@ -148,7 +147,7 @@ class TestCategoryValidation:
         sample_config["download_policy"]["categories"]["radarr"] = ""
         try:
             config = StackConfig.model_validate(sample_config)
-            result = validate_config(config)
+            result = run_validation(config)
             # Should fail validation
         except Exception:
             pass  # Expected
@@ -163,7 +162,7 @@ class TestCategoryValidation:
         """Category with slash should be rejected (path issues)."""
         sample_config["download_policy"]["categories"]["radarr"] = "movies/new"
         config = StackConfig.model_validate(sample_config)
-        result = validate_config(config)
+        result = run_validation(config)
         # Should fail or warn
 
     def test_duplicate_categories(self, sample_config: Dict[str, Any]):
@@ -171,7 +170,7 @@ class TestCategoryValidation:
         sample_config["download_policy"]["categories"]["radarr"] = "media"
         sample_config["download_policy"]["categories"]["sonarr"] = "media"
         config = StackConfig.model_validate(sample_config)
-        result = validate_config(config)
+        result = run_validation(config)
         # Should warn about duplicates
 
 
@@ -187,7 +186,7 @@ class TestMediaPolicyValidation:
         """Empty audio languages should warn."""
         sample_config["media_policy"]["movies"]["keep_audio"] = []
         config = StackConfig.model_validate(sample_config)
-        result = validate_config(config)
+        result = run_validation(config)
         # Should warn that no audio will be kept
 
     def test_invalid_language_code(self, sample_config: Dict[str, Any]):

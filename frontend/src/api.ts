@@ -1,5 +1,9 @@
 import type {
+  AddIndexersResponse,
   ApplyResponse,
+  AutoPopulateIndexersResponse,
+  AvailableIndexersResponse,
+  ConfiguredIndexersResponse,
   RenderResult,
   StackConfig,
   StatusResponse,
@@ -7,6 +11,7 @@ import type {
   CredentialsResponse,
   ServiceCredential,
   CredentialUser,
+  HealthResponse,
 } from './components/types'
 
 const JSON_HEADERS = { 'Content-Type': 'application/json' }
@@ -87,6 +92,48 @@ export async function createJellyfinUser(payload: { username: string; password: 
     method: 'POST',
     headers: JSON_HEADERS,
     body: JSON.stringify(payload),
+  })
+  return handleResponse(response)
+}
+
+export async function fetchHealth(): Promise<HealthResponse> {
+  const response = await fetch('/api/health')
+  if (!response.ok) throw new Error('Failed to fetch health')
+  return response.json()
+}
+
+// Indexer management
+export async function fetchAvailableIndexers(): Promise<AvailableIndexersResponse> {
+  const response = await fetch('/api/indexers/available')
+  return handleResponse(response)
+}
+
+export async function fetchConfiguredIndexers(): Promise<ConfiguredIndexersResponse> {
+  const response = await fetch('/api/indexers')
+  return handleResponse(response)
+}
+
+export async function addIndexers(indexers: string[]): Promise<AddIndexersResponse> {
+  const response = await fetch('/api/indexers', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ indexers }),
+  })
+  return handleResponse(response)
+}
+
+export async function removeIndexer(indexerId: number): Promise<void> {
+  const response = await fetch(`/api/indexers/${indexerId}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to remove indexer')
+  }
+}
+
+export async function autoPopulateIndexers(): Promise<AutoPopulateIndexersResponse> {
+  const response = await fetch('/api/indexers/auto-populate', {
+    method: 'POST',
   })
   return handleResponse(response)
 }

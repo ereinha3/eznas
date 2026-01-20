@@ -309,6 +309,40 @@ button:not(:disabled):hover {
   color: #fecdd3;
 }
 
+.field-error {
+  color: #f87171;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+input.has-error,
+select.has-error,
+textarea.has-error {
+  border-color: #f87171;
+}
+
+input.has-error:focus,
+select.has-error:focus,
+textarea.has-error:focus {
+  border-color: #f87171;
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18);
+}
+
+.field-warning {
+  color: #fbbf24;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.field-hint {
+  display: block;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  font-weight: 400;
+  margin-top: 0.25rem;
+  line-height: 1.4;
+}
+
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -385,6 +419,31 @@ button:not(:disabled):hover {
   color: #38bdf8;
   text-decoration: none;
   font-weight: 600;
+}
+
+.quicklink-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.service-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.service-name {
+  flex: 1;
 }
 
 .quicklinks .empty-state {
@@ -621,6 +680,240 @@ button:not(:disabled):hover {
 .subuser-name {
   font-weight: 600;
   color: #e2e8f0;
+}
+
+/* Indexer Panel styles */
+.indexer-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.indexer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.indexer-empty {
+  padding: 0.8rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px dashed rgba(148, 163, 184, 0.25);
+  font-size: 0.85rem;
+  color: #94a3b8;
+}
+
+.indexer-error {
+  padding: 0.75rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(248, 113, 113, 0.18);
+  color: #fecdd3;
+  font-size: 0.88rem;
+}
+
+.indexer-success {
+  padding: 0.75rem 0.95rem;
+  border-radius: 12px;
+  border: 1px solid rgba(34, 197, 94, 0.45);
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+  font-size: 0.88rem;
+}
+
+.indexer-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.auto-populate-button {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(56, 189, 248, 0.25));
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  color: #86efac;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.auto-populate-button:not(:disabled):hover {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.35), rgba(56, 189, 248, 0.35));
+  border-color: rgba(34, 197, 94, 0.7);
+  transform: translateY(-1px);
+}
+
+.auto-populate-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.indexer-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.indexer-entry {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.6rem 0.8rem;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.indexer-info {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.indexer-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.indexer-status {
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+}
+
+.indexer-status.enabled {
+  background: rgba(34, 197, 94, 0.18);
+  color: #22c55e;
+}
+
+.indexer-status.disabled {
+  background: rgba(148, 163, 184, 0.18);
+  color: #94a3b8;
+}
+
+.icon-button.danger {
+  color: #f87171;
+  border-color: rgba(248, 113, 113, 0.25);
+}
+
+.icon-button.danger:not(:disabled):hover {
+  background: rgba(248, 113, 113, 0.22);
+}
+
+.add-indexer-button {
+  width: 100%;
+  padding: 0.65rem 1rem;
+  border-radius: 12px;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+.add-indexer-button:not(:disabled):hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.6);
+}
+
+.add-indexer-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.indexer-add-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  padding: 0.9rem;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.indexer-add-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #e2e8f0;
+}
+
+.indexer-section-label {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-top: 0.4rem;
+}
+
+.indexer-checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.indexer-checkbox-list.scrollable {
+  max-height: 180px;
+  overflow-y: auto;
+  padding-right: 0.5rem;
+}
+
+.indexer-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: rgba(12, 18, 34, 0.6);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.indexer-checkbox:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.indexer-checkbox input[type='checkbox'] {
+  accent-color: #38bdf8;
+  transform: scale(1.1);
+}
+
+.indexer-checkbox-name {
+  flex: 1;
+  font-size: 0.88rem;
+  color: #e2e8f0;
+}
+
+.indexer-checkbox-lang {
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #64748b;
+}
+
+.indexer-more {
+  padding: 0.5rem;
+  font-size: 0.8rem;
+  color: #64748b;
+  text-align: center;
+  font-style: italic;
+}
+
+.indexer-add-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.4rem;
 }
 
 @media (max-width: 1120px) {

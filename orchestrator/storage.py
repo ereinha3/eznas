@@ -33,7 +33,58 @@ class ConfigRepository:
     def load_state(self) -> dict[str, Any]:
         if not self.state_path.exists():
             return {}
-        return json.loads(self.state_path.read_text())
+        try:
+            return json.loads(self.state_path.read_text())
+        except json.JSONDecodeError as e:
+            # Attempt recovery: try to extract valid JSON from corrupted file
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.warning(f"Corrupted state.json detected: {e}. Attempting recovery...")
+
+            content = self.state_path.read_text()
+            recovered = self._try_recover_json(content)
+
+            if recovered is not None:
+                # Backup corrupted file and save recovered state
+                backup_path = self.state_path.with_suffix(".json.corrupted")
+                self.state_path.rename(backup_path)
+                logger.warning(f"Backed up corrupted file to {backup_path}")
+                self.save_state(recovered)
+                logger.info("Successfully recovered state.json")
+                return recovered
+
+            # If recovery failed, backup and start fresh
+            backup_path = self.state_path.with_suffix(".json.corrupted")
+            if not backup_path.exists():
+                self.state_path.rename(backup_path)
+                logger.warning(f"Could not recover state.json. Backed up to {backup_path}")
+            else:
+                logger.warning("Could not recover state.json. Starting with empty state.")
+            return {}
+
+    def _try_recover_json(self, content: str) -> dict[str, Any] | None:
+        """Try to extract valid JSON from potentially corrupted content."""
+        # Strategy 1: Find the first complete JSON object by brace matching
+        depth = 0
+        end_pos = 0
+        for i, char in enumerate(content):
+            if char == '{':
+                depth += 1
+            elif char == '}':
+                depth -= 1
+                if depth == 0:
+                    end_pos = i + 1
+                    break
+
+        if end_pos > 0:
+            try:
+                return json.loads(content[:end_pos])
+            except json.JSONDecodeError:
+                pass
+
+        # Strategy 2: Try parsing line by line to find where it breaks
+        # (useful for truncated files)
+        return None
 
     def save_state(self, state: dict[str, Any]) -> None:
         self.state_path.write_text(json.dumps(state, indent=2))

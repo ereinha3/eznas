@@ -198,13 +198,13 @@ class TestBuildFFmpegCommand:
 class TestPipelineWorker:
     """Tests for the PipelineWorker class."""
 
-    def test_build_plan(self, stack_config: StackConfig, temp_dir: Path):
+    def test_build_plan(self, stack_config_with_temp_paths: StackConfig, temp_dir: Path):
         """Building a plan should create valid output paths."""
         # Create a test file
         test_file = temp_dir / "test.mkv"
         test_file.touch()
 
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
 
         torrent_info = TorrentInfo(
             hash="abc123",
@@ -230,9 +230,9 @@ class TestPipelineWorker:
             assert plan.final_output is not None
             assert len(plan.ffmpeg_command) > 0
 
-    def test_category_to_destination(self, stack_config: StackConfig):
+    def test_category_to_destination(self, stack_config_with_temp_paths: StackConfig):
         """Categories should map to correct destinations."""
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
 
         # Movies category
         dest = worker.destinations.get("movies")
@@ -244,9 +244,9 @@ class TestPipelineWorker:
         assert dest is not None
         assert "tv" in str(dest)
 
-    def test_policy_for_category(self, stack_config: StackConfig):
+    def test_policy_for_category(self, stack_config_with_temp_paths: StackConfig):
         """Policy selection should use correct settings per category."""
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
 
         # Movies should use movies policy
         policy = worker._policy_for_category("movies")
@@ -261,7 +261,7 @@ class TestPipelineWorker:
 class TestTorrentProcessing:
     """Tests for torrent processing logic."""
 
-    def test_skip_already_processed(self, stack_config: StackConfig, config_repo):
+    def test_skip_already_processed(self, stack_config_with_temp_paths: StackConfig, config_repo):
         """Already processed torrents should be skipped."""
         # Mark a torrent as processed
         state = config_repo.load_state()
@@ -274,32 +274,34 @@ class TestTorrentProcessing:
         assert runner._is_processed("existing_hash")
         assert not runner._is_processed("new_hash")
 
-    def test_category_filtering(self, stack_config: StackConfig):
+    def test_category_filtering(self, stack_config_with_temp_paths: StackConfig):
         """Only tracked categories should be processed."""
         from orchestrator.pipeline.runner import PipelineRunner
 
+        config = stack_config_with_temp_paths
+
         class MockRepo:
             def load_stack(self):
-                return stack_config
+                return config
 
         runner = PipelineRunner(MockRepo())
 
-        assert runner._should_process(stack_config, "movies")
-        assert runner._should_process(stack_config, "tv")
-        assert runner._should_process(stack_config, "anime")
-        assert not runner._should_process(stack_config, "other")
-        assert not runner._should_process(stack_config, "")
+        assert runner._should_process(config, "movies")
+        assert runner._should_process(config, "tv")
+        assert runner._should_process(config, "anime")
+        assert not runner._should_process(config, "other")
+        assert not runner._should_process(config, "")
 
 
 class TestEdgeCases:
     """Tests for edge cases and error handling."""
 
-    def test_filename_with_spaces(self, stack_config: StackConfig, temp_dir: Path):
+    def test_filename_with_spaces(self, stack_config_with_temp_paths: StackConfig, temp_dir: Path):
         """Filenames with spaces should be handled."""
         test_file = temp_dir / "My Movie (2024).mkv"
         test_file.touch()
 
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
         torrent_info = TorrentInfo(
             hash="abc123",
             name="My Movie (2024)",
@@ -321,12 +323,12 @@ class TestEdgeCases:
             # Paths should be properly quoted/escaped in command
             assert str(test_file) in " ".join(str(p) for p in [plan.source])
 
-    def test_unicode_filename(self, stack_config: StackConfig, temp_dir: Path):
+    def test_unicode_filename(self, stack_config_with_temp_paths: StackConfig, temp_dir: Path):
         """Unicode filenames should be handled."""
         test_file = temp_dir / "映画.mkv"
         test_file.touch()
 
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
         torrent_info = TorrentInfo(
             hash="abc123",
             name="映画",
@@ -347,13 +349,13 @@ class TestEdgeCases:
             plan = worker.build_plan(torrent_info)
             assert plan is not None
 
-    def test_very_long_filename(self, stack_config: StackConfig, temp_dir: Path):
+    def test_very_long_filename(self, stack_config_with_temp_paths: StackConfig, temp_dir: Path):
         """Very long filenames should be handled."""
         long_name = "A" * 200 + ".mkv"
         test_file = temp_dir / long_name
         test_file.touch()
 
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
         torrent_info = TorrentInfo(
             hash="abc123",
             name=long_name[:-4],
@@ -375,9 +377,9 @@ class TestEdgeCases:
             # Should handle or truncate
             assert plan is not None
 
-    def test_empty_file_list(self, stack_config: StackConfig, temp_dir: Path):
+    def test_empty_file_list(self, stack_config_with_temp_paths: StackConfig, temp_dir: Path):
         """Empty file list should be handled gracefully."""
-        worker = PipelineWorker(stack_config)
+        worker = PipelineWorker(stack_config_with_temp_paths)
         torrent_info = TorrentInfo(
             hash="abc123",
             name="empty",

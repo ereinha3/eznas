@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import type { ServiceStatus, StackConfig } from './types'
+import type { HealthResponse, ServiceStatus, StackConfig } from './types'
 
 interface SummaryPanelProps {
   config: StackConfig
   serviceStatus: ServiceStatus[]
+  health: HealthResponse | null
 }
 
 const SERVICE_ORDER: Array<keyof StackConfig['services']> = [
@@ -26,7 +27,16 @@ const SERVICE_LABELS: Record<keyof StackConfig['services'], string> = {
   pipeline: 'Post-processing',
 }
 
-export function SummaryPanel({ config, serviceStatus }: SummaryPanelProps) {
+const SERVICE_ICONS: Record<string, string> = {
+  qbittorrent: 'qB',
+  radarr: 'Ra',
+  sonarr: 'So',
+  prowlarr: 'Pr',
+  jellyseerr: 'Js',
+  jellyfin: 'Jf',
+}
+
+export function SummaryPanel({ config, serviceStatus, health }: SummaryPanelProps) {
   const links = useMemo(() => {
     const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost'
     const preferHttps = config.proxy.https_port !== null
@@ -70,27 +80,22 @@ export function SummaryPanel({ config, serviceStatus }: SummaryPanelProps) {
       }))
   }, [config])
 
-  const dnsRecords = useMemo(() => {
-    const entries: Array<{ name: keyof StackConfig['services']; host: string }> = []
-    for (const key of SERVICE_ORDER) {
-      const host = config.services[key].proxy_url
-      if (host) {
-        entries.push({ name: key, host })
-      }
-    }
-    return entries
-  }, [config.services])
-
   const serviceRows = useMemo(() => {
     return SERVICE_ORDER.map((key) => {
       const label = SERVICE_LABELS[key]
       const enabled = config.services[key].enabled
-      const status =
-        serviceStatus.find((s) => s.name === key)?.status ??
-        (enabled ? 'unknown' : 'down')
+      // Prefer health endpoint data, fall back to legacy serviceStatus
+      const healthCheck = health?.services.find((h) => h.name === key)
+      let status: 'up' | 'down' | 'unknown'
+      if (healthCheck) {
+        status = healthCheck.healthy ? 'up' : 'down'
+      } else {
+        status = serviceStatus.find((s) => s.name === key)?.status ??
+          (enabled ? 'unknown' : 'down')
+      }
       return { key, label, enabled, status }
     })
-  }, [config.services, serviceStatus])
+  }, [config.services, serviceStatus, health])
 
   return (
     <section className="summary-column">
@@ -135,32 +140,12 @@ export function SummaryPanel({ config, serviceStatus }: SummaryPanelProps) {
           {links.length === 0 && <li className="empty-state">Enable a service to see its quick link.</li>}
           {links.map((link) => (
             <li key={link.name}>
-              <a href={link.url} target="_blank" rel="noopener noreferrer">
-                {link.name.charAt(0).toUpperCase() + link.name.slice(1)}
+              <a href={link.url} target="_blank" rel="noopener noreferrer" className="quicklink-item">
+                <span className="service-icon">{SERVICE_ICONS[link.name] || '??'}</span>
+                <span className="service-name">{link.name.charAt(0).toUpperCase() + link.name.slice(1)}</span>
               </a>
-              {link.proxy ? (
-                <span className="badge on">{link.proxy}</span>
-              ) : (
-                <span className="badge on">:{link.port}</span>
-              )}
             </li>
           ))}
-        </ul>
-      </div>
-
-      <div className="card">
-        <h3>DNS suggestions</h3>
-        <ul className="storage-list">
-          {dnsRecords.length === 0 ? (
-            <li className="empty-state">Set proxy URLs to generate DNS records.</li>
-          ) : (
-            dnsRecords.map((record) => (
-              <li key={record.name}>
-                <span>{record.host}</span>
-                <span className="badge">CNAME -&gt; traefik</span>
-              </li>
-            ))
-          )}
         </ul>
       </div>
     </section>

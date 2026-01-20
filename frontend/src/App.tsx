@@ -10,12 +10,11 @@ import {
   fetchServiceCredentials,
   updateQbCredentials,
   createJellyfinUser,
+  fetchHealth,
 } from './api'
-import { ApplyLog } from './components/ApplyLog'
 import { ConfigForm } from './components/ConfigForm'
-import { SummaryPanel } from './components/SummaryPanel'
-import { CredentialsPanel } from './components/CredentialsPanel'
-import type { CredentialsResponse, ServiceStatus, StackConfig } from './components/types'
+import { Sidebar } from './components/Sidebar'
+import type { CredentialsResponse, HealthResponse, ServiceStatus, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
   version: 1,
@@ -74,6 +73,7 @@ function App() {
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
   const [credentialsLoading, setCredentialsLoading] = useState(false)
   const [activeTab, setActiveTab] = useState<TabKey>('setup')
+  const [health, setHealth] = useState<HealthResponse | null>(null)
 
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
@@ -141,6 +141,19 @@ function App() {
   useEffect(() => {
     refreshConfig()
     refreshStatus()
+  }, [])
+
+  useEffect(() => {
+    const refreshHealth = async () => {
+      try {
+        setHealth(await fetchHealth())
+      } catch {
+        // Health endpoint may not be available yet
+      }
+    }
+    refreshHealth()
+    const id = setInterval(refreshHealth, 10000)
+    return () => clearInterval(id)
   }, [])
 
   const handleSave = async (cfg: StackConfig) => {
@@ -263,9 +276,11 @@ function App() {
 
       <main className="grid-layout">
         <section className="panel">
-          <nav className="tab-nav">
+          <nav className="tab-nav" role="tablist" aria-label="Configuration sections">
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'setup'}
               className={`tab-button${activeTab === 'setup' ? ' active' : ''}`}
               onClick={() => setActiveTab('setup')}
             >
@@ -273,6 +288,8 @@ function App() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'services'}
               className={`tab-button${activeTab === 'services' ? ' active' : ''}`}
               onClick={() => setActiveTab('services')}
             >
@@ -280,6 +297,8 @@ function App() {
             </button>
             <button
               type="button"
+              role="tab"
+              aria-selected={activeTab === 'preferences'}
               className={`tab-button${activeTab === 'preferences' ? ' active' : ''}`}
               onClick={() => setActiveTab('preferences')}
             >
@@ -300,17 +319,17 @@ function App() {
             activeTab={activeTab}
           />
         </section>
-        <aside className="sidebar">
-          <CredentialsPanel
-            credentials={credentials}
-            loading={credentialsLoading}
-            onRefresh={loadCredentials}
-            onUpdateQb={handleUpdateQbCredentials}
-            onAddJellyfinUser={handleAddJellyfinUser}
-          />
-          <SummaryPanel config={config} serviceStatus={serviceStatus} />
-          <ApplyLog entries={logEntries} />
-        </aside>
+        <Sidebar
+          config={config}
+          serviceStatus={serviceStatus}
+          health={health}
+          credentials={credentials}
+          credentialsLoading={credentialsLoading}
+          logEntries={logEntries}
+          onRefreshCredentials={loadCredentials}
+          onUpdateQb={handleUpdateQbCredentials}
+          onAddJellyfinUser={handleAddJellyfinUser}
+        />
       </main>
     </div>
   )

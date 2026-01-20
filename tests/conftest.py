@@ -88,9 +88,23 @@ def stack_config(sample_config: Dict[str, Any]) -> StackConfig:
 
 
 @pytest.fixture
+def stack_config_with_temp_paths(temp_dir: Path, sample_config: Dict[str, Any]) -> StackConfig:
+    """Create a StackConfig using temp_dir for paths (for pipeline tests)."""
+    sample_config["paths"]["pool"] = str(temp_dir / "pool")
+    sample_config["paths"]["scratch"] = str(temp_dir / "scratch")
+    sample_config["paths"]["appdata"] = str(temp_dir / "appdata")
+    # Create the directories
+    (temp_dir / "pool").mkdir()
+    (temp_dir / "scratch").mkdir()
+    (temp_dir / "appdata").mkdir()
+    return StackConfig.model_validate(sample_config)
+
+
+@pytest.fixture
 def api_client(config_repo: ConfigRepository) -> Generator[TestClient, None, None]:
     """Create a test client for the FastAPI app."""
-    with patch("orchestrator.app.get_repo", return_value=config_repo):
+    # Patch the module-level repo variable used by app routes
+    with patch("orchestrator.app.repo", config_repo):
         with TestClient(app) as client:
             yield client
 

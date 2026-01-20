@@ -108,6 +108,9 @@ class SonarrConfig(ServiceBaseConfig):
 class ProwlarrConfig(ServiceBaseConfig):
     port: int = Field(default=9696, ge=1, le=65535)
     proxy_url: Optional[str] = None
+    # When True, only add indexers matching user's language preferences
+    # When False, add all public indexers with Movies/TV categories
+    language_filter: bool = Field(default=True)
 
 
 class JellyseerrConfig(ServiceBaseConfig):
@@ -212,4 +215,67 @@ class StatusResponse(BaseModel):
     """Wrapper returned from ``GET /api/status`` with the state of services."""
 
     services: List[ServiceStatus] = Field(default_factory=list)
+
+
+class HealthCheck(BaseModel):
+    """Health status of a single service."""
+
+    name: str
+    healthy: bool
+    port: Optional[int] = None
+    message: Optional[str] = None
+
+
+class HealthResponse(BaseModel):
+    """Wrapper returned from ``GET /api/health`` for container readiness checks."""
+
+    status: Literal["healthy", "degraded", "unhealthy"]
+    services: List[HealthCheck] = Field(default_factory=list)
+
+
+class IndexerSchema(BaseModel):
+    """Schema for an available indexer in Prowlarr."""
+
+    id: int
+    name: str
+    description: Optional[str] = None
+    encoding: Optional[str] = None
+    language: Optional[str] = None
+    privacy: str  # "public", "private", "semiPrivate"
+    protocol: str  # "torrent", "usenet"
+    categories: List[Dict] = Field(default_factory=list)
+    supports_rss: bool = Field(default=False, alias="supportsRss")
+    supports_search: bool = Field(default=False, alias="supportsSearch")
+
+    class Config:
+        populate_by_name = True
+
+
+class IndexerInfo(BaseModel):
+    """Information about a configured indexer."""
+
+    id: int
+    name: str
+    implementation: str
+    enable: bool = True
+    priority: int = 25
+    protocol: str = "torrent"
+
+
+class AvailableIndexersResponse(BaseModel):
+    """Response containing available public indexers."""
+
+    indexers: List[IndexerSchema] = Field(default_factory=list)
+
+
+class ConfiguredIndexersResponse(BaseModel):
+    """Response containing currently configured indexers."""
+
+    indexers: List[IndexerInfo] = Field(default_factory=list)
+
+
+class AddIndexersRequest(BaseModel):
+    """Request to add indexers by their definition names."""
+
+    indexers: List[str]  # List of indexer definition names (e.g., "1337x", "EZTV")
 

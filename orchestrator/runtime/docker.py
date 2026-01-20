@@ -10,7 +10,7 @@ from typing import Tuple
 class DockerComposeRunner:
     """Wrapper around docker compose for bringing the stack up or down."""
 
-    def __init__(self, compose_path: Path, project_name: str = "nas_orchestrator") -> None:
+    def __init__(self, compose_path: Path, project_name: str = "nas_media_stack") -> None:
         self.compose_path = compose_path
         self.project_name = project_name
         self.workdir = compose_path.parent

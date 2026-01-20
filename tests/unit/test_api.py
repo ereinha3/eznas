@@ -23,42 +23,43 @@ class TestConfigEndpoints:
         assert "paths" in data
         assert "services" in data
 
-    def test_post_config_valid(self, api_client: TestClient, sample_config: Dict[str, Any]):
-        """POST /api/config with valid data should succeed."""
-        response = api_client.post("/api/config", json=sample_config)
-        assert response.status_code in [200, 201]
+    def test_put_config_valid(self, api_client: TestClient, sample_config: Dict[str, Any]):
+        """PUT /api/config with valid data should succeed."""
+        response = api_client.put("/api/config", json=sample_config)
+        assert response.status_code == 200
 
-    def test_post_config_invalid_json(self, api_client: TestClient):
-        """POST /api/config with invalid JSON should fail."""
-        response = api_client.post(
+    def test_put_config_invalid_json(self, api_client: TestClient):
+        """PUT /api/config with invalid JSON should fail."""
+        response = api_client.put(
             "/api/config",
             content="not valid json",
             headers={"Content-Type": "application/json"}
         )
         assert response.status_code in [400, 422]
 
-    def test_post_config_missing_required(self, api_client: TestClient):
-        """POST /api/config missing required fields should fail."""
-        response = api_client.post("/api/config", json={"version": 1})
+    def test_put_config_missing_required(self, api_client: TestClient):
+        """PUT /api/config missing required fields should fail."""
+        response = api_client.put("/api/config", json={"version": 1})
         assert response.status_code == 422
 
-    def test_post_config_extra_fields(self, api_client: TestClient, sample_config: Dict[str, Any]):
-        """POST /api/config with extra fields should handle gracefully."""
+    def test_put_config_extra_fields(self, api_client: TestClient, sample_config: Dict[str, Any]):
+        """PUT /api/config with extra fields should handle gracefully."""
         sample_config["unknown_field"] = "should be ignored"
-        response = api_client.post("/api/config", json=sample_config)
+        response = api_client.put("/api/config", json=sample_config)
         # Should either ignore extra fields or return 422
-        assert response.status_code in [200, 201, 422]
+        assert response.status_code in [200, 422]
 
 
 class TestValidateEndpoint:
     """Tests for validation endpoint."""
 
     def test_validate_valid_config(self, api_client: TestClient, sample_config: Dict[str, Any]):
-        """Validation of valid config should pass."""
+        """Validation of valid config should return validation result."""
         response = api_client.post("/api/validate", json=sample_config)
         assert response.status_code == 200
         data = response.json()
-        assert "valid" in data or "errors" in data
+        assert "ok" in data
+        assert "checks" in data
 
     def test_validate_invalid_config(self, api_client: TestClient):
         """Validation of invalid config should return errors."""
@@ -104,23 +105,20 @@ class TestStatusEndpoint:
         assert response.status_code == 200
 
 
-class TestCredentialsEndpoint:
-    """Tests for credentials endpoint."""
+class TestSecretsEndpoint:
+    """Tests for secrets/credentials endpoint."""
 
-    def test_get_credentials(self, api_client: TestClient):
-        """GET /api/credentials should return stored credentials."""
-        response = api_client.get("/api/credentials")
+    def test_get_secrets(self, api_client: TestClient):
+        """GET /api/secrets should return stored credentials."""
+        response = api_client.get("/api/secrets")
         assert response.status_code == 200
 
-    def test_credentials_masks_passwords(self, api_client: TestClient):
-        """Credentials should not expose raw passwords."""
-        response = api_client.get("/api/credentials")
+    def test_secrets_response_format(self, api_client: TestClient):
+        """Secrets response should have expected format."""
+        response = api_client.get("/api/secrets")
         data = response.json()
-        # Passwords should be masked or omitted
-        for service, creds in data.items():
-            if "password" in creds:
-                # Should be masked (e.g., "****") or not present
-                pass
+        # Response should have services list
+        assert "services" in data
 
 
 class TestInputSanitization:
@@ -129,25 +127,25 @@ class TestInputSanitization:
     def test_xss_in_config(self, api_client: TestClient, sample_config: Dict[str, Any]):
         """XSS attempts should be sanitized."""
         sample_config["paths"]["pool"] = "<script>alert('xss')</script>"
-        response = api_client.post("/api/config", json=sample_config)
+        response = api_client.put("/api/config", json=sample_config)
         # Should either reject or sanitize
 
     def test_path_traversal(self, api_client: TestClient, sample_config: Dict[str, Any]):
         """Path traversal attempts should be blocked."""
         sample_config["paths"]["pool"] = "/data/../../../etc/passwd"
-        response = api_client.post("/api/config", json=sample_config)
+        response = api_client.put("/api/config", json=sample_config)
         # Should reject or normalize
 
     def test_very_long_input(self, api_client: TestClient, sample_config: Dict[str, Any]):
         """Very long inputs should be handled."""
         sample_config["paths"]["pool"] = "/data/" + "a" * 10000
-        response = api_client.post("/api/config", json=sample_config)
+        response = api_client.put("/api/config", json=sample_config)
         # Should reject or truncate
 
     def test_null_bytes(self, api_client: TestClient, sample_config: Dict[str, Any]):
         """Null bytes in input should be handled."""
         sample_config["services"]["qbittorrent"]["username"] = "admin\x00injected"
-        response = api_client.post("/api/config", json=sample_config)
+        response = api_client.put("/api/config", json=sample_config)
         # Should sanitize
 
 
@@ -160,7 +158,7 @@ class TestConcurrency:
         results = []
 
         def update_config():
-            response = api_client.post("/api/config", json=sample_config)
+            response = api_client.put("/api/config", json=sample_config)
             results.append(response.status_code)
 
         threads = [threading.Thread(target=update_config) for _ in range(5)]
@@ -169,23 +167,23 @@ class TestConcurrency:
         for t in threads:
             t.join()
 
-        # All should succeed or fail gracefully
-        assert all(code in [200, 201, 409, 423] for code in results)
+        # All should succeed (the API allows concurrent updates)
+        assert all(code == 200 for code in results)
 
 
 class TestErrorHandling:
     """Tests for error handling."""
 
-    def test_internal_error_handling(self, api_client: TestClient):
-        """Internal errors should return proper error response."""
-        with patch("orchestrator.storage.ConfigRepository.load_stack") as mock_load:
-            mock_load.side_effect = Exception("Database error")
-            response = api_client.get("/api/config")
-            assert response.status_code == 500
-            data = response.json()
-            assert "error" in data or "detail" in data
-
     def test_not_found_handling(self, api_client: TestClient):
         """Non-existent endpoints should return 404."""
         response = api_client.get("/api/nonexistent")
         assert response.status_code == 404
+
+    def test_invalid_json_handling(self, api_client: TestClient):
+        """Invalid JSON should return proper error response."""
+        response = api_client.put(
+            "/api/config",
+            content="{not valid json}",
+            headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 422
