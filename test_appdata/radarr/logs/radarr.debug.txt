@@ -1150,3 +1150,605 @@
 2026-01-20 07:16:20.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
 2026-01-20 07:16:20.9|Debug|PendingReleaseService|Removing failed releases from pending
 2026-01-20 07:16:50.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:21:51.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:26:51.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:31:51.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:36:51.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:41:51.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:46:21.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 07:46:21.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 07:46:21.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 07:46:21.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 07:46:21.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 07:46:51.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:51:51.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 07:56:51.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:01:51.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:06:51.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:11:51.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:16:21.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:16:21.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:16:21.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:16:21.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:16:21.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:16:51.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:21:51.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:26:51.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:31:51.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:36:51.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:41:51.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:46:21.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:46:21.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:46:21.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:46:21.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:46:21.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:46:51.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:51:51.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 08:56:51.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:01:51.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:06:51.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:11:51.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:16:21.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:16:21.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:16:21.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:16:21.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:16:21.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:16:51.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:21:51.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:26:51.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:31:51.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:36:51.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:41:51.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:46:21.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:46:21.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:46:21.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:46:21.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:46:21.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:46:51.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:51:51.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 09:56:51.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:01:52.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:06:52.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:11:52.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:16:22.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:16:22.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:16:22.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:16:22.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:16:22.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:16:52.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:21:52.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:26:52.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:31:52.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:36:52.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:41:52.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:46:22.3|Debug|InstallUpdateService|Checking for updates
+2026-01-20 10:46:22.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:46:22.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:46:22.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:46:22.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:46:22.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:46:22.5|Debug|InstallUpdateService|No update available
+2026-01-20 10:46:52.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:51:52.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 10:56:52.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:01:52.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:06:52.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:11:52.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:16:22.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:16:22.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:16:22.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:16:22.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:16:22.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:16:52.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:21:52.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:26:52.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:31:52.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:36:52.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:41:52.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:46:22.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:46:22.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:46:22.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:46:22.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:46:22.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:46:52.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:51:52.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 11:56:52.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:02:22.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:07:22.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:12:22.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:16:22.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:16:22.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:16:22.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:16:22.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:16:22.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:17:22.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:22:22.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:27:22.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:32:23.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:37:23.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:42:23.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:46:23.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:46:23.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:46:23.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:46:23.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:46:23.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:47:23.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:52:23.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 12:57:23.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:02:23.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:07:23.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:12:23.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:16:23.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:16:23.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:16:23.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:16:23.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:16:23.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:17:23.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:22:23.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:27:23.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:32:23.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:37:23.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:42:23.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:46:23.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:46:23.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:46:23.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:46:23.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:46:23.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:47:23.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:52:23.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 13:57:23.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:02:53.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:07:53.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:13:23.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:16:23.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:16:23.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:16:23.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:16:23.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:16:23.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:18:23.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:23:53.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:28:53.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:33:53.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:38:53.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:43:53.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:46:23.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:46:23.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:46:23.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:46:23.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:46:23.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:48:53.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:53:54.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 14:58:54.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:03:54.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:08:54.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:14:24.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:16:24.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:16:24.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:16:24.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:16:24.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:16:24.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:19:24.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:24:54.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:29:54.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:34:54.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:39:54.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:44:54.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:46:24.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:46:24.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:46:24.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:46:24.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:46:24.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:49:54.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:54:54.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 15:59:54.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:04:54.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:09:54.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:14:54.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:16:24.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:16:24.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:16:24.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:16:24.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:16:24.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:19:54.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:24:54.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:29:54.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:34:54.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:39:54.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:44:54.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:46:24.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:46:24.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:46:24.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:46:24.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:46:24.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:46:24.8|Debug|InstallUpdateService|Checking for updates
+2026-01-20 16:46:24.9|Debug|InstallUpdateService|No update available
+2026-01-20 16:49:54.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:54:54.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 16:59:54.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:04:54.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:09:54.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:14:55.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:16:25.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:16:25.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:16:25.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:16:25.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:16:25.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:19:55.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:24:55.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:29:55.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:34:55.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:39:55.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:44:55.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:46:25.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:46:25.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:46:25.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:46:25.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:46:25.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:49:55.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:54:55.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 17:59:55.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:04:55.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:09:55.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:14:55.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:16:25.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:16:25.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:16:25.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:16:25.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:16:25.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:19:55.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:24:55.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:29:55.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:34:55.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:39:55.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:44:55.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:46:25.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:46:25.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:46:25.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:46:25.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:46:25.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:49:55.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:54:55.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 18:59:55.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:04:55.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:09:55.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:14:55.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:16:25.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:16:25.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:16:25.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:16:25.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:16:25.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:19:55.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:24:55.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:29:55.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:34:55.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:39:55.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:44:56.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:46:26.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:46:26.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:46:26.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:46:26.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:46:26.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:49:56.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:54:56.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 19:59:56.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:04:56.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:09:56.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:14:56.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:16:26.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:16:26.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:16:26.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:16:26.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:16:26.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:19:56.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:24:56.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:29:56.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:34:56.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:39:56.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:44:56.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:46:26.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:46:26.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:46:26.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:46:26.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:46:26.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:49:56.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 20:54:56.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:00:26.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:05:26.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:10:26.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:15:26.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:16:26.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:16:26.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:16:26.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:16:26.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:16:26.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:20:26.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:25:26.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:30:26.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:35:26.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:40:26.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:45:26.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:46:26.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:46:26.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:46:26.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:46:26.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:46:26.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:50:26.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 21:55:26.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:00:26.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:05:26.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:10:26.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:15:27.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:16:27.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:16:27.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:16:27.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:16:27.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:16:27.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:20:27.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:25:27.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:30:27.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:35:27.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:40:27.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:45:27.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:46:27.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:46:27.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:46:27.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:46:27.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:46:27.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:46:27.2|Debug|InstallUpdateService|Checking for updates
+2026-01-20 22:46:27.4|Debug|InstallUpdateService|No update available
+2026-01-20 22:50:27.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 22:55:27.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:00:27.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:05:27.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:10:27.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:15:27.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:16:27.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:16:27.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:16:27.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:16:27.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:16:27.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:20:27.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:25:27.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:30:27.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:35:27.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:40:27.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:45:27.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:46:27.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:46:27.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:46:27.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:46:27.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:46:27.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:50:27.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-20 23:55:27.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:00:27.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:05:27.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:10:27.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:15:27.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:16:27.8|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:16:27.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:16:27.8|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:16:27.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:16:27.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:20:27.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:25:27.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:30:27.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:35:27.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:40:28.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:45:28.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:46:28.0|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:46:28.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:46:28.0|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:46:28.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:46:28.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:50:28.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 00:55:28.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:00:28.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:05:28.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:10:28.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:15:28.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:16:28.2|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:16:28.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:16:28.2|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:16:28.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:16:28.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:20:28.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:25:28.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:30:28.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:35:28.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:40:28.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:45:28.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:46:28.4|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:46:28.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:46:28.4|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:46:28.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:46:28.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:50:28.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 01:55:28.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:00:28.5|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:05:28.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:10:28.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:15:28.6|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:16:28.6|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:16:28.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:16:28.6|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:16:28.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:16:28.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:20:28.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:25:28.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:30:28.7|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:35:28.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:40:28.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:45:28.8|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:46:28.8|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:46:28.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:46:28.9|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:46:28.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:46:28.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:50:28.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 02:55:28.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:00:28.9|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:05:29.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:10:59.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:15:59.0|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:16:29.0|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:16:29.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:16:29.0|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:16:29.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:16:29.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:20:59.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:25:59.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:30:59.1|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:35:59.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:40:59.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:45:59.2|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:46:29.2|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:46:29.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:46:29.2|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:46:29.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:46:29.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:50:59.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:54:29.9|Info|Radarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 03:54:29.9|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 401.Unauthorized (15 ms)
+2026-01-21 03:54:29.9|Info|Radarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 03:54:29.9|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 401.Unauthorized (3 ms)
+2026-01-21 03:54:53.8|Info|Radarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 03:54:53.8|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 401.Unauthorized (0 ms)
+2026-01-21 03:54:58.3|Info|Radarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 03:54:58.3|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 401.Unauthorized (0 ms)
+2026-01-21 03:55:30.0|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (30 ms)
+2026-01-21 03:55:30.1|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (21 ms)
+2026-01-21 03:55:30.1|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (5 ms)
+2026-01-21 03:55:30.1|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (3 ms)
+2026-01-21 03:55:37.9|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (2 ms)
+2026-01-21 03:55:52.4|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (0 ms)
+2026-01-21 03:55:52.4|Debug|Api|[GET] /api/v3/qualityprofile: 200.OK (1 ms)
+2026-01-21 03:55:52.4|Warn|RadarrErrorPipeline|Invalid request Validation failed: 
+ -- Path: Path '/data/media/movies' does not exist
+2026-01-21 03:55:52.4|Debug|Api|[POST] /api/v3/rootfolder: 400.BadRequest (37 ms)
+2026-01-21 03:55:52.4|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (0 ms)
+2026-01-21 03:55:59.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 03:56:25.0|Debug|Api|[GET] /api/v3/qualityprofile: 200.OK (1 ms)
+2026-01-21 03:56:25.0|Warn|RadarrErrorPipeline|Invalid request Validation failed: 
+ -- Path: Folder '/data/media/movies' is not writable by user 'abc'
+2026-01-21 03:56:25.0|Debug|Api|[POST] /api/v3/rootfolder: 400.BadRequest (5 ms)
+2026-01-21 03:56:25.0|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (4 ms)
+2026-01-21 03:56:38.3|Debug|Api|[GET] /api/v3/qualityprofile: 200.OK (1 ms)
+2026-01-21 03:56:38.3|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.3|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.3|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.3|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.3|Debug|Api|[POST] /api/v3/rootfolder: 201.Created (36 ms)
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (2 ms)
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:56:56.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:56.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (2 ms)
+2026-01-21 03:57:04.2|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:57:04.2|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:57:04.2|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (2 ms)
+2026-01-21 03:57:11.4|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:57:11.4|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:57:11.4|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:57:11.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:57:11.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:57:11.4|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (3 ms)
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:57:32.6|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:57:32.6|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (3 ms)
+2026-01-21 03:57:56.4|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:58:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (31 ms)
+2026-01-21 03:58:00.1|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (77 ms)
+2026-01-21 03:59:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 03:59:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (8 ms)
+2026-01-21 04:00:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:00:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:00:00.0|Debug|Api|[GET] /api/v3/movie?apikey=(removed) 200.OK (9 ms)
+2026-01-21 04:01:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:01:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:01:29.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:02:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (7 ms)
+2026-01-21 04:02:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:03:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:03:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:04:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (5 ms)
+2026-01-21 04:04:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:05:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:05:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (1 ms)
+2026-01-21 04:06:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:06:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:06:59.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:07:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (5 ms)
+2026-01-21 04:07:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:08:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:08:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:09:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:09:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:10:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:10:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:11:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:11:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:11:59.3|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:12:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:12:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:13:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:13:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:14:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (2 ms)
+2026-01-21 04:14:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (2 ms)
+2026-01-21 04:15:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:15:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:16:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:16:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:16:29.4|Info|RssSyncService|Starting RSS Sync
+2026-01-21 04:16:29.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 04:16:29.4|Info|DownloadDecisionMaker|No results found
+2026-01-21 04:16:29.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 04:16:29.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 04:16:59.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:17:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:17:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:18:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:18:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:19:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:19:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:20:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:20:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:21:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:21:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:21:59.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:22:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:22:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (3 ms)
+2026-01-21 04:23:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:23:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:24:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:24:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:25:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:25:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:26:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:26:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:27:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (6 ms)
+2026-01-21 04:27:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:27:29.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:28:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:28:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:29:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:29:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:30:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:30:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:31:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:31:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:32:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:32:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:32:59.4|Debug|ImportListSyncService|No enabled import lists, skipping sync and cleaning
+2026-01-21 04:33:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:33:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:34:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:34:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:34:13.4|Info|Microsoft.Hosting.Lifetime|Application is shutting down...
+2026-01-21 04:34:13.4|Info|ConsoleApp|Exiting main.

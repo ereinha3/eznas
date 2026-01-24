@@ -108,7 +108,10 @@ class PipelineRunner:
             return
 
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{qb_cfg.port or 8080}"
+        # NOTE: Within the docker compose network, services must talk to the
+        # qBittorrent container on its *container port* (LinuxServer image: 8080),
+        # not the host-mapped port configured for external access.
+        base_url = "http://qbittorrent:8080"
         api = QbittorrentAPI(
             base_url=base_url,
             username=qb_cfg.username,
@@ -130,7 +133,7 @@ class PipelineRunner:
 
     def _should_process(self, config: StackConfig, category: str) -> bool:
         categories = config.download_policy.categories
-        return category in {categories.radarr, categories.sonarr, categories.anime}
+        return category in {categories.radarr, categories.sonarr}
 
     def _is_processed(self, torrent_hash: str) -> bool:
         state = self.repo.load_state()
@@ -212,6 +215,8 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
 
 
 

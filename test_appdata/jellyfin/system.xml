@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <ServerConfiguration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
   <LogFileRetentionDays>3</LogFileRetentionDays>
-  <IsStartupWizardCompleted>false</IsStartupWizardCompleted>
+  <IsStartupWizardCompleted>true</IsStartupWizardCompleted>
   <EnableMetrics>false</EnableMetrics>
   <EnableNormalizedItemByNameIds>true</EnableNormalizedItemByNameIds>
   <IsPortAuthorized>true</IsPortAuthorized>
@@ -131,7 +131,7 @@
     </MetadataOptions>
   </MetadataOptions>
   <SkipDeserializationForBasicTypes>true</SkipDeserializationForBasicTypes>
-  <ServerName />
+  <ServerName>NAS Orchestrator</ServerName>
   <UICulture>en-US</UICulture>
   <SaveMetadataHidden>false</SaveMetadataHidden>
   <ContentTypes />

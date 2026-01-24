@@ -22,7 +22,7 @@ API, and performs a post-apply verification pass to confirm state.
 - qBittorrent: auth repair, preferences, categories, category save paths.
 - Radarr: API key discovery, UI auth, root folder, qBittorrent download client, quality profiles, custom formats.
 - Sonarr: API key discovery, UI auth, root folders (TV + anime), qBittorrent download client, quality profiles, custom formats.
-- Prowlarr: app linking to Radarr/Sonarr.
+- Prowlarr: API key sync from config.xml, UI authentication (forms-based), app linking to Radarr/Sonarr, auto-population of indexers based on language preferences.
 - Jellyseerr: initial setup + Radarr/Sonarr links.
 - Jellyfin: startup wizard, admin user, libraries, user creation endpoint.
 
@@ -90,6 +90,11 @@ API, and performs a post-apply verification pass to confirm state.
 - Verification failures are logged but not yet surfaced as rich UI badges.
 - Custom formats in Radarr/Sonarr are created internally but not exposed in UI
   (simplified UX approach).
+- **Network isolation in dev mode**: When orchestrator runs in `orchestrator-dev` container,
+  it cannot reach services by container name if they're on different Docker networks.
+  Health checks and service clients use `127.0.0.1:{port}` to work around this.
+- **Port conflicts**: Dev compose services (`*-dev` containers) can conflict with generated
+  stack services if both are running. Stop dev services before running Apply.
 
 ## How To Run (Current)
 
@@ -179,6 +184,14 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
 
 ## Recent Changes
 
+- **Prowlarr authentication provisioning fixed**: Now properly configures UI authentication
+  programmatically, syncs API keys from config.xml, and auto-populates indexers based on
+  language preferences. Includes fallback authentication configuration and retry logic for
+  stale API keys.
+- **Network connectivity improvements**: Updated Prowlarr client to use `127.0.0.1:{port}`
+  instead of container names, enabling it to work when orchestrator runs in a container.
+- **Health check enhancements**: Added fallback to `host.docker.internal` for containerized
+  orchestrator scenarios.
 - **Pipeline worker fully integrated**: Continuous service that processes completed downloads.
 - **Quality preferences**: UI fields and backend integration for resolution, bitrate, container format.
 - **Language preferences**: Configurable audio/subtitle filtering in UI and pipeline.

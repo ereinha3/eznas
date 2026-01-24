@@ -2976,3 +2976,7 @@ RequestUri: https://torrentgalaxy.one/get-posts/;StatusCode: Found;ContentType: 
  -- : Unable to access torrentsome230.com, blocked by CloudFlare Protection.
 2026-01-20 06:51:50.9|Warn|ProwlarrErrorPipeline|Invalid request Validation failed: 
  -- : Unable to access torrenttip211.top, blocked by CloudFlare Protection.
+2026-01-20 08:18:12.0|Info|Prowlarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-20 08:18:33.2|Info|Prowlarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 04:34:13.4|Info|Microsoft.Hosting.Lifetime|Application is shutting down...
+2026-01-21 04:34:13.5|Info|ConsoleApp|Exiting main.

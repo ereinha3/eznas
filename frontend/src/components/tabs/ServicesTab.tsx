@@ -154,7 +154,7 @@ export function ServicesTab({
       </div>
 
       <h2>Download Categories</h2>
-      <div className="grid three">
+      <div className="grid two">
         <label htmlFor="category-radarr">
           Radarr category
           <input
@@ -169,14 +169,6 @@ export function ServicesTab({
             id="category-sonarr"
             value={config.download_policy.categories.sonarr}
             onChange={(e) => onUpdateCategory('sonarr', e.target.value)}
-          />
-        </label>
-        <label htmlFor="category-anime">
-          Anime category
-          <input
-            id="category-anime"
-            value={config.download_policy.categories.anime}
-            onChange={(e) => onUpdateCategory('anime', e.target.value)}
           />
         </label>
       </div>

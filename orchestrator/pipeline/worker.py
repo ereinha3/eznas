@@ -40,14 +40,16 @@ class PipelineWorker:
 
     def __init__(self, config: StackConfig) -> None:
         self.config = config
-        self.pool_root = Path(config.paths.pool)
-        scratch = config.paths.scratch
-        self.scratch_root = Path(scratch) if scratch is not None else self.pool_root / "downloads"
+        # The stack config generally stores *host* paths (e.g. /mnt/pool/data),
+        # but this worker typically runs inside a container where those paths
+        # are mounted at conventional locations. Prefer the container mounts
+        # if present; fall back to config values for non-container execution.
+        self.pool_root = self._resolve_pool_root(config)
+        self.scratch_root = self._resolve_scratch_root(config)
         categories = config.download_policy.categories
         self.destinations = {
             categories.radarr: self.pool_root / "media" / "movies",
             categories.sonarr: self.pool_root / "media" / "tv",
-            categories.anime: self.pool_root / "media" / "anime",
         }
 
     def build_plan(self, torrent: TorrentInfo) -> PipelinePlan:
@@ -75,10 +77,9 @@ class PipelineWorker:
         )
 
     def _policy_for_category(self, category: str) -> TrackSelection:
-        policy = self.config.media_policy.anime
-        cats = self.config.download_policy.categories
-        if category not in {cats.anime, "anime"}:
-            policy = self.config.media_policy.movies
+        # Use the same media policy for all categories
+        # Original language detection ensures foreign content keeps native audio
+        policy = self.config.media_policy.movies
         return TrackSelection(
             audio=list(policy.keep_audio),
             subtitles=list(policy.keep_subs),
@@ -91,6 +92,24 @@ class PipelineWorker:
         if not candidates:
             raise ValueError("No video files found in torrent payload.")
         return max(candidates, key=lambda path: path.stat().st_size if path.exists() else 0)
+
+    def _resolve_pool_root(self, config: StackConfig) -> Path:
+        for candidate in (Path("/data"), Path(config.paths.pool)):
+            if candidate.exists():
+                return candidate
+        return Path(config.paths.pool)
+
+    def _resolve_scratch_root(self, config: StackConfig) -> Path:
+        # Prefer qBittorrent's save path mount (/downloads) so paths reported by
+        # the qBittorrent API (e.g. /downloads/complete/...) are accessible.
+        container_candidates = [Path("/downloads"), Path("/scratch")]
+        for candidate in container_candidates:
+            if candidate.exists():
+                return candidate
+        scratch = config.paths.scratch
+        if scratch is not None:
+            return Path(scratch)
+        return self.pool_root / "downloads"
 
 
 

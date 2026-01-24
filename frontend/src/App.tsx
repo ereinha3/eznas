@@ -39,17 +39,16 @@ const DEFAULT_CONFIG: StackConfig = {
     },
     radarr: { enabled: true, port: 7878, proxy_url: null },
     sonarr: { enabled: true, port: 8989, proxy_url: null },
-    prowlarr: { enabled: true, port: 9696, proxy_url: null },
+    prowlarr: { enabled: true, port: 9696, proxy_url: null, language_filter: false },
     jellyseerr: { enabled: true, port: 5055, proxy_url: null },
     jellyfin: { enabled: true, port: 8096, proxy_url: null },
     pipeline: { enabled: true, port: null, proxy_url: null },
   },
   download_policy: {
-    categories: { radarr: 'movies', sonarr: 'tv', anime: 'anime' },
+    categories: { radarr: 'movies', sonarr: 'tv' },
   },
   media_policy: {
     movies: { keep_audio: ['eng', 'und'], keep_subs: ['eng', 'forced'] },
-    anime: { keep_audio: ['jpn', 'eng', 'und'], keep_subs: ['eng'] },
   },
   quality: {
     preset: 'balanced',

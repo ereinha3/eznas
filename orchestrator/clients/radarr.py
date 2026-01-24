@@ -80,7 +80,7 @@ class RadarrClient(ServiceClient):
         radarr_cfg = config.services.radarr
         db_path = config_dir / "radarr.db"
 
-        base_url = f"http://127.0.0.1:{radarr_cfg.port}/api/v3"
+        base_url = f"http://radarr:{radarr_cfg.port}/api/v3"
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -210,7 +210,7 @@ class RadarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         radarr_cfg = config.services.radarr
-        base_url = f"http://127.0.0.1:{radarr_cfg.port}/api/v3"
+        base_url = f"http://radarr:{radarr_cfg.port}/api/v3"
 
         qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
         desired_fields = {
@@ -310,7 +310,7 @@ class RadarrClient(ServiceClient):
             client.put("/config/host", json=payload).raise_for_status()
 
         ok, message = wait_for_http_ready(
-            f"http://127.0.0.1:{port}/api/v3/system/status",
+            f"http://radarr:{port}/api/v3/system/status",
             timeout=120.0,
             interval=5.0,
         )

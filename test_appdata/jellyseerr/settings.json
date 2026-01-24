@@ -22,7 +22,7 @@
   "originalLanguage": "",
   "blacklistedTags": "",
   "blacklistedTagsLimit": 50,
-  "mediaServerType": 4,
+  "mediaServerType": 2,
   "partialRequestsEnabled": true,
   "enableSpecialEpisodes": false,
   "locale": "en",
@@ -36,22 +36,61 @@
   "libraries": []
  },
  "jellyfin": {
-  "name": "",
-  "ip": "",
+  "name": "NAS Orchestrator",
+  "ip": "jellyfin",
   "port": 8096,
   "useSsl": false,
   "urlBase": "",
   "externalHostname": "",
   "jellyfinForgotPasswordUrl": "",
   "libraries": [],
-  "serverId": "",
-  "apiKey": ""
+  "serverId": "a6ce9001fc404dc19f3b50878c2b5e5f",
+  "apiKey": "1df9877415e14afb9de8d6e9102e588c"
  },
  "tautulli": {},
- "radarr": [],
- "sonarr": [],
+ "radarr": [
+  {
+   "name": "Radarr",
+   "hostname": "radarr",
+   "port": 7878,
+   "apiKey": "500323f2838e4c268f26153f52ae1f63",
+   "useSsl": false,
+   "baseUrl": "",
+   "activeProfileId": 1,
+   "activeProfileName": "Any",
+   "activeDirectory": "/data/media/movies",
+   "is4k": false,
+   "minimumAvailability": "announced",
+   "isDefault": true,
+   "externalUrl": "",
+   "syncEnabled": true,
+   "preventSearch": false,
+   "id": 0
+  }
+ ],
+ "sonarr": [
+  {
+   "name": "Sonarr",
+   "hostname": "sonarr",
+   "port": 8989,
+   "apiKey": "3d2fefedcdb246738a5aca1d66ee56bb",
+   "useSsl": false,
+   "baseUrl": "",
+   "activeProfileId": 1,
+   "activeProfileName": "Any",
+   "activeDirectory": "/data/media/tv",
+   "activeLanguageProfileId": 1,
+   "is4k": false,
+   "enableSeasonFolders": true,
+   "isDefault": true,
+   "externalUrl": "",
+   "syncEnabled": true,
+   "preventSearch": false,
+   "id": 0
+  }
+ ],
  "public": {
-  "initialized": false
+  "initialized": true
  },
  "notifications": {
   "agents": {

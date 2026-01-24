@@ -4554,6 +4554,646 @@
         }
       ],
       "summary": "Compose up failed"
+    },
+    {
+      "run_id": "5b289701-3f5e-4866-bdff-91c080272338",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /mnt/pool/data/media, created /home/ethan/eznas/test_appdata, created /mnt/scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /mnt/scratch/downloads, created /mnt/scratch/downloads/complete, created /mnt/scratch/downloads/incomplete, created /mnt/scratch/postproc, created /mnt/scratch/transcode, created /mnt/scratch/downloads/complete/movies, created /mnt/scratch/downloads/complete/tv, created /mnt/scratch/downloads/complete/anime, created /mnt/pool/data/media/media/movies, created /mnt/pool/data/media/media/tv, created /mnt/pool/data/media/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T02:53:35-05:00\" level=warning msg=\"No services to build\"\n Container prowlarr Creating \n Container qbittorrent Creating \n Container traefik Running \n Container jellyfin Creating \n Container qbittorrent Created \n Container radarr Creating \n Container pipeline-worker Recreate \n Container sonarr Creating \n Container jellyfin Created \n Container prowlarr Created \n Container radarr Created \n Container sonarr Created \n Container jellyseerr Creating \n Container jellyseerr Created \n Container pipeline-worker Recreated \n Container prowlarr Starting \n Container jellyfin Starting \n Container qbittorrent Starting \n Container jellyfin Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (8d83e886709ff030ce5903f564fcd8a88c3d92aa2f231dd5276673d3845f9ddb): Bind for 0.0.0.0:8077 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "236cd0e6-57f4-49c0-afbe-d967182f7a44",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T14:08:37-05:00\" level=warning msg=\"No services to build\"\n Container jellyfin Running \n Container traefik Running \n Container qbittorrent Starting \n Container prowlarr Starting \n Container qbittorrent Started \n Container pipeline-worker Starting \n Container sonarr Starting \n Container radarr Starting \n Container prowlarr Started \n Container pipeline-worker Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint radarr (45f7cc9172f12001feb25fdf9a1fa8ae1f521af85e33e7c7ee438002f8f83b79): Bind for 0.0.0.0:7878 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "7d47d1a6-03e5-474a-a47f-571c738b721c",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T14:16:42-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container jellyfin Running \n Container prowlarr Recreate \n Container qbittorrent Recreate \n Container prowlarr Recreated \n Container qbittorrent Recreated \n Container pipeline-worker Running \n Container prowlarr Starting \n Container qbittorrent Starting \n Container prowlarr Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (5a063676d2109640a448918b3ac0318082d273a212604c00261771a00c747cc0): Bind for :::8077 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "3973848b-25ae-4e1a-bb14-456fd673113d",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T14:19:30-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container pipeline-worker Running \n Container jellyfin Running \n Container prowlarr Running \n Container qbittorrent Starting \n Container qbittorrent Started \n Container radarr Starting \n Container sonarr Starting \n Container sonarr Started \n Container radarr Started \n Container jellyseerr Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint jellyseerr (b89eaa76ed7d7a88ec4b44db7329aed5590b2c5a8c90c84175fbc70dedd17930): Bind for :::5055 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "4a0a5be2-40d9-44fc-80fc-ca94ad791fa7",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T14:23:50-05:00\" level=warning msg=\"No services to build\"\n Container prowlarr Running \n Container traefik Running \n Container jellyfin Running \n Container qbittorrent Recreate \n Container qbittorrent Recreated \n Container pipeline-worker Running \n Container sonarr Recreate \n Container radarr Recreate \n Container sonarr Recreated \n Container radarr Recreated \n Container qbittorrent Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (c1fa1e92a6b12df1bd0bf36f9eefaa0e71fcf130c87db7ce9e836a659428de91): Bind for 0.0.0.0:8077 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "5fef0bc9-2e4b-4d96-9bd4-c3930a9f9258",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T14:53:41-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container prowlarr Running \n Container jellyfin Running \n Container pipeline-worker Running \n Container qbittorrent Starting \n Container qbittorrent Started \n Container sonarr Starting \n Container radarr Starting \n Container radarr Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint sonarr (4afd6aa220f74a7423a88f9f131f8887876352687db3fea544b8ffd95dc502de): Bind for 0.0.0.0:8989 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "944c8219-506a-4aad-9276-059271d62a1e",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no dev compose found"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-21T16:13:59-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container prowlarr Running \n Container jellyfin Running \n Container qbittorrent Recreate \n Container qbittorrent Recreated \n Container pipeline-worker Running \n Container radarr Running \n Container qbittorrent Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (ae7c4312725242060d620aec43762cbdc3cf28a40c3f4fa846daf91547707671): Bind for 0.0.0.0:8077 failed: port is already allocated"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "51bf2cb0-2a45-4d86-8319-06c962f21661",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no dev compose found"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8077"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8077 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "e60b51e9-46f9-4416-8819-6a7deb3b385e",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /mnt/pool/data/media, created /home/ethan/eznas/test_appdata, created /mnt/scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /mnt/scratch/downloads, created /mnt/scratch/downloads/complete, created /mnt/scratch/downloads/incomplete, created /mnt/scratch/postproc, created /mnt/scratch/transcode, created /mnt/scratch/downloads/complete/movies, created /mnt/scratch/downloads/complete/tv, created /mnt/scratch/downloads/complete/anime, created /mnt/pool/data/media/media/movies, created /mnt/pool/data/media/media/tv, created /mnt/pool/data/media/media/anime"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "stopped 4 dev service(s): qbittorrent, sonarr, jellyseerr, jellyfin"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8077"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8077 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "f3e8f742-9c03-4257-a391-5ff4cbcec908",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8077"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8077 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
     }
   ],
   "services": {
@@ -4599,7 +5239,17 @@
     },
     "jellyfin": {
       "admin_username": "admin",
-      "admin_password": "adminadmin"
+      "admin_password": "adminadmin",
+      "users": [
+        {
+          "username": "moviefan",
+          "password": "password123"
+        },
+        {
+          "username": "testuser123",
+          "password": "testpass123"
+        }
+      ]
     },
     "radarr": {
       "api_key": "11fb432866294d3188c41f4e00cc796b",
@@ -4612,9 +5262,17 @@
       "ui_password": "W-BZhmYrGWuokd7r"
     },
     "prowlarr": {
-      "api_key": "0ff26a4e4bd34b60b53f6ea0df706c23",
+      "api_key": "86ee42ddb2e94dc3a98f523bfcb454df",
       "ui_username": "prowlarr-admin",
-      "ui_password": "7IFSp0LAk6u9dr4z"
+      "ui_password": "wUcUbAR7pCfqGGUA"
+    }
+  },
+  "pipeline": {
+    "processed": {
+      "cb076aed75fc2d8590558b4b44a272910453c9f5": {
+        "status": "ok",
+        "timestamp": 1769204044
+      }
     }
   }
 }

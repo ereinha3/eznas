@@ -152,14 +152,14 @@ class ConfigRepository:
                 changes.append(f"created {directory}")
 
         categories = config.download_policy.categories
-        for suffix in (categories.radarr, categories.sonarr, categories.anime):
+        for suffix in (categories.radarr, categories.sonarr):
             dest = complete / suffix
             if not dest.exists():
                 dest.mkdir(parents=True, exist_ok=True)
                 changes.append(f"created {dest}")
 
         media_root = pool / "media"
-        for section in ("movies", "tv", "anime"):
+        for section in ("movies", "tv"):
             target = media_root / section
             if not target.exists():
                 target.mkdir(parents=True, exist_ok=True)

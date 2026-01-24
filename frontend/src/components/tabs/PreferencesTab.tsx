@@ -22,7 +22,6 @@ interface PreferencesTabProps {
 
 export function PreferencesTab({ config, onChange }: PreferencesTabProps) {
   const handleLanguageSelect = (
-    target: 'movies' | 'anime',
     field: 'keep_audio' | 'keep_subs',
     event: ChangeEvent<HTMLSelectElement>,
   ) => {
@@ -31,8 +30,8 @@ export function PreferencesTab({ config, onChange }: PreferencesTabProps) {
       ...config,
       media_policy: {
         ...config.media_policy,
-        [target]: {
-          ...config.media_policy[target],
+        movies: {
+          ...config.media_policy.movies,
           [field]: values,
         },
       },
@@ -42,15 +41,19 @@ export function PreferencesTab({ config, onChange }: PreferencesTabProps) {
   return (
     <>
       <h2>Media Language Policy</h2>
+      <p className="hint">
+        Original language is automatically preserved for foreign films and anime.
+        Select additional languages to keep below.
+      </p>
       <div className="grid two">
         <label htmlFor="movies-audio">
-          Movies / TV audio
+          Audio languages
           <select
             id="movies-audio"
             multiple
             size={6}
             value={config.media_policy.movies.keep_audio}
-            onChange={(e) => handleLanguageSelect('movies', 'keep_audio', e)}
+            onChange={(e) => handleLanguageSelect('keep_audio', e)}
           >
             {LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.code} value={opt.code}>
@@ -60,45 +63,13 @@ export function PreferencesTab({ config, onChange }: PreferencesTabProps) {
           </select>
         </label>
         <label htmlFor="movies-subs">
-          Movies / TV subtitles
+          Subtitle languages
           <select
             id="movies-subs"
             multiple
             size={6}
             value={config.media_policy.movies.keep_subs}
-            onChange={(e) => handleLanguageSelect('movies', 'keep_subs', e)}
-          >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.code} value={opt.code}>
-                {opt.label} ({opt.code})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor="anime-audio">
-          Anime audio
-          <select
-            id="anime-audio"
-            multiple
-            size={6}
-            value={config.media_policy.anime.keep_audio}
-            onChange={(e) => handleLanguageSelect('anime', 'keep_audio', e)}
-          >
-            {LANGUAGE_OPTIONS.map((opt) => (
-              <option key={opt.code} value={opt.code}>
-                {opt.label} ({opt.code})
-              </option>
-            ))}
-          </select>
-        </label>
-        <label htmlFor="anime-subs">
-          Anime subtitles
-          <select
-            id="anime-subs"
-            multiple
-            size={6}
-            value={config.media_policy.anime.keep_subs}
-            onChange={(e) => handleLanguageSelect('anime', 'keep_subs', e)}
+            onChange={(e) => handleLanguageSelect('keep_subs', e)}
           >
             {LANGUAGE_OPTIONS.map((opt) => (
               <option key={opt.code} value={opt.code}>

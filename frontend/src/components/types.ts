@@ -1,7 +1,6 @@
 export interface DownloadCategories {
   radarr: string
   sonarr: string
-  anime: string
 }
 
 export interface DownloadPolicy {
@@ -15,7 +14,6 @@ export interface MediaPolicyEntry {
 
 export interface MediaPolicy {
   movies: MediaPolicyEntry
-  anime: MediaPolicyEntry
 }
 
 export interface ServiceBaseConfig {

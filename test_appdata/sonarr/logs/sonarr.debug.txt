@@ -1701,3 +1701,944 @@
 2026-01-20 07:16:21.4|Info|DownloadDecisionMaker|No results found
 2026-01-20 07:16:21.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
 2026-01-20 07:16:21.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 07:17:21.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:22:21.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:27:21.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:31:21.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 07:31:21.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 07:31:21.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 07:31:21.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 07:31:21.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 07:32:21.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:37:21.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:42:21.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:46:21.7|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 07:46:21.7|Debug|XemProxy|Fetching alternate names
+2026-01-20 07:46:21.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 07:46:21.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 07:46:21.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 07:46:21.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 07:46:21.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 07:47:21.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:52:21.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 07:57:21.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:01:21.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:01:21.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:01:21.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:01:21.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:01:21.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:02:21.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:07:21.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:12:21.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:16:21.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:16:21.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:16:21.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:16:21.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:16:21.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:17:22.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:22:22.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:27:22.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:31:22.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:31:22.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:31:22.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:31:22.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:31:22.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:32:22.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:37:22.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:42:52.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:46:22.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 08:46:22.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 08:46:22.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 08:46:22.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 08:46:22.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 08:47:52.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:52:52.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 08:57:52.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:01:22.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:01:22.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:01:22.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:01:22.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:01:22.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:02:52.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:07:52.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:13:22.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:16:22.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:16:22.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:16:22.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:16:22.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:16:22.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:18:22.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:23:22.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:28:22.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:31:22.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:31:22.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:31:22.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:31:22.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:31:22.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:33:22.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:38:22.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:43:22.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:46:22.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 09:46:22.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 09:46:22.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 09:46:22.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 09:46:22.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 09:48:22.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:53:22.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 09:58:22.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:01:22.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:01:22.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:01:22.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:01:22.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:01:22.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:03:22.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:08:22.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:13:22.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:16:22.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:16:22.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:16:22.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:16:22.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:16:22.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:18:22.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:23:23.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:28:23.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:31:23.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:31:23.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:31:23.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:31:23.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:31:23.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:33:23.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:38:23.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:43:23.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:46:23.1|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 10:46:23.1|Debug|XemProxy|Fetching alternate names
+2026-01-20 10:46:23.1|Debug|InstallUpdateService|Checking for updates
+2026-01-20 10:46:23.5|Debug|InstallUpdateService|No update available
+2026-01-20 10:46:23.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 10:46:23.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 10:46:23.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 10:46:23.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 10:46:23.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 10:48:23.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:53:23.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 10:58:23.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:01:53.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:01:53.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:01:53.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:01:53.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:01:53.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:03:23.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:08:23.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:13:23.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:16:53.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:16:53.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:16:53.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:16:53.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:16:53.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:18:23.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:23:23.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:28:23.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:31:53.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:31:53.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:31:53.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:31:53.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:31:53.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:33:23.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:38:23.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:43:23.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:46:53.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 11:46:53.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 11:46:53.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 11:46:53.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 11:46:53.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 11:48:23.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:53:23.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 11:58:23.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:01:53.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:01:53.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:01:53.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:01:53.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:01:53.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:03:23.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:08:23.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:13:23.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:16:53.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:16:53.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:16:53.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:16:53.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:16:53.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:18:23.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:23:23.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:28:23.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:31:53.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:31:53.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:31:53.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:31:53.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:31:53.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:33:23.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:38:24.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:43:24.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:46:54.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 12:46:54.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 12:46:54.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 12:46:54.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 12:46:54.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 12:48:24.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:53:24.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 12:58:24.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:01:54.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:01:54.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:01:54.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:01:54.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:01:54.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:03:24.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:08:24.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:13:24.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:16:54.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:16:54.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:16:54.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:16:54.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:16:54.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:18:24.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:23:24.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:28:24.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:31:54.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:31:54.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:31:54.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:31:54.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:31:54.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:33:24.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:38:24.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:43:24.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:46:24.5|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 13:46:24.5|Debug|XemProxy|Fetching alternate names
+2026-01-20 13:46:54.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 13:46:54.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 13:46:54.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 13:46:54.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 13:46:54.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 13:48:24.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:53:24.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 13:58:24.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:01:54.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:01:54.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:01:54.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:01:54.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:01:54.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:03:24.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:08:24.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:13:24.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:16:54.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:16:54.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:16:54.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:16:54.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:16:54.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:18:24.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:23:24.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:28:24.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:31:54.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:31:54.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:31:54.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:31:54.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:31:54.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:33:24.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:38:24.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:43:24.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:46:54.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 14:46:54.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 14:46:54.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 14:46:54.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 14:46:54.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 14:48:24.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:53:24.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 14:58:25.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:01:55.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:01:55.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:01:55.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:01:55.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:01:55.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:03:25.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:08:25.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:13:25.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:16:55.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:16:55.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:16:55.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:16:55.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:16:55.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:18:25.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:23:25.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:28:25.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:31:55.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:31:55.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:31:55.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:31:55.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:31:55.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:33:25.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:38:25.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:43:25.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:46:55.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 15:46:55.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 15:46:55.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 15:46:55.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 15:46:55.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 15:48:25.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:53:25.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 15:58:25.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:01:55.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:01:55.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:01:55.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:01:55.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:01:55.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:03:25.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:08:25.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:13:25.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:16:55.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:16:55.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:16:55.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:16:55.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:16:55.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:18:25.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:23:25.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:28:25.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:31:55.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:31:55.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:31:55.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:31:55.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:31:55.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:33:25.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:38:25.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:43:25.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:46:25.8|Debug|InstallUpdateService|Checking for updates
+2026-01-20 16:46:25.8|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 16:46:25.8|Debug|XemProxy|Fetching alternate names
+2026-01-20 16:46:26.0|Debug|InstallUpdateService|No update available
+2026-01-20 16:46:55.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 16:46:55.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 16:46:55.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 16:46:55.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 16:46:55.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 16:48:25.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:53:25.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 16:58:25.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:01:55.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:01:55.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:01:55.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:01:55.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:01:55.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:03:25.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:08:25.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:13:26.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:16:56.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:16:56.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:16:56.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:16:56.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:16:56.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:18:26.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:23:26.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:28:26.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:31:56.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:31:56.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:31:56.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:31:56.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:31:56.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:33:26.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:38:26.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:43:26.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:46:56.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 17:46:56.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 17:46:56.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 17:46:56.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 17:46:56.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 17:48:26.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:53:26.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 17:58:26.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:01:56.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:01:56.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:01:56.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:01:56.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:01:56.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:03:26.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:08:26.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:13:26.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:16:56.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:16:56.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:16:56.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:16:56.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:16:56.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:18:26.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:23:26.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:28:26.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:31:56.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:31:56.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:31:56.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:31:56.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:31:56.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:33:26.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:38:26.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:43:26.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:46:56.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 18:46:56.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 18:46:56.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 18:46:56.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 18:46:56.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 18:48:26.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:53:26.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 18:58:26.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:01:56.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:01:56.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:01:56.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:01:56.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:01:56.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:03:26.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:08:26.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:13:26.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:16:56.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:16:56.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:16:56.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:16:56.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:16:56.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:18:26.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:23:26.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:28:26.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:31:56.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:31:56.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:31:56.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:31:56.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:31:56.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:33:26.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:38:27.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:43:27.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:46:27.0|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 19:46:27.0|Debug|XemProxy|Fetching alternate names
+2026-01-20 19:46:57.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 19:46:57.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 19:46:57.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 19:46:57.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 19:46:57.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 19:48:27.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:53:27.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 19:58:27.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:01:57.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:01:57.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:01:57.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:01:57.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:01:57.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:03:27.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:08:27.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:13:27.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:16:57.3|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:16:57.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:16:57.3|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:16:57.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:16:57.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:18:27.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:23:27.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:28:27.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:31:57.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:31:57.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:31:57.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:31:57.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:31:57.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:33:27.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:38:27.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:43:27.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:46:57.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 20:46:57.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 20:46:57.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 20:46:57.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 20:46:57.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 20:48:27.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:53:27.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 20:58:27.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:01:57.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:01:57.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:01:57.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:01:57.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:01:57.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:03:27.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:08:27.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:13:27.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:16:57.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:16:57.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:16:57.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:16:57.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:16:57.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:18:27.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:23:27.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:28:27.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:31:57.8|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:31:57.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:31:57.8|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:31:57.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:31:57.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:33:27.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:38:27.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:43:27.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:46:57.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 21:46:57.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 21:46:57.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 21:46:57.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 21:46:57.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 21:48:27.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:53:28.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 21:58:28.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:01:58.0|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:01:58.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:01:58.0|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:01:58.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:01:58.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:03:28.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:08:58.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:13:58.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:16:58.1|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:16:58.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:16:58.1|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:16:58.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:16:58.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:18:58.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:23:58.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:28:58.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:31:58.2|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:31:58.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:31:58.2|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:31:58.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:31:58.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:33:58.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:38:58.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:43:58.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:46:28.4|Debug|InstallUpdateService|Checking for updates
+2026-01-20 22:46:28.4|Info|SceneMappingService|Updating Scene mappings
+2026-01-20 22:46:28.4|Debug|XemProxy|Fetching alternate names
+2026-01-20 22:46:28.7|Debug|InstallUpdateService|No update available
+2026-01-20 22:46:58.4|Info|RssSyncService|Starting RSS Sync
+2026-01-20 22:46:58.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 22:46:58.4|Info|DownloadDecisionMaker|No results found
+2026-01-20 22:46:58.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 22:46:58.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 22:48:58.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:53:58.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 22:58:58.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:01:58.5|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:01:58.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:01:58.5|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:01:58.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:01:58.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:03:58.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:08:58.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:13:58.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:16:58.6|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:16:58.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:16:58.6|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:16:58.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:16:58.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:18:58.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:23:58.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:28:58.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:31:58.7|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:31:58.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:31:58.7|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:31:58.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:31:58.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:33:58.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:38:58.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:43:58.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:46:58.9|Info|RssSyncService|Starting RSS Sync
+2026-01-20 23:46:58.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-20 23:46:58.9|Info|DownloadDecisionMaker|No results found
+2026-01-20 23:46:58.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-20 23:46:58.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-20 23:48:58.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:53:58.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-20 23:58:58.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:01:59.0|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:01:59.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:01:59.0|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:01:59.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:01:59.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:03:59.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:08:59.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:13:59.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:16:59.1|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:16:59.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:16:59.1|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:16:59.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:16:59.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:18:59.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:23:59.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:28:59.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:31:59.2|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:31:59.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:31:59.2|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:31:59.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:31:59.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:33:59.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:38:59.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:43:59.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:46:59.3|Info|RssSyncService|Starting RSS Sync
+2026-01-21 00:46:59.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 00:46:59.3|Info|DownloadDecisionMaker|No results found
+2026-01-21 00:46:59.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 00:46:59.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 00:48:59.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:53:59.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 00:58:59.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:01:59.4|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:01:59.4|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:01:59.4|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:01:59.4|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:01:59.4|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:03:59.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:08:59.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:13:59.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:16:59.5|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:16:59.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:16:59.5|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:16:59.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:16:59.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:18:59.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:23:59.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:28:59.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:31:59.7|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:31:59.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:31:59.7|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:31:59.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:31:59.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:33:59.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:38:59.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:43:59.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:46:29.8|Info|SceneMappingService|Updating Scene mappings
+2026-01-21 01:46:29.8|Debug|XemProxy|Fetching alternate names
+2026-01-21 01:46:59.8|Info|RssSyncService|Starting RSS Sync
+2026-01-21 01:46:59.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 01:46:59.8|Info|DownloadDecisionMaker|No results found
+2026-01-21 01:46:59.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 01:46:59.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 01:48:59.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:53:59.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 01:58:59.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:01:59.9|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:01:59.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:01:59.9|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:01:59.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:01:59.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:03:59.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:08:59.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:14:00.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:17:00.0|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:17:00.0|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:17:00.0|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:17:00.0|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:17:00.0|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:19:00.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:24:00.0|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:29:00.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:32:00.1|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:32:00.1|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:32:00.1|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:32:00.1|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:32:00.1|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:34:00.1|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:39:00.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:44:00.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:47:00.2|Info|RssSyncService|Starting RSS Sync
+2026-01-21 02:47:00.2|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 02:47:00.2|Info|DownloadDecisionMaker|No results found
+2026-01-21 02:47:00.2|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 02:47:00.2|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 02:49:00.2|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:54:00.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 02:59:00.3|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:02:00.3|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:02:00.3|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:02:00.3|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:02:00.3|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:02:00.3|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:04:00.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:09:00.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:14:00.4|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:17:00.5|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:17:00.5|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:17:00.5|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:17:00.5|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:17:00.5|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:19:00.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:24:00.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:29:00.5|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:32:00.6|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:32:00.6|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:32:00.6|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:32:00.6|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:32:00.6|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:34:00.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:39:00.6|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:44:00.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:47:00.7|Info|RssSyncService|Starting RSS Sync
+2026-01-21 03:47:00.7|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 03:47:00.7|Info|DownloadDecisionMaker|No results found
+2026-01-21 03:47:00.7|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 03:47:00.7|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 03:49:00.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:54:00.7|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 03:54:30.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was not authenticated.
+2026-01-21 03:54:30.0|Info|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was challenged.
+2026-01-21 03:54:30.0|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 401.Unauthorized (17 ms)
+2026-01-21 03:55:30.1|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:55:30.1|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (43 ms)
+2026-01-21 03:55:30.1|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:55:30.2|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (19 ms)
+2026-01-21 03:55:30.2|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:55:30.2|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (3 ms)
+2026-01-21 03:55:30.2|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:55:30.2|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (2 ms)
+2026-01-21 03:55:37.9|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:55:37.9|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (3 ms)
+2026-01-21 03:56:25.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:25.0|Debug|Api|[GET] /api/v3/qualityprofile: 200.OK (1 ms)
+2026-01-21 03:56:25.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:25.0|Warn|SonarrErrorPipeline|Invalid request Validation failed: 
+ -- Path: Folder '/data/media/tv' is not writable by user 'abc'
+2026-01-21 03:56:25.0|Debug|Api|[POST] /api/v3/rootfolder: 400.BadRequest (51 ms)
+2026-01-21 03:56:25.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:25.0|Warn|SonarrErrorPipeline|Invalid request Validation failed: 
+ -- Path: Folder '/data/media/anime' is not writable by user 'abc'
+2026-01-21 03:56:25.0|Debug|Api|[POST] /api/v3/rootfolder: 400.BadRequest (2 ms)
+2026-01-21 03:56:25.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:25.0|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (0 ms)
+2026-01-21 03:56:38.4|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:38.4|Debug|Api|[GET] /api/v3/qualityprofile: 200.OK (1 ms)
+2026-01-21 03:56:38.4|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|Api|[POST] /api/v3/rootfolder: 201.Created (56 ms)
+2026-01-21 03:56:38.4|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|Api|[POST] /api/v3/rootfolder: 201.Created (6 ms)
+2026-01-21 03:56:38.4|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:38.4|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:38.4|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (3 ms)
+2026-01-21 03:56:56.7|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:56:56.7|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:56.7|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:56.7|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:56:56.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:56.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:56.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:56:56.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:56:56.7|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (4 ms)
+2026-01-21 03:57:32.6|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:57:32.6|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:57:32.6|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:57:32.6|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/qualityProfile?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:57:32.6|Debug|Api|[GET] /api/v3/tag?apikey=(removed) 200.OK (1 ms)
+2026-01-21 03:57:32.6|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:57:32.6|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:57:32.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:57:32.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:57:32.7|Debug|Api|[GET] /api/v3/rootfolder?apikey=(removed) 200.OK (13 ms)
+2026-01-21 03:57:56.4|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:57:56.4|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:58:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (36 ms)
+2026-01-21 03:58:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:00.1|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (49 ms)
+2026-01-21 03:58:01.6|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:01.6|Debug|Api|[GET] /api/v3/system/status?apikey=(removed) 200.OK (0 ms)
+2026-01-21 03:58:07.1|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was not authenticated.
+2026-01-21 03:58:12.7|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:12.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:58:12.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:58:12.7|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:58:12.7|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:58:12.7|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (4 ms)
+2026-01-21 03:58:18.2|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:18.2|Debug|Api|[HEAD] /api/v3/rootfolder: 405.MethodNotAllowed (0 ms)
+2026-01-21 03:58:23.1|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:58:23.1|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:58:23.1|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:58:23.1|Debug|RootFolderService|Generating list of unmapped folders
+2026-01-21 03:58:23.1|Debug|RootFolderService|0 unmapped folders detected.
+2026-01-21 03:58:23.1|Debug|Api|[GET] /api/v3/rootfolder: 200.OK (4 ms)
+2026-01-21 03:59:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:59:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 03:59:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 03:59:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (1 ms)
+2026-01-21 03:59:00.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:00:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:00:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (2 ms)
+2026-01-21 04:00:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:00:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:01:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:01:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:01:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:01:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:02:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:02:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (6 ms)
+2026-01-21 04:02:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:02:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:02:00.8|Info|RssSyncService|Starting RSS Sync
+2026-01-21 04:02:00.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 04:02:00.8|Info|DownloadDecisionMaker|No results found
+2026-01-21 04:02:00.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 04:02:00.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 04:03:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:03:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:03:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:03:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:04:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:04:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:04:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:04:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:04:00.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:05:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:05:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:05:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:05:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:06:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:06:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:06:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:06:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:07:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:07:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:07:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:07:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:08:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:08:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:08:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:08:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:09:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:09:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:09:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:09:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:09:00.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:10:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:10:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:10:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:10:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:11:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:11:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:11:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:11:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:12:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:12:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:12:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:12:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:13:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:13:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:13:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:13:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:14:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:14:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:14:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:14:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:14:00.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:15:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:15:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:15:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:15:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:16:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:16:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:16:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:16:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:17:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:17:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:17:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:17:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:17:00.8|Info|RssSyncService|Starting RSS Sync
+2026-01-21 04:17:00.8|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 04:17:00.8|Info|DownloadDecisionMaker|No results found
+2026-01-21 04:17:00.8|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 04:17:00.8|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 04:18:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:18:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (7 ms)
+2026-01-21 04:18:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:18:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (1 ms)
+2026-01-21 04:19:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:19:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:19:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:19:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:19:00.8|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:20:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:20:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:20:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:20:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:21:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:21:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:21:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:21:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:22:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:22:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (7 ms)
+2026-01-21 04:22:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:22:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (1 ms)
+2026-01-21 04:23:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:23:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:23:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:23:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:24:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:24:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:24:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:24:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:24:00.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:25:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:25:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:25:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:25:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:26:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:26:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:26:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:26:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:27:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:27:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (6 ms)
+2026-01-21 04:27:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:27:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:28:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:28:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:28:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:28:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:29:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:29:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:29:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:29:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:29:00.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:30:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:30:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:30:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (2 ms)
+2026-01-21 04:30:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:30:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:30:00.0|Debug|Api|[GET] /api/v3/series?apikey=(removed) 200.OK (27 ms)
+2026-01-21 04:31:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:31:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:31:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:31:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:32:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:32:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (4 ms)
+2026-01-21 04:32:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:32:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:32:00.9|Info|RssSyncService|Starting RSS Sync
+2026-01-21 04:32:00.9|Warn|FetchAndParseRssService|No available indexers. check your configuration.
+2026-01-21 04:32:00.9|Info|DownloadDecisionMaker|No results found
+2026-01-21 04:32:00.9|Info|RssSyncService|RSS Sync Completed. Reports found: 0, Reports grabbed: 0
+2026-01-21 04:32:00.9|Debug|PendingReleaseService|Removing failed releases from pending
+2026-01-21 04:33:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:33:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:33:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:33:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:34:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:34:00.0|Debug|Api|[POST] /api/v3/command?apikey=(removed) 201.Created (3 ms)
+2026-01-21 04:34:00.0|Debug|Sonarr.Http.Authentication.ApiKeyAuthenticationHandler|AuthenticationScheme: API was successfully authenticated.
+2026-01-21 04:34:00.0|Debug|Api|[GET] /api/v3/queue?apikey=(removed)&includeEpisode=true: 200.OK (0 ms)
+2026-01-21 04:34:00.9|Debug|ImportListSyncService|No import lists with automatic add enabled
+2026-01-21 04:34:13.4|Info|Microsoft.Hosting.Lifetime|Application is shutting down...
+2026-01-21 04:34:13.4|Info|ConsoleApp|Exiting main.

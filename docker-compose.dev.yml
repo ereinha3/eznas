@@ -71,6 +71,9 @@ services:
       - ./stack.yaml:/config/stack.yaml
       - ./state.json:/config/state.json
       - ${POOL_PATH:-./test_pool}:/data
+      # Match qBittorrent's internal save paths (it reports /downloads/... via API).
+      - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads
+      # Keep full scratch mounted as well (transcode/postproc helpers, debugging).
       - ${SCRATCH_PATH:-./test_scratch}:/scratch
     command: ["python", "-m", "orchestrator.pipeline.runner"]
     depends_on:

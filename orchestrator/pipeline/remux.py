@@ -22,6 +22,7 @@ class StreamInfo:
     has_video: bool
     audio_count: int
     subtitle_count: int
+    original_language: Optional[str] = None  # Language of first audio track
 
 
 def probe_streams(source: Path) -> Optional[StreamInfo]:
@@ -53,6 +54,7 @@ def probe_streams(source: Path) -> Optional[StreamInfo]:
         has_video = False
         audio_count = 0
         subtitle_count = 0
+        original_language: Optional[str] = None
 
         for stream in streams:
             codec_type = stream.get("codec_type", "")
@@ -63,6 +65,9 @@ def probe_streams(source: Path) -> Optional[StreamInfo]:
             elif codec_type == "audio":
                 audio_count += 1
                 audio_langs.add(lang)
+                # Capture the first audio track's language as the original
+                if original_language is None:
+                    original_language = lang
             elif codec_type == "subtitle":
                 subtitle_count += 1
                 subtitle_langs.add(lang)
@@ -73,6 +78,7 @@ def probe_streams(source: Path) -> Optional[StreamInfo]:
             has_video=has_video,
             audio_count=audio_count,
             subtitle_count=subtitle_count,
+            original_language=original_language,
         )
     except Exception:
         return None
@@ -112,6 +118,11 @@ def build_ffmpeg_command(
         # Always include 'und' (undefined) as fallback
         wanted_audio.add("und")
         wanted_subs.add("und")
+
+        # Automatically include the original language (first audio track)
+        # This ensures foreign films keep both English dub + original language
+        if stream_info.original_language:
+            wanted_audio.add(stream_info.original_language)
 
         # Map audio streams that exist and match our selection
         matched_audio = wanted_audio & stream_info.audio_languages

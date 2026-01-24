@@ -44,7 +44,7 @@ class QBittorrentClient(ServiceClient):
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://127.0.0.1:{qb_cfg.port}"
+        base_url = f"http://qbittorrent:{qb_cfg.port}"
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -166,13 +166,13 @@ class QBittorrentClient(ServiceClient):
         categories = config.download_policy.categories
         detail = (
             f"user={qb_state.get('username')} "
-            f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr},anime:{categories.anime}"
+            f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr}"
         )
         return EnsureOutcome(detail=detail, changed=update_result.changed or categories_changed)
 
     def verify(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://127.0.0.1:{qb_cfg.port}"
+        base_url = f"http://qbittorrent:{qb_cfg.port}"
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -242,7 +242,6 @@ class QBittorrentClient(ServiceClient):
             expected = {
                 config.download_policy.categories.radarr: "/downloads/complete/movies",
                 config.download_policy.categories.sonarr: "/downloads/complete/tv",
-                config.download_policy.categories.anime: "/downloads/complete/anime",
             }
             missing = []
             mismatched = []
@@ -411,7 +410,7 @@ class QBittorrentClient(ServiceClient):
             return False
 
         return self._wait_for_ready(
-            f"http://127.0.0.1:{config.services.qbittorrent.port}"
+            f"http://qbittorrent:{config.services.qbittorrent.port}"
         )
 
     def _restart_container(self) -> bool:
@@ -563,7 +562,6 @@ class QBittorrentClient(ServiceClient):
         mapping = {
             categories.radarr: "/downloads/complete/movies",
             categories.sonarr: "/downloads/complete/tv",
-            categories.anime: "/downloads/complete/anime",
         }
         changed = False
         for name, path in mapping.items():

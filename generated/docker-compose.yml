@@ -47,8 +47,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/qbittorrent:/config
-      - /home/ethan/eznas/test_scratch:/downloads
-      - /home/ethan/eznas/test_pool:/data
+      - /mnt/scratch:/downloads
+      - /mnt/pool/data:/data
 
     ports:
       - "8077:8080"
@@ -78,8 +78,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/radarr:/config
-      - /home/ethan/eznas/test_pool:/data
-      - /home/ethan/eznas/test_scratch:/scratch
+      - /mnt/pool/data:/data
+      - /mnt/scratch:/scratch
 
     ports:
       - "7878:7878"
@@ -113,8 +113,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/sonarr:/config
-      - /home/ethan/eznas/test_pool:/data
-      - /home/ethan/eznas/test_scratch:/scratch
+      - /mnt/pool/data:/data
+      - /mnt/scratch:/scratch
 
     ports:
       - "8989:8989"
@@ -215,11 +215,11 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/jellyfin:/config
-      - /home/ethan/eznas/test_scratch/transcode:/transcode
-      - /home/ethan/eznas/test_pool:/data
+      - /mnt/scratch/transcode:/transcode
+      - /mnt/pool/data:/data
 
     ports:
-      - "8096:8096"
+      - "8098:8096"
 
 
     labels:
@@ -237,16 +237,23 @@ services:
 
 
   pipeline-worker:
-    image: python:3.13-alpine
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: pipeline-worker
     restart: unless-stopped
     environment:
       - TZ=UTC
-    command: ["sh", "-c", "sleep 3600"]
+      - ORCH_ROOT=/config
+      - PIPELINE_INTERVAL=60
+    command: ["python", "-m", "orchestrator.pipeline.runner"]
     volumes:
-      - /home/ethan/eznas/test_pool:/data
-      - /home/ethan/eznas/test_scratch:/scratch
-      - /home/ethan/eznas/test_appdata/pipeline:/config
+      - /mnt/pool/data:/data
+      # Match qBittorrent's internal save paths (it reports /downloads/... via API).
+      - /mnt/scratch:/downloads
+      - /mnt/scratch:/scratch
+      # Mount config directory for stack.yaml and state.json
+      - ..:/config
     depends_on:
 
       - qbittorrent

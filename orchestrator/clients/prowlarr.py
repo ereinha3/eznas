@@ -39,24 +39,27 @@ class ProwlarrClient(ServiceClient):
 
         config_dir = Path(config.paths.appdata) / "prowlarr"
         config_dir.mkdir(parents=True, exist_ok=True)
-        api_key = prowlarr_secrets.get("api_key")
-        if not api_key:
-            if not wait_for_arr_config(config_dir):
-                return EnsureOutcome(
-                    detail=f"config.xml did not appear at {config_dir}",
-                    changed=False,
-                    success=False,
-                )
-            api_key = read_arr_api_key(config_dir)
-            if not api_key:
-                return EnsureOutcome(
-                    detail=f"Prowlarr API key missing in config.xml at {config_dir}",
-                    changed=False,
-                    success=False,
-                )
-            prowlarr_secrets["api_key"] = api_key
+        stored_api_key = prowlarr_secrets.get("api_key")
+        config_api_key: Optional[str] = None
+        if not wait_for_arr_config(config_dir):
+            return EnsureOutcome(
+                detail=f"config.xml did not appear at {config_dir}",
+                changed=False,
+                success=False,
+            )
+        config_api_key = read_arr_api_key(config_dir)
+        if not config_api_key:
+            return EnsureOutcome(
+                detail=f"Prowlarr API key missing in config.xml at {config_dir}",
+                changed=False,
+                success=False,
+            )
+
+        api_key = config_api_key
+        if stored_api_key != config_api_key:
+            prowlarr_secrets["api_key"] = config_api_key
             state_dirty = True
-            detail_messages.append("stored API key")
+            detail_messages.append("refreshed API key from config.xml")
 
         ui_username = prowlarr_secrets.get("ui_username")
         if not ui_username:
@@ -93,7 +96,7 @@ class ProwlarrClient(ServiceClient):
                 success=False,
             )
 
-        base_url = f"http://127.0.0.1:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -106,27 +109,79 @@ class ProwlarrClient(ServiceClient):
                 changed=changed,
                 success=False,
             )
-        try:
-            # Configure UI authentication
+        def _provision(active_api_key: str) -> None:
+            nonlocal changed, state_dirty
+            log.info(f"Provisioning Prowlarr with API key: {active_api_key[:8]}...")
+            # Configure UI authentication (first attempt)
             db_path = config_dir / "prowlarr.db"
-            host_changed = self._ensure_host_settings(
-                base_url=base_url,
-                port=prowlarr_cfg.port,
-                api_key=api_key,
-                db_path=db_path,
-                username=ui_username,
-                password=ui_password,
-            )
-            if host_changed:
-                detail_messages.append("ui credentials synced")
-                changed = True
+            try:
+                log.debug(f"Configuring host settings for Prowlarr at {base_url}")
+                host_changed = self._ensure_host_settings(
+                    base_url=base_url,
+                    port=prowlarr_cfg.port,
+                    api_key=active_api_key,
+                    db_path=db_path,
+                    username=ui_username,
+                    password=ui_password,
+                )
+                if host_changed:
+                    log.info("Host settings updated successfully")
+                    detail_messages.append("ui credentials synced")
+                    changed = True
+                else:
+                    log.debug("Host settings already configured")
+            except httpx.HTTPStatusError as exc:
+                # Re-raise auth errors so retry logic can catch them
+                if exc.response.status_code in (401, 403):
+                    raise
+                # For other HTTP errors, log and continue - we'll retry inside ArrAPI context
+                log.debug(f"Initial host settings config failed, will retry: {exc}")
+            except httpx.RequestError as exc:
+                # For connection errors, log and continue - we'll retry inside ArrAPI context
+                log.debug(f"Initial host settings config failed, will retry: {exc}")
 
-            with ArrAPI(base_url, api_key) as api:
+            with ArrAPI(base_url, active_api_key) as api:
                 status = api.get_json("/system/status")
                 version = status.get("version")
                 detail_messages.append(
                     f"online (v{version})" if version else "online"
                 )
+
+                # Configure UI authentication (fallback/verification inside API context)
+                log.debug("Checking host config inside API context")
+                host_config = api.get_json("/config/host")
+                current_auth_method = host_config.get("authenticationMethod")
+                log.debug(f"Current auth method: {current_auth_method}")
+                password_matches = arr_password_matches(db_path, ui_username, ui_password)
+                desired_method = "forms"
+                desired_required = "enabled"
+                analytics_flag = host_config.get("analyticsEnabled")
+                host_update_required = (
+                    host_config.get("authenticationMethod") != desired_method
+                    or host_config.get("authenticationRequired") != desired_required
+                    or host_config.get("username") != ui_username
+                    or bool(analytics_flag)
+                    or not password_matches
+                )
+                if host_update_required:
+                    log.info(f"Updating host settings: authMethod={current_auth_method} -> {desired_method}, username={ui_username}")
+                    payload = dict(host_config)
+                    payload.update(
+                        {
+                            "authenticationMethod": desired_method,
+                            "authenticationRequired": desired_required,
+                            "analyticsEnabled": False,
+                            "username": ui_username,
+                            "password": ui_password,
+                            "passwordConfirmation": ui_password,
+                        }
+                    )
+                    api.put_json("/config/host", payload)
+                    log.info("Host settings updated via API context")
+                    detail_messages.append("ui credentials synced")
+                    changed = True
+                else:
+                    log.debug("Host settings already correct, no update needed")
 
                 app_changes: List[Tuple[bool, str]] = []
                 if radarr_cfg.enabled and radarr_key:
@@ -164,17 +219,35 @@ class ProwlarrClient(ServiceClient):
                         prowlarr_state["indexers_populated"] = True
                         state_dirty = True
 
+        try:
+            _provision(api_key)
+        except httpx.HTTPStatusError as exc:
+            log.debug("Prowlarr API error", exc_info=True)
+            if exc.response.status_code in (401, 403):
+                refreshed_key = read_arr_api_key(config_dir)
+                if refreshed_key and refreshed_key != api_key:
+                    prowlarr_secrets["api_key"] = refreshed_key
+                    api_key = refreshed_key
+                    state_dirty = True
+                    detail_messages.append("reloaded API key after auth failure")
+                    try:
+                        _provision(api_key)
+                    except httpx.HTTPStatusError as retry_exc:
+                        log.debug("Prowlarr API error after retry", exc_info=True)
+                        return EnsureOutcome(
+                            detail=f"Prowlarr API error {retry_exc.response.status_code}: {retry_exc.response.text}",
+                            changed=changed,
+                            success=False,
+                        )
+            return EnsureOutcome(
+                detail=f"Prowlarr API error {exc.response.status_code}: {exc.response.text}",
+                changed=changed,
+                success=False,
+            )
         except httpx.RequestError as exc:
             log.debug("Prowlarr request error", exc_info=True)
             return EnsureOutcome(
                 detail=f"Prowlarr unreachable at {base_url}: {exc}",
-                changed=changed,
-                success=False,
-            )
-        except httpx.HTTPStatusError as exc:
-            log.debug("Prowlarr API error", exc_info=True)
-            return EnsureOutcome(
-                detail=f"Prowlarr API error {exc.response.status_code}: {exc.response.text}",
                 changed=changed,
                 success=False,
             )
@@ -205,7 +278,7 @@ class ProwlarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://127.0.0.1:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -326,7 +399,7 @@ class ProwlarrClient(ServiceClient):
             client.put("/config/host", json=payload).raise_for_status()
 
         ok, message = wait_for_http_ready(
-            f"http://127.0.0.1:{port}/api/v1/system/status",
+            f"http://prowlarr:{port}/api/v1/system/status",
             timeout=120.0,
             interval=5.0,
         )
@@ -474,7 +547,8 @@ class ProwlarrClient(ServiceClient):
             return []
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        # Use localhost with configured port to work when orchestrator is in a container
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key, timeout=30.0) as api:
@@ -524,7 +598,8 @@ class ProwlarrClient(ServiceClient):
             return []
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        # Use localhost with configured port to work when orchestrator is in a container
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -563,7 +638,8 @@ class ProwlarrClient(ServiceClient):
             return [], indexer_names
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        # Use localhost with configured port to work when orchestrator is in a container
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         added: List[str] = []
         failed: List[str] = []
@@ -658,7 +734,8 @@ class ProwlarrClient(ServiceClient):
             return False
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        # Use localhost with configured port to work when orchestrator is in a container
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -724,7 +801,9 @@ class ProwlarrClient(ServiceClient):
             log.warning("Prowlarr API key not available for auto-population")
             return [], [], []
 
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        prowlarr_cfg = config.services.prowlarr
+        # Use localhost with configured port to work when orchestrator is in a container
+        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
 
         # Check if language filtering is enabled
         language_filter = config.services.prowlarr.language_filter
@@ -797,10 +876,6 @@ class ProwlarrClient(ServiceClient):
         if hasattr(config, 'media_policy') and config.media_policy:
             movies_audio = config.media_policy.movies.keep_audio
             languages.update(movies_audio)
-
-            # Also include anime languages since some indexers focus on anime
-            anime_audio = config.media_policy.anime.keep_audio
-            languages.update(anime_audio)
 
         # Remove 'und' (undefined) from the set for filtering purposes
         # but we'll still match multi-language indexers

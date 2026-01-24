@@ -239,16 +239,23 @@ services:
 
 {% if services.pipeline.enabled %}
   pipeline-worker:
-    image: python:3.13-alpine
+    build:
+      context: ..
+      dockerfile: Dockerfile
     container_name: pipeline-worker
     restart: unless-stopped
     environment:
       - TZ={{ runtime.timezone }}
-    command: ["sh", "-c", "sleep 3600"]
+      - ORCH_ROOT=/config
+      - PIPELINE_INTERVAL={{ services.pipeline.interval | default(60) }}
+    command: ["python", "-m", "orchestrator.pipeline.runner"]
     volumes:
       - {{ paths.pool }}:/data
+      # Match qBittorrent's internal save paths (it reports /downloads/... via API).
+      - {{ scratch_host }}:/downloads
       - {{ scratch_host }}:/scratch
-      - {{ paths.appdata }}/pipeline:/config
+      # Mount config directory for stack.yaml and state.json
+      - ..:/config
     depends_on:
 {% if services.qbittorrent.enabled %}
       - qbittorrent

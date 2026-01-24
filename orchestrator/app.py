@@ -224,6 +224,19 @@ def _build_service_credentials(config: StackConfig, state: dict) -> ServiceCrede
         )
     )
 
+    # Jellyseerr credentials (uses same admin as Jellyfin for auth)
+    jellyseerr_secret = secrets.get("jellyseerr", {})
+    if jellyseerr_secret.get("admin_username"):
+        services_credentials.append(
+            ServiceCredential(
+                service="jellyseerr",
+                label="Jellyseerr (via Jellyfin)",
+                username=jellyseerr_secret.get("admin_username"),
+                password=jellyseerr_secret.get("admin_password"),
+                can_view_password=True,
+            )
+        )
+
     return ServiceCredentialsResponse(services=services_credentials)
 
 
@@ -338,8 +351,38 @@ def get_health() -> HealthResponse:
 
         # Use container name as host and internal port for container-to-container checks
         # Fall back to localhost if not in Docker or service unknown
+        # When orchestrator is in a container, try host.docker.internal (Docker Desktop)
+        # or gateway IP (Linux) to reach services on host ports
         internal_port = _SERVICE_INTERNAL_PORTS.get(name, port)
-        is_healthy = _check_port(name, internal_port) or _check_port("127.0.0.1", port)
+        is_healthy = (
+            _check_port(name, internal_port) 
+            or _check_port("127.0.0.1", port)
+            or _check_port("host.docker.internal", port)  # Docker Desktop
+        )
+        # If still not healthy and we're in Docker, try to get host gateway
+        if not is_healthy:
+            try:
+                import pathlib
+                if pathlib.Path("/.dockerenv").exists():
+                    # Try common gateway IPs for Docker bridge networks
+                    import subprocess
+                    result = subprocess.run(
+                        ["ip", "route", "show", "default"],
+                        capture_output=True,
+                        text=True,
+                        timeout=1.0
+                    )
+                    if result.returncode == 0:
+                        for line in result.stdout.splitlines():
+                            if "default via" in line:
+                                parts = line.split()
+                                if len(parts) >= 3:
+                                    gateway_ip = parts[2]
+                                    if _check_port(gateway_ip, port):
+                                        is_healthy = True
+                                        break
+            except Exception:
+                pass  # Fall back to previous result
         checks.append(HealthCheck(
             name=name,
             healthy=is_healthy,

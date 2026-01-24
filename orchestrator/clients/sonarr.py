@@ -80,7 +80,7 @@ class SonarrClient(ServiceClient):
         sonarr_cfg = config.services.sonarr
         db_path = config_dir / "sonarr.db"
 
-        base_url = f"http://127.0.0.1:{sonarr_cfg.port}/api/v3"
+        base_url = f"http://sonarr:{sonarr_cfg.port}/api/v3"
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -147,14 +147,6 @@ class SonarrClient(ServiceClient):
                 rf_changes.append((tv_changed, tv_msg))
                 if tv_id is not None:
                     sonarr_state["root_tv_id"] = tv_id
-                    state_dirty = True
-
-                anime_changed, anime_msg, anime_id = self._ensure_root_folder(
-                    api, config, "/data/media/anime", anime=True
-                )
-                rf_changes.append((anime_changed, anime_msg))
-                if anime_id is not None:
-                    sonarr_state["root_anime_id"] = anime_id
                     state_dirty = True
 
                 qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
@@ -224,7 +216,7 @@ class SonarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         sonarr_cfg = config.services.sonarr
-        base_url = f"http://127.0.0.1:{sonarr_cfg.port}/api/v3"
+        base_url = f"http://sonarr:{sonarr_cfg.port}/api/v3"
 
         qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
         desired_fields = {
@@ -324,7 +316,7 @@ class SonarrClient(ServiceClient):
             client.put("/config/host", json=payload).raise_for_status()
 
         ok, message = wait_for_http_ready(
-            f"http://127.0.0.1:{port}/api/v3/system/status",
+            f"http://sonarr:{port}/api/v3/system/status",
             timeout=120.0,
             interval=5.0,
         )
@@ -338,7 +330,6 @@ class SonarrClient(ServiceClient):
         api: ArrAPI,
         config: StackConfig,
         target: str,
-        anime: bool = False,
     ) -> Tuple[bool, str, Optional[int]]:
         existing = api.get_json("/rootfolder")
         for entry in existing:
@@ -351,9 +342,8 @@ class SonarrClient(ServiceClient):
         except httpx.HTTPStatusError:
             language_profiles = []
         default_quality = self._select_quality_profile_id(quality_profiles, config)
-        preferred_languages = (
-            config.media_policy.anime.keep_audio if anime else config.media_policy.movies.keep_audio
-        )
+        # Use movies policy for all content (original language detection handles foreign content)
+        preferred_languages = config.media_policy.movies.keep_audio
         default_language = self._select_language_profile_id(language_profiles, preferred_languages)
 
         payload: Dict[str, object] = {

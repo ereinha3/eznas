@@ -29,7 +29,6 @@ class PathConfig(BaseModel):
 class DownloadCategories(BaseModel):
     radarr: str = "movies"
     sonarr: str = "tv"
-    anime: str = "anime"
 
 
 class DownloadPolicy(BaseModel):
@@ -43,12 +42,6 @@ class MediaPolicyEntry(BaseModel):
 
 class MediaPolicy(BaseModel):
     movies: MediaPolicyEntry = Field(default_factory=MediaPolicyEntry)
-    anime: MediaPolicyEntry = Field(
-        default_factory=lambda: MediaPolicyEntry(
-            keep_audio=["jpn", "eng", "und"],
-            keep_subs=["eng"],
-        )
-    )
 
 
 class QualityPreset(str, Enum):
