@@ -585,6 +585,45 @@ def render_compose(config: StackConfig) -> RenderResult:
     return result
 
 
+@app.post("/api/build")
+def build_orchestrator_image() -> JSONResponse:
+    """Build the orchestrator Docker image."""
+    import subprocess
+
+    try:
+        # Build the image
+        result = subprocess.run(
+            ["docker", "build", "-t", "nas_orchestrator-orchestrator:latest", "-f", "Dockerfile", "."],
+            cwd=str(ROOT_DIR),
+            capture_output=True,
+            text=True,
+            timeout=600,
+        )
+
+        if result.returncode == 0:
+            return JSONResponse({
+                "ok": True,
+                "message": "Image built successfully",
+                "output": result.stdout[-1000:] if len(result.stdout) > 1000 else result.stdout,
+            })
+        else:
+            return JSONResponse({
+                "ok": False,
+                "message": "Build failed",
+                "error": result.stderr,
+            }, status_code=500)
+    except subprocess.TimeoutExpired:
+        return JSONResponse({
+            "ok": False,
+            "message": "Build timed out after 10 minutes",
+        }, status_code=500)
+    except Exception as e:
+        return JSONResponse({
+            "ok": False,
+            "message": f"Build error: {str(e)}",
+        }, status_code=500)
+
+
 @app.post("/api/apply", response_model=ApplyResponse)
 def apply_stack(config: StackConfig) -> ApplyResponse:
     """Run the converge engine steps for the supplied configuration."""

@@ -2,19 +2,20 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import {
   applyConfig,
-  fetchStatus,
   loadConfig,
-  renderConfig,
   saveConfig,
   validateConfig,
   fetchServiceCredentials,
-  updateQbCredentials,
-  createJellyfinUser,
   fetchHealth,
 } from './api'
-import { ConfigForm } from './components/ConfigForm'
-import { Sidebar } from './components/Sidebar'
-import type { CredentialsResponse, HealthResponse, ServiceStatus, StackConfig } from './components/types'
+import { LeftNavigation, type PageKey } from './components/LeftNavigation'
+import { DashboardPage } from './pages/DashboardPage'
+import { SetupPage } from './pages/SetupPage'
+import { ServicesPage } from './pages/ServicesPage'
+import { ProxyPage } from './pages/ProxyPage'
+import { MediaPolicyPage } from './pages/MediaPolicyPage'
+import { LogsPage } from './pages/LogsPage'
+import type { CredentialsResponse, HealthResponse, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
   version: 1,
@@ -60,18 +61,14 @@ const DEFAULT_CONFIG: StackConfig = {
   users: [],
 }
 
-type TabKey = 'setup' | 'services' | 'preferences'
-
 function App() {
   const [config, setConfig] = useState<StackConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState('')
   const [statusVariant, setStatusVariant] = useState<'info' | 'success' | 'error'>('info')
   const [logEntries, setLogEntries] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus[]>([])
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
-  const [credentialsLoading, setCredentialsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabKey>('setup')
+  const [activePage, setActivePage] = useState<PageKey>('dashboard')
   const [health, setHealth] = useState<HealthResponse | null>(null)
 
 
@@ -81,15 +78,12 @@ function App() {
   }
 
   const loadCredentials = async () => {
-    setCredentialsLoading(true)
     try {
       const data = await fetchServiceCredentials()
       setCredentials(data)
     } catch (error: any) {
       setStatusMessage(error.message || 'Failed to load credentials.', 'error')
       throw error
-    } finally {
-      setCredentialsLoading(false)
     }
   }
 
@@ -104,42 +98,8 @@ function App() {
     }
   }
 
-  const refreshStatus = async () => {
-    try {
-      const data = await fetchStatus()
-      setServiceStatus(data.services)
-    } catch (error) {
-      // backend may not expose /api/status yet: ignore
-    }
-  }
-
-  const handleUpdateQbCredentials = async (username: string, password: string) => {
-    try {
-      await updateQbCredentials({ username, password })
-      setStatusMessage('qBittorrent credentials updated.', 'success')
-      const updated = await loadConfig()
-      setConfig(updated)
-      await loadCredentials()
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to update qBittorrent credentials.', 'error')
-      throw error
-    }
-  }
-
-  const handleAddJellyfinUser = async (username: string, password: string) => {
-    try {
-      await createJellyfinUser({ username, password })
-      setStatusMessage(`Created Jellyfin user ${username}.`, 'success')
-      await loadCredentials()
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to create Jellyfin user.', 'error')
-      throw error
-    }
-  }
-
   useEffect(() => {
     refreshConfig()
-    refreshStatus()
   }, [])
 
   useEffect(() => {
@@ -182,15 +142,19 @@ function App() {
     }
   }
 
-  const handleRender = async (cfg: StackConfig) => {
+  const handleBuild = async () => {
     try {
-      const result = await renderConfig(cfg)
-      setStatusMessage(
-        `Rendered compose to ${result.compose_path} and env to ${result.env_path}`,
-        'success',
-      )
+      setStatusMessage('Building orchestrator image...', 'info')
+      const response = await fetch('/api/build', { method: 'POST' })
+      const result = await response.json()
+
+      if (result.ok) {
+        setStatusMessage('Image built successfully!', 'success')
+      } else {
+        setStatusMessage(`Build failed: ${result.message}`, 'error')
+      }
     } catch (error: any) {
-      setStatusMessage(error.message || 'Render failed', 'error')
+      setStatusMessage(error.message || 'Build failed', 'error')
     }
   }
 
@@ -231,7 +195,6 @@ function App() {
           eventSource?.close()
           setIsApplying(false)
           refreshConfig()
-          refreshStatus()
         }
       })
 
@@ -240,7 +203,6 @@ function App() {
         setStatusMessage('Apply stream ended unexpectedly.', 'error')
         eventSource?.close()
         setIsApplying(false)
-        refreshStatus()
         loadCredentials()
       })
     } catch (error: any) {
@@ -273,62 +235,75 @@ function App() {
         </div>
       </header>
 
-      <main className="grid-layout">
-        <section className="panel">
-          <nav className="tab-nav" role="tablist" aria-label="Configuration sections">
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'setup'}
-              className={`tab-button${activeTab === 'setup' ? ' active' : ''}`}
-              onClick={() => setActiveTab('setup')}
-            >
-              Setup
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'services'}
-              className={`tab-button${activeTab === 'services' ? ' active' : ''}`}
-              onClick={() => setActiveTab('services')}
-            >
-              Services
-            </button>
-            <button
-              type="button"
-              role="tab"
-              aria-selected={activeTab === 'preferences'}
-              className={`tab-button${activeTab === 'preferences' ? ' active' : ''}`}
-              onClick={() => setActiveTab('preferences')}
-            >
-              Preferences
-            </button>
-          </nav>
-          <ConfigForm
-            config={config}
-            onChange={setConfig}
-            onLoad={refreshConfig}
-            onSave={handleSave}
-            onValidate={handleValidate}
-            onRender={handleRender}
-            onApply={handleApply}
-            status={status}
-            statusVariant={statusVariant}
-            isApplying={isApplying}
-            activeTab={activeTab}
-          />
-        </section>
-        <Sidebar
-          config={config}
-          serviceStatus={serviceStatus}
-          health={health}
-          credentials={credentials}
-          credentialsLoading={credentialsLoading}
-          logEntries={logEntries}
-          onRefreshCredentials={loadCredentials}
-          onUpdateQb={handleUpdateQbCredentials}
-          onAddJellyfinUser={handleAddJellyfinUser}
-        />
+      <main className="main-layout">
+        <div className="left-nav-column">
+          <LeftNavigation activePage={activePage} onNavigate={setActivePage} />
+        </div>
+
+        <div className="page-container">
+          {status && (
+            <div className={`status-alert ${statusVariant}`}>
+              {status}
+            </div>
+          )}
+
+          {activePage === 'dashboard' && (
+            <DashboardPage
+              config={config}
+              health={health}
+            />
+          )}
+          {activePage === 'setup' && (
+            <SetupPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+            />
+          )}
+          {activePage === 'services' && (
+            <ServicesPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+              credentials={credentials}
+              health={health}
+            />
+          )}
+          {activePage === 'proxy' && (
+            <ProxyPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+              onNavigate={setActivePage}
+            />
+          )}
+          {activePage === 'media-policy' && (
+            <MediaPolicyPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+            />
+          )}
+          {activePage === 'logs' && (
+            <LogsPage logEntries={logEntries} />
+          )}
+        </div>
       </main>
     </div>
   )

@@ -47,8 +47,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/qbittorrent:/config
-      - /mnt/scratch:/downloads
-      - /mnt/pool/data:/data
+      - /mnt/pool/media:/downloads
+      - /mnt/pool:/data
 
     ports:
       - "8077:8080"
@@ -78,8 +78,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/radarr:/config
-      - /mnt/pool/data:/data
-      - /mnt/scratch:/scratch
+      - /mnt/pool:/data
+      - /mnt/pool/media:/scratch
 
     ports:
       - "7878:7878"
@@ -113,8 +113,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/sonarr:/config
-      - /mnt/pool/data:/data
-      - /mnt/scratch:/scratch
+      - /mnt/pool:/data
+      - /mnt/pool/media:/scratch
 
     ports:
       - "8989:8989"
@@ -215,8 +215,8 @@ services:
       - TZ=UTC
     volumes:
       - /home/ethan/eznas/test_appdata/jellyfin:/config
-      - /mnt/scratch/transcode:/transcode
-      - /mnt/pool/data:/data
+      - /mnt/pool/media/transcode:/transcode
+      - /mnt/pool:/data
 
     ports:
       - "8098:8096"
@@ -248,12 +248,12 @@ services:
       - PIPELINE_INTERVAL=60
     command: ["python", "-m", "orchestrator.pipeline.runner"]
     volumes:
-      - /mnt/pool/data:/data
+      - /mnt/pool:/data
       # Match qBittorrent's internal save paths (it reports /downloads/... via API).
-      - /mnt/scratch:/downloads
-      - /mnt/scratch:/scratch
+      - /mnt/pool/media:/downloads
+      - /mnt/pool/media:/scratch
       # Mount config directory for stack.yaml and state.json
-      - ..:/config
+      - /home/ethan/eznas/nas_orchestrator:/config
     depends_on:
 
       - qbittorrent

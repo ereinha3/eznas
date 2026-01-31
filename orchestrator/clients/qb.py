@@ -19,6 +19,7 @@ import httpx
 from ..models import StackConfig
 from ..storage import ConfigRepository
 from .base import EnsureOutcome, ServiceClient
+from .util import get_service_config_dir
 
 
 class AuthenticationError(Exception):
@@ -44,7 +45,7 @@ class QBittorrentClient(ServiceClient):
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{qb_cfg.port}"
+        base_url = f"http://qbittorrent:{self.INTERNAL_PORT}"
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -172,7 +173,7 @@ class QBittorrentClient(ServiceClient):
 
     def verify(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{qb_cfg.port}"
+        base_url = f"http://qbittorrent:{self.INTERNAL_PORT}"
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -359,7 +360,7 @@ class QBittorrentClient(ServiceClient):
         username: str,
         password: str,
     ) -> bool:
-        config_dir = Path(config.paths.appdata) / "qbittorrent"
+        config_dir = get_service_config_dir("qbittorrent", config)
         config_dir.mkdir(parents=True, exist_ok=True)
         candidate_paths = [
             config_dir / "qBittorrent" / "qBittorrent.conf",
@@ -410,7 +411,7 @@ class QBittorrentClient(ServiceClient):
             return False
 
         return self._wait_for_ready(
-            f"http://qbittorrent:{config.services.qbittorrent.port}"
+            f"http://qbittorrent:{self.INTERNAL_PORT}"
         )
 
     def _restart_container(self) -> bool:
@@ -545,6 +546,15 @@ class QBittorrentClient(ServiceClient):
             "scan_dirs": {complete_path: 0},
             "web_ui_username": desired_username,
             "web_ui_password": target_password,
+            # Authentication bypass for local networks (LAN, Tailscale, Docker)
+            "bypass_local_auth": True,
+            "bypass_auth_subnet_whitelist_enabled": True,
+            "bypass_auth_subnet_whitelist": "10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16\n100.64.0.0/10\nfd00::/8",
+            # Disable security features that block remote access
+            "web_ui_host_header_validation_enabled": False,
+            "web_ui_csrf_protection_enabled": False,
+            "web_ui_clickjacking_protection_enabled": False,
+            "web_ui_secure_cookie_enabled": False,
         }
 
         response = client.post(

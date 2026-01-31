@@ -10,7 +10,14 @@ import httpx
 
 from .arr import ArrAPI, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
-from .util import arr_password_matches, read_arr_api_key, read_arr_port, read_arr_url_base, wait_for_arr_config
+from .util import (
+    arr_password_matches,
+    get_service_config_dir,
+    read_arr_api_key,
+    read_arr_port,
+    read_arr_url_base,
+    wait_for_arr_config,
+)
 from ..models import StackConfig, IndexerSchema, IndexerInfo
 from ..storage import ConfigRepository
 
@@ -37,7 +44,7 @@ class ProwlarrClient(ServiceClient):
         changed = False
         state_dirty = False
 
-        config_dir = Path(config.paths.appdata) / "prowlarr"
+        config_dir = get_service_config_dir("prowlarr", config)
         config_dir.mkdir(parents=True, exist_ok=True)
         stored_api_key = prowlarr_secrets.get("api_key")
         config_api_key: Optional[str] = None
@@ -96,7 +103,7 @@ class ProwlarrClient(ServiceClient):
                 success=False,
             )
 
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -278,7 +285,7 @@ class ProwlarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -305,14 +312,14 @@ class ProwlarrClient(ServiceClient):
         missing = []
         mismatched = []
         for display_name, service_name in expected_apps:
-            prowlarr_config_dir = Path(config.paths.appdata) / "prowlarr"
+            prowlarr_config_dir = get_service_config_dir("prowlarr", config)
             prowlarr_url = self._build_service_url(
                 service_name="prowlarr",
                 host="prowlarr",
                 config_dir=prowlarr_config_dir,
                 default_port=self.INTERNAL_PORT,
             )
-            service_config_dir = Path(config.paths.appdata) / service_name
+            service_config_dir = get_service_config_dir(service_name, config)
             service_url = self._build_service_url(
                 service_name=service_name,
                 host=service_name,
@@ -417,7 +424,7 @@ class ProwlarrClient(ServiceClient):
         api_key: str,
     ) -> Tuple[bool, str]:
         implementation = display_name
-        prowlarr_config_dir = Path(config.paths.appdata) / "prowlarr"
+        prowlarr_config_dir = get_service_config_dir("prowlarr", config)
         prowlarr_url = self._build_service_url(
             service_name="prowlarr",
             host="prowlarr",
@@ -425,7 +432,7 @@ class ProwlarrClient(ServiceClient):
             default_port=self.INTERNAL_PORT,
         )
 
-        service_config_dir = Path(config.paths.appdata) / service_name
+        service_config_dir = get_service_config_dir(service_name, config)
         service_url = self._build_service_url(
             service_name=service_name,
             host=service_name,
@@ -548,7 +555,7 @@ class ProwlarrClient(ServiceClient):
 
         prowlarr_cfg = config.services.prowlarr
         # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key, timeout=30.0) as api:
@@ -599,7 +606,7 @@ class ProwlarrClient(ServiceClient):
 
         prowlarr_cfg = config.services.prowlarr
         # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -639,7 +646,7 @@ class ProwlarrClient(ServiceClient):
 
         prowlarr_cfg = config.services.prowlarr
         # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         added: List[str] = []
         failed: List[str] = []
@@ -735,7 +742,7 @@ class ProwlarrClient(ServiceClient):
 
         prowlarr_cfg = config.services.prowlarr
         # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -803,7 +810,7 @@ class ProwlarrClient(ServiceClient):
 
         prowlarr_cfg = config.services.prowlarr
         # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{prowlarr_cfg.port}/api/v1"
+        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
 
         # Check if language filtering is enabled
         language_filter = config.services.prowlarr.language_filter

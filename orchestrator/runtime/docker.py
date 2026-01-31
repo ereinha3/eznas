@@ -64,21 +64,21 @@ class DockerComposeRunner:
     ) -> Tuple[bool, str, List[str]]:
         """
         Stop dev compose services that conflict with enabled services.
-        
+
         This works both when orchestrator runs locally and in a container.
         When in a container, it stops dev containers directly by name since
         the compose file may not be accessible.
-        
+
         Args:
             enabled_services: List of service names that will be started (e.g., ['jellyfin', 'qbittorrent'])
             project_root: Optional project root path (for finding docker-compose.dev.yml when running locally).
-        
+
         Returns:
             Tuple of (success, detail_message, stopped_services)
         """
         if not enabled_services:
             return True, "no services to check", []
-        
+
         # Map service names to their dev container names
         service_to_dev_container = {
             "qbittorrent": "qbittorrent-dev",
@@ -87,6 +87,7 @@ class DockerComposeRunner:
             "prowlarr": "prowlarr-dev",
             "jellyseerr": "jellyseerr-dev",
             "jellyfin": "jellyfin-dev",
+            "pipeline": "pipeline-worker",  # Old pipeline-worker container
         }
         
         # Find which dev containers are actually running

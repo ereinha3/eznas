@@ -209,6 +209,16 @@ class ApplyRunner:
         )
 
     def _wait_for_services(self, run_id: str, events: List[StageEvent], config: StackConfig) -> bool:
+        # Map service names to their internal container ports
+        # These are the ports the containers listen on internally, not the host-mapped ports
+        internal_ports = {
+            "qbittorrent": 8080,
+            "radarr": 7878,
+            "sonarr": 8989,
+            "prowlarr": 9696,
+            "jellyseerr": 5055,
+            "jellyfin": 8096,
+        }
         service_configs = {
             "qbittorrent": config.services.qbittorrent,
             "radarr": config.services.radarr,
@@ -221,8 +231,10 @@ class ApplyRunner:
             if not svc.enabled or not svc.port:
                 continue
             stage = f"wait.{name}"
-            self._record(run_id, events, stage, "started", f"port={svc.port}")
-            ok, detail = self._wait_for_port("127.0.0.1", svc.port, timeout=180)
+            internal_port = internal_ports.get(name, svc.port)
+            self._record(run_id, events, stage, "started", f"container={name}:{internal_port}")
+            # Use Docker container name for internal networking
+            ok, detail = self._wait_for_port(name, internal_port, timeout=180)
             self._record(run_id, events, stage, "ok" if ok else "failed", detail)
             if not ok:
                 return False

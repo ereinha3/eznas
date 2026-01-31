@@ -107,39 +107,65 @@ def build_ffmpeg_command(
     # Probe the source to find available streams
     stream_info = probe_streams(source)
 
-    # Always include the main video track.
+    # Always include the main video track
     args.extend(["-map", "0:v:0?"])
 
-    if stream_info:
-        # We know what streams exist, so map only those that match our selection
-        wanted_audio = set(_normalized(selection.audio))
-        wanted_subs = set(_normalized(selection.subtitles))
+    # Build language filters
+    keep_audio_langs = set(_normalized(selection.audio))
+    keep_sub_langs = set(_normalized(selection.subtitles))
 
-        # Always include 'und' (undefined) as fallback
-        wanted_audio.add("und")
-        wanted_subs.add("und")
+    # Check if "forced" is specified for subtitles (it's a special flag, not a language)
+    include_forced_subs = "forced" in keep_sub_langs
+    if include_forced_subs:
+        keep_sub_langs.discard("forced")  # Remove it from language list
 
-        # Automatically include the original language (first audio track)
-        # This ensures foreign films keep both English dub + original language
-        if stream_info.original_language:
-            wanted_audio.add(stream_info.original_language)
+    # Always include original language audio if available
+    if stream_info and stream_info.original_language:
+        keep_audio_langs.add(stream_info.original_language.lower())
 
-        # Map audio streams that exist and match our selection
-        matched_audio = wanted_audio & stream_info.audio_languages
-        for lang in sorted(matched_audio):
-            args.extend(["-map", f"0:a:m:language:{lang}"])
+    # Get detailed stream info to filter by index
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v", "quiet",
+                "-print_format", "json",
+                "-show_streams",
+                str(source),
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            streams = data.get("streams", [])
 
-        # If no language-matched audio, include the first audio track as fallback
-        if not matched_audio and stream_info.audio_count > 0:
-            args.extend(["-map", "0:a:0"])
+            # Map audio streams by index
+            for stream in streams:
+                if stream.get("codec_type") == "audio":
+                    lang = stream.get("tags", {}).get("language", "und").lower()
+                    if lang in keep_audio_langs or lang == "und":
+                        idx = stream.get("index")
+                        args.extend(["-map", f"0:{idx}"])
 
-        # Map subtitle streams that exist and match our selection
-        matched_subs = wanted_subs & stream_info.subtitle_languages
-        for lang in sorted(matched_subs):
-            args.extend(["-map", f"0:s:m:language:{lang}"])
-    else:
-        # Fallback: couldn't probe, copy all streams
-        args.extend(["-map", "0:a", "-map", "0:s?"])
+            # Map subtitle streams by index
+            for stream in streams:
+                if stream.get("codec_type") == "subtitle":
+                    lang = stream.get("tags", {}).get("language", "und").lower()
+                    disposition = stream.get("disposition", {})
+                    is_forced = disposition.get("forced", 0) == 1
+
+                    # Include if: language matches OR (forced flag is set AND user wants forced subs)
+                    if lang in keep_sub_langs or (is_forced and include_forced_subs):
+                        idx = stream.get("index")
+                        args.extend(["-map", f"0:{idx}"])
+        else:
+            # Fallback: copy all streams if probing fails
+            args.extend(["-map", "0:a?", "-map", "0:s?"])
+    except Exception:
+        # Fallback: copy all streams if filtering fails
+        args.extend(["-map", "0:a?", "-map", "0:s?"])
 
     args.extend(
         [

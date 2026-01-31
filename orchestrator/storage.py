@@ -13,12 +13,18 @@ from .models import RunRecord, StageEvent, StackConfig
 class ConfigRepository:
     """File-backed persistence for stack configuration and runtime state."""
 
-    def __init__(self, root: Path) -> None:
+    def __init__(self, root: Path, read_only: bool = False) -> None:
         self.root = root
         self.stack_path = root / "stack.yaml"
         self.state_path = root / "state.json"
         self.generated_dir = root / "generated"
-        self.generated_dir.mkdir(parents=True, exist_ok=True)
+        self.read_only = read_only
+        if not read_only:
+            try:
+                self.generated_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                # Read-only filesystem, skip directory creation
+                pass
 
     def load_stack(self) -> StackConfig:
         if not self.stack_path.exists():

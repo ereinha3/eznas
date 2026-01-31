@@ -11,7 +11,7 @@ import httpx
 from .arr import ArrAPI, describe_changes, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
 from .qb import QBittorrentClient
-from .util import arr_password_matches, read_arr_api_key, wait_for_arr_config
+from .util import arr_password_matches, get_service_config_dir, read_arr_api_key, wait_for_arr_config
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -24,6 +24,7 @@ class SonarrClient(ServiceClient):
     """Provision and configure Sonarr via its HTTP API."""
 
     name = "sonarr"
+    INTERNAL_PORT = 8989
 
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
@@ -40,7 +41,7 @@ class SonarrClient(ServiceClient):
         changed = False
         state_dirty = False
 
-        config_dir = Path(config.paths.appdata) / "sonarr"
+        config_dir = get_service_config_dir("sonarr", config)
         config_dir.mkdir(parents=True, exist_ok=True)
         api_key = sonarr_secrets.get("api_key")
         if not api_key:
@@ -80,7 +81,7 @@ class SonarrClient(ServiceClient):
         sonarr_cfg = config.services.sonarr
         db_path = config_dir / "sonarr.db"
 
-        base_url = f"http://sonarr:{sonarr_cfg.port}/api/v3"
+        base_url = f"http://sonarr:{self.INTERNAL_PORT}/api/v3"
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -149,6 +150,14 @@ class SonarrClient(ServiceClient):
                     sonarr_state["root_tv_id"] = tv_id
                     state_dirty = True
 
+                # Disable Completed Download Handling - Pipeline handles all imports
+                dl_config = api.get_json("/config/downloadclient")
+                if dl_config.get("enableCompletedDownloadHandling"):
+                    dl_config["enableCompletedDownloadHandling"] = False
+                    api.put_json("/config/downloadclient", dl_config)
+                    detail_messages.append("disabled auto-import (pipeline handles imports)")
+                    changed = True
+
                 qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
                 qb_password = qb_secrets.get("password", config.services.qbittorrent.password)
                 prev_dl_username = sonarr_state.get("download_client_username")
@@ -216,7 +225,7 @@ class SonarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         sonarr_cfg = config.services.sonarr
-        base_url = f"http://sonarr:{sonarr_cfg.port}/api/v3"
+        base_url = f"http://sonarr:{self.INTERNAL_PORT}/api/v3"
 
         qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
         desired_fields = {
@@ -225,7 +234,7 @@ class SonarrClient(ServiceClient):
             "useSsl": False,
             "urlBase": "",
             "username": qb_username,
-            "category": config.download_policy.categories.sonarr,
+            "tvCategory": config.download_policy.categories.sonarr,
         }
 
         try:
@@ -374,7 +383,7 @@ class SonarrClient(ServiceClient):
             "urlBase": "",
             "username": username,
             "password": password,
-            "category": category,
+            "tvCategory": category,
         }
 
         clients = api.get_json("/downloadclient")
@@ -385,7 +394,7 @@ class SonarrClient(ServiceClient):
             current = {f["name"]: f.get("value") for f in client.get("fields", [])}
             host_ok = current.get("host") == "qbittorrent"
             port_ok = str(current.get("port")) == str(QBittorrentClient.INTERNAL_PORT)
-            category_ok = current.get("category") == category
+            category_ok = current.get("tvCategory") == category
             url_base_ok = (current.get("urlBase") or "") == ""
             username_ok = current.get("username") == username
             password_ok = previous_password is not None and previous_password == password
@@ -395,6 +404,7 @@ class SonarrClient(ServiceClient):
 
             updated = dict(client)
             updated["enable"] = True
+            updated["removeCompletedDownloads"] = False  # Pipeline handles imports
             updated["fields"] = set_field_values(client.get("fields", []), desired_fields)
             api.put_json(f"/downloadclient/{client_id}", updated)
             return True, f"updated download client {client_id}", client_id
@@ -419,7 +429,7 @@ class SonarrClient(ServiceClient):
             "configContract": template.get("configContract", "QbittorrentSettings"),
             "enable": True,
             "priority": 1,
-            "removeCompletedDownloads": True,
+            "removeCompletedDownloads": False,  # Pipeline handles imports
             "fields": set_field_values(template.get("fields", []), desired_fields),
             "tags": [],
         }

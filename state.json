@@ -5194,38 +5194,2888 @@
         }
       ],
       "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "b4073a68-6c8b-41a9-ba48-343fbd692e43",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-24T22:50:35-05:00\" level=warning msg=\"Docker Compose requires buildx plugin to be installed\"\n Image nas_media_stack-pipeline-worker Building \nunable to prepare context: unable to evaluate symlinks in Dockerfile path: lstat /config/Dockerfile: no such file or directory"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "367857e0-2c03-400e-9c99-7e5b522f3dd7",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-25T13:20:40-05:00\" level=warning msg=\"No services to build\"\n Volume nas_media_stack_orchestrator_config Creating \n Volume nas_media_stack_orchestrator_config Created \n Container traefik Running \n Container jellyfin Running \n Container prowlarr Running \n Container qbittorrent Running \n Container radarr Recreate \n Container pipeline-worker Creating \n Container sonarr Recreate \n Container pipeline-worker Error response from daemon: Conflict. The container name \"/pipeline-worker\" is already in use by container \"51ea3802315cdce09859d2f419c798713e15d219a4c4a5a425a28602efac1096\". You have to remove (or rename) that container to be able to reuse that name. \nError response from daemon: Conflict. The container name \"/pipeline-worker\" is already in use by container \"51ea3802315cdce09859d2f419c798713e15d219a4c4a5a425a28602efac1096\". You have to remove (or rename) that container to be able to reuse that name."
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "f67e4bc3-b200-4876-9ef8-52e16d18d510",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8077"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8077 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "3f443b95-16c3-43f2-ba37-5f03ed79f079",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8077"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8077 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "8bce5c76-4bb4-47a4-b132-a287b4ed3915",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-25T13:42:08-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container prowlarr Running \n Container qbittorrent Recreate \n Container jellyfin Running \n Container qbittorrent Recreated \n Container radarr Running \n Container sonarr Running \n Container jellyseerr Running \n Container pipeline-worker Creating \n Container pipeline-worker Created \n Container qbittorrent Starting \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint qbittorrent (3d618f732e52befe6b98732ce4bb491c0c77718ed9f7ab820c41620637fcc441): failed to bind host port 0.0.0.0:8080/tcp: address already in use"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "8e2bcb5a-202b-4e00-82a8-29c38fcda0b7",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8081"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8081 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "91ad4988-2832-4b4f-96c5-156fc39dd8e2",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "port=8075"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "failed",
+          "detail": "timeout waiting for 127.0.0.1:8075 ([Errno 111] Connection refused)"
+        }
+      ],
+      "summary": "Service readiness failed"
+    },
+    {
+      "run_id": "a5b1ff6e-0ae5-448b-bc7e-ddf66fe8bd52",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v6.0.4.10291); ui credentials synced; root folder ready /data/media/movies; updated download client 1"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v4.0.16.2944); ui credentials synced; root folder ready /data/media/tv; updated download client 1"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "config.xml did not appear at /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Verification failed"
+    },
+    {
+      "run_id": "1565db4f-5534-45f6-84a0-ebc594c8464a",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v6.0.4.10291); ui credentials synced; root folder ready /data/media/movies; updated download client 1"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v4.0.16.2944); ui credentials synced; root folder ready /data/media/tv; updated download client 1"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "config.xml did not appear at /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Verification failed"
+    },
+    {
+      "run_id": "0d98d21c-4ce6-4f9b-8fb0-bb071da626d8",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v6.0.4.10291); ui credentials synced; root folder ready /data/media/movies; updated download client 1"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "ui credentials synced; online (v4.0.16.2944); ui credentials synced; root folder ready /data/media/tv; updated download client 1"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "failed",
+          "detail": "config.xml did not appear at /home/ethan/eznas/test_appdata/prowlarr"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "failed",
+          "detail": "api key missing"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Verification failed"
+    },
+    {
+      "run_id": "cb487e96-c095-4ad1-982a-565f779e9532",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        }
+      ]
+    },
+    {
+      "run_id": "dbab8367-5930-42f1-9231-10f69a60824d",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; updated download client 1"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; updated download client 1"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application; added 2 indexers"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "failed",
+          "detail": "download client mismatch: category=None"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Verification failed"
+    },
+    {
+      "run_id": "12ca5185-c5fb-4e00-87a9-a300bf83d1bd",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; updated download client 1"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyfin, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "aade05c3-40f5-4558-8112-7e5d009daca4",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; download client ready"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyfin, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "2605ecaa-c378-4396-81a4-44ab34222d1c",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; download client ready"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyfin, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "1bcea0fd-f0b1-4789-943d-f1e1a66d772a",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /mnt/pool/media, created /mnt/pool/media/downloads, created /mnt/pool/media/downloads/complete, created /mnt/pool/media/downloads/incomplete, created /mnt/pool/media/postproc, created /mnt/pool/media/transcode, created /mnt/pool/media/downloads/complete/movies, created /mnt/pool/media/downloads/complete/tv, created /mnt/pool/media/movies, created /mnt/pool/media/tv"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-30T16:53:54-05:00\" level=warning msg=\"No services to build\"\n Container jellyfin Creating \n Container prowlarr Creating \n Container traefik Creating \n Container qbittorrent Creating \n Container prowlarr Error response from daemon: Conflict. The container name \"/prowlarr\" is already in use by container \"bc08a391aded48889f742f4a9b229ff4db7f006614ac807d9a8b4744989c9818\". You have to remove (or rename) that container to be able to reuse that name. \nError response from daemon: Conflict. The container name \"/prowlarr\" is already in use by container \"bc08a391aded48889f742f4a9b229ff4db7f006614ac807d9a8b4744989c9818\". You have to remove (or rename) that container to be able to reuse that name."
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "576981e9-1623-4809-b06c-cf9ab97df934",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-30T17:02:09-05:00\" level=warning msg=\"No services to build\"\n Container traefik Creating \n Container qbittorrent Creating \n Container prowlarr Creating \n Container jellyfin Creating \n Container prowlarr Created \n Container jellyfin Created \n Container traefik Created \n Container qbittorrent Created \n Container pipeline-worker Creating \n Container sonarr Creating \n Container radarr Creating \n Container sonarr Created \n Container radarr Created \n Container jellyseerr Creating \n Container pipeline-worker Created \n Container jellyseerr Created \n Container qbittorrent Starting \n Container prowlarr Starting \n Container jellyfin Starting \n Container traefik Starting \n Container prowlarr Started \n Container qbittorrent Started \n Container radarr Starting \n Container pipeline-worker Starting \n Container sonarr Starting \n Container jellyfin Started \n Container sonarr Started \n Container radarr Started \n Container pipeline-worker Started \nError response from daemon: failed to set up container networking: driver failed programming external connectivity on endpoint traefik (f04fa6587bbf1a3eb7cc8ca460baecf61a6ed552a6797093340002b65290abb5): failed to bind host port 0.0.0.0:8001/tcp: address already in use"
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "cbf282bf-513f-4647-a49e-aad62aa75bc9",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; download client ready"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyfin, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "f87f13e1-09b6-4c43-9db9-887cbf5b7d1f",
+      "ok": false,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "failed",
+          "detail": "time=\"2026-01-30T17:21:53-05:00\" level=warning msg=\"No services to build\"\n Container traefik Running \n Container prowlarr Running \n Container jellyfin Running \n Container qbittorrent Running \n Container sonarr Running \n Container radarr Running \n Container pipeline-worker Creating \n Container jellyseerr Running \n Container pipeline-worker Error response from daemon: Conflict. The container name \"/pipeline-worker\" is already in use by container \"f1ceb4b7691b4ac9eebdb21babacebdd41e2290062112c6a0459b395f7807cd2\". You have to remove (or rename) that container to be able to reuse that name. \nError response from daemon: Conflict. The container name \"/pipeline-worker\" is already in use by container \"f1ceb4b7691b4ac9eebdb21babacebdd41e2290062112c6a0459b395f7807cd2\". You have to remove (or rename) that container to be able to reuse that name."
+        }
+      ],
+      "summary": "Compose up failed"
+    },
+    {
+      "run_id": "06a6b589-446a-4398-88c8-bfdfddf03dc9",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; download client ready"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "ok",
+          "detail": "libraries=ready"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyfin, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "aef7db7d-230c-418a-8dd5-328e757312f0",
+      "ok": true,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=present"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /mnt/pool/media/media/movies, created /mnt/pool/media/media/tv"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "ok",
+          "detail": "no conflicting dev services running"
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "deploy.compose",
+          "status": "ok",
+          "detail": "ok"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "started",
+          "detail": "container=qbittorrent:8080"
+        },
+        {
+          "stage": "wait.qbittorrent",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "started",
+          "detail": "container=radarr:7878"
+        },
+        {
+          "stage": "wait.radarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "started",
+          "detail": "container=sonarr:8989"
+        },
+        {
+          "stage": "wait.sonarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "started",
+          "detail": "container=prowlarr:9696"
+        },
+        {
+          "stage": "wait.prowlarr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "started",
+          "detail": "container=jellyseerr:5055"
+        },
+        {
+          "stage": "wait.jellyseerr",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "started",
+          "detail": "container=jellyfin:8096"
+        },
+        {
+          "stage": "wait.jellyfin",
+          "status": "ok",
+          "detail": "ready"
+        },
+        {
+          "stage": "configure.qbittorrent",
+          "status": "ok",
+          "detail": "user=admin categories=radarr:movies,sonarr:tv"
+        },
+        {
+          "stage": "configure.radarr",
+          "status": "ok",
+          "detail": "online (v6.0.4.10291); root folder ready /data/media/movies; download client ready"
+        },
+        {
+          "stage": "configure.sonarr",
+          "status": "ok",
+          "detail": "online (v4.0.16.2944); root folder ready /data/media/tv; download client ready"
+        },
+        {
+          "stage": "configure.prowlarr",
+          "status": "ok",
+          "detail": "online (v2.3.0.5236); updated Radarr application; updated Sonarr application"
+        },
+        {
+          "stage": "configure.jellyfin",
+          "status": "failed",
+          "detail": "Server error '503 Service Unavailable' for url 'http://jellyfin:8096/System/Info/Public'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/503"
+        },
+        {
+          "stage": "configure.jellyseerr",
+          "status": "ok",
+          "detail": "radarr=ready; sonarr=ready"
+        },
+        {
+          "stage": "configure.pipeline",
+          "status": "ok",
+          "detail": "skipped (no ensure required)"
+        },
+        {
+          "stage": "verify.qbittorrent",
+          "status": "ok",
+          "detail": "auth=ok (admin); categories=ok"
+        },
+        {
+          "stage": "verify.radarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.sonarr",
+          "status": "ok",
+          "detail": "download client ok"
+        },
+        {
+          "stage": "verify.prowlarr",
+          "status": "ok",
+          "detail": "applications ok"
+        },
+        {
+          "stage": "verify.jellyfin",
+          "status": "ok",
+          "detail": "skipped (no verification)"
+        },
+        {
+          "stage": "verify.jellyseerr",
+          "status": "ok",
+          "detail": "settings ok"
+        },
+        {
+          "stage": "verify.pipeline",
+          "status": "ok",
+          "detail": "skipped (no client)"
+        }
+      ],
+      "summary": "Rendered compose bundle; configured qbittorrent, radarr, sonarr, prowlarr, jellyseerr; verified qbittorrent, radarr, sonarr, prowlarr, jellyseerr"
+    },
+    {
+      "run_id": "47214bff-a1da-40ed-bacf-e087136e58a3",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "run_id": "ba64e569-6f3d-4367-9d79-60161aa97931",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "run_id": "f6bc867d-b5be-40ed-b07f-4f39dc39e05c",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=socket_only"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "created /mnt/pool/media, created /home/ethan/eznas/test_appdata, created /mnt/scratch, created /home/ethan/eznas/test_appdata/qbittorrent, created /home/ethan/eznas/test_appdata/radarr, created /home/ethan/eznas/test_appdata/sonarr, created /home/ethan/eznas/test_appdata/prowlarr, created /home/ethan/eznas/test_appdata/jellyseerr, created /home/ethan/eznas/test_appdata/jellyfin, created /home/ethan/eznas/test_appdata/pipeline, created /home/ethan/eznas/test_appdata/traefik, created /home/ethan/eznas/test_appdata/traefik/certs, created /mnt/scratch/downloads, created /mnt/scratch/downloads/complete, created /mnt/scratch/downloads/incomplete, created /mnt/scratch/postproc, created /mnt/scratch/transcode, created /mnt/scratch/downloads/complete/movies, created /mnt/scratch/downloads/complete/tv, created /mnt/pool/media/media/movies, created /mnt/pool/media/media/tv"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "jellyseerr admin username set, jellyseerr admin password set, jellyfin admin username set, jellyfin admin password set"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "run_id": "61e8884d-43a4-43c9-9b3c-7721fc8f82dd",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=socket_only"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        }
+      ]
+    },
+    {
+      "run_id": "985ddf89-e7b0-493e-abfc-d5a117818a66",
+      "ok": null,
+      "events": [
+        {
+          "stage": "validate",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "validate",
+          "status": "ok",
+          "detail": "paths.pool=ok, paths.scratch=ok, paths.appdata=ok, ui.port=ok, proxy.http_port=ok, proxy.https_port=ok, services.qbittorrent.port=ok, services.radarr.port=ok, services.sonarr.port=ok, services.prowlarr.port=ok, services.jellyseerr.port=ok, services.jellyfin.port=ok, services.pipeline.port=optional, docker.cli=socket_only"
+        },
+        {
+          "stage": "prepare.paths",
+          "status": "ok",
+          "detail": "directories ready"
+        },
+        {
+          "stage": "prepare.proxy",
+          "status": "ok",
+          "detail": "tls assets ready (jellyfin.home.lab, jellyseer.home.lab, prowlarr.home.lab, radarr.home.lab, sonarr.home.lab, torrent.home.lab)"
+        },
+        {
+          "stage": "prepare.secrets",
+          "status": "ok",
+          "detail": "secrets unchanged"
+        },
+        {
+          "stage": "render",
+          "status": "started",
+          "detail": null
+        },
+        {
+          "stage": "render",
+          "status": "ok",
+          "detail": "docker-compose.yml,.env,7 secrets"
+        },
+        {
+          "stage": "persist",
+          "status": "ok",
+          "detail": "/config/stack.yaml"
+        },
+        {
+          "stage": "prepare.conflicts",
+          "status": "started",
+          "detail": null
+        }
+      ]
     }
   ],
   "services": {
     "qbittorrent": {
       "username": "admin",
       "password": "adminadmin"
-    },
-    "jellyseerr": {
-      "admin_password": "adminadmin",
-      "admin_username": "admin"
-    },
-    "jellyfin": {
-      "admin_password": "adminadmin",
-      "admin_username": "admin"
-    },
-    "radarr": {
-      "api_key": "11fb432866294d3188c41f4e00cc796b",
-      "root_folder_id": 1,
-      "download_client_id": 1,
-      "download_client_username": "admin",
-      "download_client_password": "admin12345"
-    },
-    "sonarr": {
-      "api_key": "dc3403b8f06d4a0287ea7aeacca6d90f",
-      "root_tv_id": 1,
-      "root_anime_id": 2,
-      "download_client_id": 1,
-      "download_client_username": "admin",
-      "download_client_password": "admin12345"
-    },
-    "prowlarr": {
-      "api_key": "86ee42ddb2e94dc3a98f523bfcb454df"
     }
   },
   "secrets": {
@@ -5239,40 +8089,10 @@
     },
     "jellyfin": {
       "admin_username": "admin",
-      "admin_password": "adminadmin",
-      "users": [
-        {
-          "username": "moviefan",
-          "password": "password123"
-        },
-        {
-          "username": "testuser123",
-          "password": "testpass123"
-        }
-      ]
-    },
-    "radarr": {
-      "api_key": "11fb432866294d3188c41f4e00cc796b",
-      "ui_username": "radarr-admin",
-      "ui_password": "G06mF1g5C5mXBg_J"
-    },
-    "sonarr": {
-      "api_key": "dc3403b8f06d4a0287ea7aeacca6d90f",
-      "ui_username": "sonarr-admin",
-      "ui_password": "W-BZhmYrGWuokd7r"
-    },
-    "prowlarr": {
-      "api_key": "86ee42ddb2e94dc3a98f523bfcb454df",
-      "ui_username": "prowlarr-admin",
-      "ui_password": "wUcUbAR7pCfqGGUA"
+      "admin_password": "adminadmin"
     }
   },
   "pipeline": {
-    "processed": {
-      "cb076aed75fc2d8590558b4b44a272910453c9f5": {
-        "status": "ok",
-        "timestamp": 1769204044
-      }
-    }
+    "processed": {}
   }
 }

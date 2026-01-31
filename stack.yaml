@@ -1,6 +1,6 @@
 version: 1
 paths:
-  pool: /mnt/pool/data
+  pool: /mnt/pool/media
   scratch: /mnt/scratch
   appdata: /home/ethan/eznas/test_appdata
 services:
@@ -40,7 +40,7 @@ proxy:
   enabled: true
   image: traefik:v3.1
   http_port: 80
-  https_port: 8001
+  https_port: 9443
   dashboard: true
   additional_args: []
 download_policy:

@@ -11,6 +11,7 @@ import httpx
 
 from .arr import wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
+from .util import get_service_config_dir
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -28,13 +29,14 @@ class JellyseerrClient(ServiceClient):
     """Provision Jellyseerr via HTTP API."""
 
     name = "jellyseerr"
+    INTERNAL_PORT = 5055
 
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://jellyseerr:{svc_cfg.port}"
+        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
         status_url = f"{base_url}/api/v1/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -122,7 +124,7 @@ class JellyseerrClient(ServiceClient):
             return EnsureOutcome(detail="api key missing", changed=False, success=False)
 
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://jellyseerr:{svc_cfg.port}"
+        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
         headers = {"Accept": "application/json", "X-Api-Key": api_key}
 
         try:
@@ -237,9 +239,8 @@ class JellyseerrClient(ServiceClient):
         return _EnsureResult(changed=True, detail="startup=completed")
 
     def _read_api_key(self, config: StackConfig) -> Optional[str]:
-        settings_path = (
-            Path(config.paths.appdata) / "jellyseerr" / "settings.json"
-        )
+        config_dir = get_service_config_dir("jellyseerr", config)
+        settings_path = config_dir / "settings.json"
         try:
             data = json.loads(settings_path.read_text())
         except FileNotFoundError:
