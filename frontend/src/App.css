@@ -15,6 +15,33 @@ body {
     #0f172a;
   color: #e2e8f0;
   min-height: 100vh;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Login page fixes */
+.login-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  padding: 20px;
+  z-index: 1000;
+}
+
+.login-box {
+  background: #1e1e2e;
+  border-radius: 8px;
+  padding: 40px;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  margin: 0 auto;
 }
 
 .app-shell {
@@ -84,6 +111,54 @@ body {
   text-transform: uppercase;
   color: #94a3b8;
   font-weight: 600;
+}
+
+/* User Controls in Header */
+.user-controls {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-info .username {
+  color: #e2e8f0;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.sudo-badge {
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  font-size: 0.65rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.logout-button {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(248, 113, 113, 0.15);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.logout-button:hover {
+  background: rgba(248, 113, 113, 0.25);
+  transform: translateY(-1px);
 }
 
 @media (min-width: 768px) {

@@ -152,14 +152,17 @@ export function ServicesPage({
       )}
 
       <div className="services-grid">
-        {SERVICE_ORDER.map((key) => (
-          <ServiceCard
-            key={key}
-            serviceKey={key}
-            service={config.services[key]}
-            credentials={credentials?.services.find((c) => c.service === key)}
-            health={health?.services.find((h) => h.name === key)}
-            duplicatePorts={duplicatePorts}
+        {SERVICE_ORDER.map((key) => {
+          // For *arr services, look for UI credentials (e.g., "radarr-ui" instead of "radarr")
+          const credKey = ['radarr', 'sonarr', 'prowlarr'].includes(key) ? `${key}-ui` : key
+          return (
+            <ServiceCard
+              key={key}
+              serviceKey={key}
+              service={config.services[key]}
+              credentials={credentials?.services.find((c) => c.service === credKey)}
+              health={health?.services.find((h) => h.name === key)}
+              duplicatePorts={duplicatePorts}
             errors={errors}
             touched={touched}
             onUpdate={(patch) => handleServiceUpdate(key, patch)}
@@ -168,7 +171,7 @@ export function ServicesPage({
             onServiceProxy={(value) => handleServiceProxy(key, value)}
             onRefreshIndexers={key === 'prowlarr' && !refreshing ? handleRefreshIndexers : undefined}
           />
-        ))}
+        )})}
       </div>
 
       <ActionBar

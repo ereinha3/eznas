@@ -5,6 +5,20 @@ Sonarr, Prowlarr, Jellyseerr, Jellyfin, optional Traefik). A FastAPI backend
 renders docker compose from templates, brings services up, configures them via
 API, and performs a post-apply verification pass to confirm state.
 
+**🚀 New here?** Check out the [Getting Started Guide](GETTING_STARTED.md) for step-by-step setup instructions!
+
+## Quick Start
+
+```bash
+# Clone and bootstrap
+git clone <repository-url>
+cd nas_orchestrator
+docker compose -f docker-compose.bootstrap.yml up -d
+
+# Access the UI at http://localhost:8443
+# Login with default credentials shown on the login page
+```
+
 ## Progress Report (Detailed)
 
 ### What Is Working

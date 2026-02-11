@@ -223,7 +223,7 @@ class JellyseerrClient(ServiceClient):
                 jellyfin_cfg = config.services.jellyfin
                 payload = {
                     "hostname": "jellyfin",
-                    "port": jellyfin_cfg.port,
+                    "port": 8096,  # JellyfinClient.INTERNAL_PORT (container-to-container)
                     "useSsl": False,
                     "urlBase": "",
                     "serverType": 2,  # MediaServerType.JELLYFIN
@@ -268,7 +268,7 @@ class JellyseerrClient(ServiceClient):
         if not config.services.radarr.enabled:
             return _EnsureResult(False, "radarr=skipped (disabled)")
 
-        radarr_secrets = state.get("services", {}).get("radarr", {})
+        radarr_secrets = state.get("secrets", {}).get("radarr", {})
         api_key = radarr_secrets.get("api_key")
         if not api_key:
             return _EnsureResult(False, "radarr=skipped (no api key)")
@@ -332,7 +332,7 @@ class JellyseerrClient(ServiceClient):
         if not config.services.sonarr.enabled:
             return _EnsureResult(False, "sonarr=skipped (disabled)")
 
-        sonarr_secrets = state.get("services", {}).get("sonarr", {})
+        sonarr_secrets = state.get("secrets", {}).get("sonarr", {})
         api_key = sonarr_secrets.get("api_key")
         if not api_key:
             return _EnsureResult(False, "sonarr=skipped (no api key)")

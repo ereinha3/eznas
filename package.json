@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@types/node": "^25.2.2",
+    "vite": "^7.3.1"
+  }
+}

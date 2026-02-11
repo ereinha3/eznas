@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import {
   applyConfig,
   loadConfig,
@@ -10,11 +11,12 @@ import {
 } from './api'
 import { LeftNavigation, type PageKey } from './components/LeftNavigation'
 import { DashboardPage } from './pages/DashboardPage'
-import { SetupPage } from './pages/SetupPage'
+import { EnhancedSetupWizard } from './components/EnhancedSetupWizard'
 import { ServicesPage } from './pages/ServicesPage'
 import { ProxyPage } from './pages/ProxyPage'
 import { MediaPolicyPage } from './pages/MediaPolicyPage'
 import { LogsPage } from './pages/LogsPage'
+import { LoginPage } from './pages/LoginPage'
 import type { CredentialsResponse, HealthResponse, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
@@ -61,7 +63,9 @@ const DEFAULT_CONFIG: StackConfig = {
   users: [],
 }
 
-function App() {
+// Main authenticated app content
+function AuthenticatedApp() {
+  const { logout, user, sudoActive } = useAuth()
   const [config, setConfig] = useState<StackConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState('')
   const [statusVariant, setStatusVariant] = useState<'info' | 'success' | 'error'>('info')
@@ -70,7 +74,6 @@ function App() {
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
   const [activePage, setActivePage] = useState<PageKey>('dashboard')
   const [health, setHealth] = useState<HealthResponse | null>(null)
-
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     setStatus(message)
@@ -217,6 +220,10 @@ function App() {
     setLogEntries((prev) => [...prev, line])
   }
 
+  const handleLogout = async () => {
+    await logout()
+  }
+
   return (
     <div className="app-shell">
       <header className="hero">
@@ -232,6 +239,15 @@ function App() {
             <span className="pill">Live apply logs</span>
             <span className="pill">Language-aware pipeline</span>
           </div>
+        </div>
+        <div className="user-controls">
+          <div className="user-info">
+            <span className="username">{user?.username}</span>
+            {sudoActive && <span className="sudo-badge">SUDO</span>}
+          </div>
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
         </div>
       </header>
 
@@ -306,6 +322,71 @@ function App() {
         </div>
       </main>
     </div>
+  )
+}
+
+// Wrapper that handles auth state and routing
+function AppWithAuth() {
+  const { isAuthenticated, isLoading, checkSession } = useAuth()
+  const [defaultCreds, setDefaultCreds] = useState<{ username: string; password: string } | undefined>(undefined)
+
+  useEffect(() => {
+    // Check if first-time setup is needed
+    const checkSetup = async () => {
+      try {
+        const response = await fetch('/api/setup/status')
+        const data = await response.json()
+        
+        // Show default credentials if available (regardless of needs_setup)
+        if (data.default_password) {
+          setDefaultCreds({ username: 'admin', password: data.default_password })
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    
+    if (!isAuthenticated && !isLoading) {
+      checkSetup()
+    }
+  }, [isAuthenticated, isLoading])
+
+  const handleLoginSuccess = () => {
+    checkSession()
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#1a1a2e'
+      }}>
+        <div style={{ color: '#888' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginPage 
+        onLoginSuccess={handleLoginSuccess}
+        defaultCredentials={defaultCreds}
+      />
+    )
+  }
+
+  return <AuthenticatedApp />
+}
+
+// Root app with provider
+function App() {
+  return (
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
   )
 }
 

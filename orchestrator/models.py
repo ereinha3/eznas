@@ -1,6 +1,8 @@
 """Pydantic models representing user-facing NAS stack configuration."""
+
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 from typing import Dict, List, Literal, Optional
@@ -272,3 +274,145 @@ class AddIndexersRequest(BaseModel):
 
     indexers: List[str]  # List of indexer definition names (e.g., "1337x", "EZTV")
 
+
+# Authentication Models
+
+
+class UserRole(str, Enum):
+    """User roles for access control."""
+
+    ADMIN = "admin"
+    VIEWER = "viewer"
+
+
+class User(BaseModel):
+    """User account for authentication."""
+
+    username: str
+    password_hash: str
+    role: UserRole = UserRole.ADMIN
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class Session(BaseModel):
+    """Active user session."""
+
+    token: str
+    username: str
+    role: UserRole
+    created_at: datetime
+    expires_at: datetime
+    sudo_expires_at: Optional[datetime] = None
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class AuthConfig(BaseModel):
+    """Authentication configuration."""
+
+    version: int = 1
+    session_timeout_hours: int = 24
+    sudo_timeout_minutes: int = 10
+
+
+class LoginRequest(BaseModel):
+    """Request to authenticate."""
+
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    """Response after successful authentication."""
+
+    success: bool
+    token: Optional[str] = None
+    username: Optional[str] = None
+    role: Optional[UserRole] = None
+    expires_at: Optional[datetime] = None
+    message: Optional[str] = None
+
+    class Config:
+        json_encoders = {datetime: lambda v: v.isoformat()}
+
+
+class SessionResponse(BaseModel):
+    """Response with session info."""
+
+    valid: bool
+    username: Optional[str] = None
+    role: Optional[UserRole] = None
+    sudo_active: bool = False
+
+
+class SudoVerifyRequest(BaseModel):
+    """Request to verify password for sudo mode."""
+
+    password: str
+
+
+class SudoVerifyResponse(BaseModel):
+    """Response after sudo verification."""
+
+    success: bool
+    message: str
+
+
+class ChangePasswordRequest(BaseModel):
+    """Request to change password."""
+
+    current_password: str
+    new_password: str
+
+
+class CreateUserRequest(BaseModel):
+    """Request to create a new user."""
+
+    username: str
+    password: str
+    role: UserRole = UserRole.VIEWER
+
+
+class UserListResponse(BaseModel):
+    """Response with list of users."""
+
+    users: List[dict] = Field(default_factory=list)
+
+
+class VolumeInfo(BaseModel):
+    """Information about a mounted volume."""
+
+    device: str
+    mountpoint: str
+    size: str
+    available: str
+    filesystem: str
+    suggested_paths: Dict[str, str]
+
+
+class VolumesResponse(BaseModel):
+    """Response containing available volumes."""
+
+    volumes: List[VolumeInfo] = Field(default_factory=list)
+
+
+class InitializeRequest(BaseModel):
+    """Request to initialize the system for first-run."""
+
+    admin_username: str
+    admin_password: str
+    pool_path: str
+    scratch_path: Optional[str] = None
+    appdata_path: str
+
+
+class InitializeResponse(BaseModel):
+    """Response from initialization."""
+
+    success: bool
+    message: str
+    config_created: bool = False
