@@ -9,6 +9,7 @@ from typing import Iterable, List, Tuple
 
 from .models import StackConfig
 from .storage import ConfigRepository
+from .clients.util import get_service_config_dir
 
 
 def ensure_traefik_assets(
@@ -20,7 +21,7 @@ def ensure_traefik_assets(
     if config.proxy.https_port is None:
         return False, "skipped (https disabled)"
 
-    traefik_dir = Path(config.paths.appdata) / "traefik"
+    traefik_dir = get_service_config_dir("traefik", config)
     certs_dir = traefik_dir / "certs"
     certs_dir.mkdir(parents=True, exist_ok=True)
 

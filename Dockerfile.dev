@@ -1,0 +1,42 @@
+# Development Dockerfile - optimized for fast rebuilds and live reload
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install system dependencies and Docker CLI from official repo
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        gnupg \
+        openssl \
+        ca-certificates \
+        ffmpeg \
+    && install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian bookworm stable" > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli docker-compose-plugin \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies first (cached layer)
+# Copy just enough for pip to parse dependencies
+COPY pyproject.toml README.md ./
+# Create minimal package structure for editable install
+RUN mkdir -p orchestrator && touch orchestrator/__init__.py \
+    && pip install --no-cache-dir -e . \
+    && rm -rf orchestrator
+
+# Copy templates (less frequently changed)
+COPY templates/ ./templates/
+
+# Source code is mounted as volume, not copied
+# This enables live reload without rebuilding
+
+EXPOSE 8443
+
+# Default: run uvicorn with auto-reload
+CMD ["uvicorn", "orchestrator.app:app", "--host", "0.0.0.0", "--port", "8443", "--reload", "--reload-dir", "/app/orchestrator"]

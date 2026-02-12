@@ -1,0 +1,201 @@
+# Development compose - hot reload for rapid iteration
+# Usage: docker compose -f docker-compose.dev.yml up
+#
+# This runs the orchestrator backend and frontend with live reload.
+# Media services (qBittorrent, Radarr, etc.) should be started separately
+# via the generated stack or run the full dev environment with:
+#   docker compose -f docker-compose.dev.yml --profile full up
+
+services:
+  # Backend API with auto-reload
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: orchestrator-dev
+    restart: unless-stopped
+    ports:
+      - "8443:8443"
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+    volumes:
+      # Mount source for live reload
+      - ./orchestrator:/app/orchestrator:ro
+      - ./templates:/app/templates:ro
+      # Config and state persistence
+      - ./stack.yaml:/config/stack.yaml
+      - ./state.json:/config/state.json
+      # Access to host paths for validation
+      - ${POOL_PATH:-./test_pool}:/data
+      - ${SCRATCH_PATH:-./test_scratch}:/scratch
+      - ${APPDATA_PATH:-./test_appdata}:/appdata
+      # Docker socket for compose operations
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - dev_net
+
+  # Frontend with Vite HMR
+  frontend:
+    image: node:20-alpine
+    container_name: frontend-dev
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_ORIGIN=http://orchestrator:8443
+    volumes:
+      - ./frontend:/app
+      # Anonymous volume for node_modules to avoid overwriting
+      - /app/node_modules
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    depends_on:
+      - orchestrator
+    networks:
+      - dev_net
+
+  # Pipeline worker with live reload
+  pipeline-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: pipeline-worker-dev
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+      - PIPELINE_INTERVAL=${PIPELINE_INTERVAL:-60}
+    volumes:
+      - ./orchestrator:/app/orchestrator:ro
+      - ./stack.yaml:/config/stack.yaml
+      - ./state.json:/config/state.json
+      - ${POOL_PATH:-./test_pool}:/data
+      # Match qBittorrent's internal save paths (it reports /downloads/... via API).
+      - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads
+      # Keep full scratch mounted as well (transcode/postproc helpers, debugging).
+      - ${SCRATCH_PATH:-./test_scratch}:/scratch
+    command: ["python", "-m", "orchestrator.pipeline.runner"]
+    depends_on:
+      - orchestrator
+    networks:
+      - dev_net
+    profiles:
+      - pipeline
+
+  #############################################
+  # Media services (optional, use --profile full)
+  #############################################
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent-dev
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+      - WEBUI_PORT=8080
+    ports:
+      - "8077:8080"
+      - "6881:6881"
+      - "6881:6881/udp"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/qbittorrent:/config
+      - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-dev
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "7878:7878"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/radarr:/config
+      - ${POOL_PATH:-./test_pool}:/data
+      - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr-dev
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "8989:8989"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/sonarr:/config
+      - ${POOL_PATH:-./test_pool}:/data
+      - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+  prowlarr:
+    image: lscr.io/linuxserver/prowlarr:latest
+    container_name: prowlarr-dev
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "9696:9696"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/prowlarr:/config
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+  jellyfin:
+    image: lscr.io/linuxserver/jellyfin:latest
+    container_name: jellyfin-dev
+    restart: unless-stopped
+    environment:
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - TZ=${TZ:-UTC}
+    ports:
+      - "8096:8096"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/jellyfin:/config
+      - ${POOL_PATH:-./test_pool}/media:/data/media
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+  jellyseerr:
+    image: fallenbagel/jellyseerr:latest
+    container_name: jellyseerr-dev
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-UTC}
+    ports:
+      - "5055:5055"
+    volumes:
+      - ${APPDATA_PATH:-./test_appdata}/jellyseerr:/app/config
+    networks:
+      - dev_net
+    profiles:
+      - full
+
+networks:
+  dev_net:
+    driver: bridge

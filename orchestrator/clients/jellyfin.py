@@ -32,9 +32,13 @@ class JellyfinClient(ServiceClient):
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
 
+    # Internal container port (used for container-to-container communication)
+    INTERNAL_PORT = 8096
+
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         jellyfin_cfg = config.services.jellyfin
-        base_url = f"http://127.0.0.1:{jellyfin_cfg.port}"
+        # Use internal container port for container-to-container communication
+        base_url = f"http://jellyfin:{self.INTERNAL_PORT}"
         status_url = f"{base_url}/System/Ping"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -206,7 +210,6 @@ class JellyfinClient(ServiceClient):
         desired = [
             ("Movies", "movies", "/data/media/movies"),
             ("TV", "tvshows", "/data/media/tv"),
-            ("Anime", "tvshows", "/data/media/anime"),
         ]
 
         created: List[str] = []
@@ -247,7 +250,8 @@ class JellyfinClient(ServiceClient):
     # ------------------------------------------------------------------ mutations
     def create_user(self, config: StackConfig, username: str, password: str) -> Dict[str, str]:
         """Create or update a Jellyfin user using stored admin credentials."""
-        base_url = f"http://127.0.0.1:{config.services.jellyfin.port}"
+        # Use internal container port for container-to-container communication
+        base_url = f"http://jellyfin:{self.INTERNAL_PORT}"
         state = self.repo.load_state()
         secrets = state.setdefault("secrets", {})
         jellyfin_secrets: Dict[str, object] = secrets.setdefault("jellyfin", {})

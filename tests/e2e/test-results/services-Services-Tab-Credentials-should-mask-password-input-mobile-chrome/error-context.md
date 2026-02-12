@@ -1,0 +1,232 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - heading "NAS Stack Orchestrator" [level=1] [ref=e6]
+      - paragraph [ref=e7]: Configure storage, ports, service toggles, and policy—then let the orchestrator render, deploy, and converge the entire media automation stack.
+      - generic [ref=e8]:
+        - generic [ref=e9]: Docker Compose
+        - generic [ref=e10]: Zero-touch bootstrap
+        - generic [ref=e11]: Live apply logs
+        - generic [ref=e12]: Language-aware pipeline
+  - main [ref=e13]:
+    - generic [ref=e14]:
+      - tablist "Configuration sections" [ref=e15]:
+        - tab "Setup" [ref=e16] [cursor=pointer]
+        - tab "Services" [active] [selected] [ref=e17] [cursor=pointer]
+        - tab "Preferences" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]:
+        - heading "Services" [level=2] [ref=e20]
+        - generic [ref=e21]:
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - generic [ref=e24]:
+                - generic [ref=e25]: qBittorrent
+                - text: Downloader
+              - switch [checked] [ref=e27]
+            - generic [ref=e28]:
+              - generic [ref=e29]:
+                - text: qBittorrent port
+                - spinbutton "qBittorrent port" [ref=e30]: "8077"
+              - generic [ref=e31]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e32]:
+                  - /placeholder: media.example.com
+                  - text: torrent.home.lab
+              - generic [ref=e33]:
+                - checkbox "Stop seeding after completion" [checked] [ref=e34]
+                - generic [ref=e35]: Stop seeding after completion
+          - generic [ref=e36]:
+            - generic [ref=e37]:
+              - generic [ref=e38]:
+                - generic [ref=e39]: Radarr
+                - text: Movies
+              - switch [checked] [ref=e41]
+            - generic [ref=e42]:
+              - generic [ref=e43]:
+                - text: Radarr port
+                - spinbutton "Radarr port" [ref=e44]: "7878"
+              - generic [ref=e45]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e46]:
+                  - /placeholder: media.example.com
+                  - text: radarr.home.lab
+          - generic [ref=e47]:
+            - generic [ref=e48]:
+              - generic [ref=e49]:
+                - generic [ref=e50]: Sonarr
+                - text: Series
+              - switch [checked] [ref=e52]
+            - generic [ref=e53]:
+              - generic [ref=e54]:
+                - text: Sonarr port
+                - spinbutton "Sonarr port" [ref=e55]: "8989"
+              - generic [ref=e56]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e57]:
+                  - /placeholder: media.example.com
+                  - text: sonarr.home.lab
+          - generic [ref=e58]:
+            - generic [ref=e59]:
+              - generic [ref=e60]:
+                - generic [ref=e61]: Prowlarr
+                - text: Indexers
+              - switch [checked] [ref=e63]
+            - generic [ref=e64]:
+              - generic [ref=e65]:
+                - text: Prowlarr port
+                - spinbutton "Prowlarr port" [ref=e66]: "9696"
+              - generic [ref=e67]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e68]:
+                  - /placeholder: media.example.com
+                  - text: prowlarr.home.lab
+          - generic [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - generic [ref=e72]: Jellyseerr
+                - text: Requests
+              - switch [checked] [ref=e74]
+            - generic [ref=e75]:
+              - generic [ref=e76]:
+                - text: Jellyseerr port
+                - spinbutton "Jellyseerr port" [ref=e77]: "5055"
+              - generic [ref=e78]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e79]:
+                  - /placeholder: media.example.com
+                  - text: jellyseer.home.lab
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - generic [ref=e83]: Jellyfin
+                - text: Media server
+              - switch [checked] [ref=e85]
+            - generic [ref=e86]:
+              - generic [ref=e87]:
+                - text: Jellyfin port
+                - spinbutton "Jellyfin port" [ref=e88]: "8096"
+              - generic [ref=e89]:
+                - text: Proxy URL (Traefik host)
+                - textbox "Proxy URL (Traefik host)" [ref=e90]:
+                  - /placeholder: media.example.com
+                  - text: jellyfin.home.lab
+          - generic [ref=e92]:
+            - generic [ref=e93]:
+              - generic [ref=e94]: Pipeline worker
+              - text: Post-processing
+            - switch [checked] [ref=e96]
+        - heading "Download Categories" [level=2] [ref=e97]
+        - generic [ref=e98]:
+          - generic [ref=e99]:
+            - text: Radarr category
+            - textbox "Radarr category" [ref=e100]: movies
+          - generic [ref=e101]:
+            - text: Sonarr category
+            - textbox "Sonarr category" [ref=e102]: tv
+          - generic [ref=e103]:
+            - text: Anime category
+            - textbox "Anime category" [ref=e104]: anime
+        - generic [ref=e105]:
+          - button "Load current" [ref=e106] [cursor=pointer]
+          - button "Save config" [ref=e107] [cursor=pointer]
+          - button "Validate" [ref=e108] [cursor=pointer]
+          - button "Render compose" [ref=e109] [cursor=pointer]
+          - button "Apply stack" [ref=e110] [cursor=pointer]
+        - generic [ref=e111]: Internal Server Error
+    - complementary [ref=e112]:
+      - generic [ref=e113]:
+        - generic [ref=e114]:
+          - heading "Service Credentials" [level=3] [ref=e115]
+          - button "Refresh" [ref=e116] [cursor=pointer]
+        - generic [ref=e117]: No credential data available.
+      - generic [ref=e118]:
+        - generic [ref=e119]:
+          - heading "Service summary" [level=3] [ref=e120]
+          - list [ref=e121]:
+            - listitem [ref=e122]:
+              - generic [ref=e123]:
+                - strong [ref=e124]: Qbittorrent
+                - text: Downloader
+              - generic [ref=e125]: down
+            - listitem [ref=e126]:
+              - generic [ref=e127]:
+                - strong [ref=e128]: Radarr
+                - text: Movies
+              - generic [ref=e129]: down
+            - listitem [ref=e130]:
+              - generic [ref=e131]:
+                - strong [ref=e132]: Sonarr
+                - text: Series
+              - generic [ref=e133]: down
+            - listitem [ref=e134]:
+              - generic [ref=e135]:
+                - strong [ref=e136]: Prowlarr
+                - text: Indexers
+              - generic [ref=e137]: down
+            - listitem [ref=e138]:
+              - generic [ref=e139]:
+                - strong [ref=e140]: Jellyseerr
+                - text: Requests
+              - generic [ref=e141]: down
+            - listitem [ref=e142]:
+              - generic [ref=e143]:
+                - strong [ref=e144]: Jellyfin
+                - text: Library
+              - generic [ref=e145]: down
+            - listitem [ref=e146]:
+              - generic [ref=e147]:
+                - strong [ref=e148]: Pipeline
+                - text: Post-processing
+              - generic [ref=e149]: up
+        - generic [ref=e150]:
+          - heading "Storage & mounts" [level=3] [ref=e151]
+          - list [ref=e152]:
+            - listitem [ref=e153]:
+              - generic [ref=e154]: Library pool
+              - generic [ref=e155]: /home/ethan/eznas/test_pool
+            - listitem [ref=e156]:
+              - generic [ref=e157]: Scratch
+              - generic [ref=e158]: /home/ethan/eznas/test_scratch
+            - listitem [ref=e159]:
+              - generic [ref=e160]: Appdata
+              - generic [ref=e161]: /home/ethan/eznas/test_appdata
+        - generic [ref=e162]:
+          - heading "Quick links" [level=3] [ref=e163]
+          - list [ref=e164]:
+            - listitem [ref=e165]:
+              - link "qB Qbittorrent" [ref=e166] [cursor=pointer]:
+                - /url: https://torrent.home.lab
+                - generic [ref=e167]: qB
+                - generic [ref=e168]: Qbittorrent
+            - listitem [ref=e169]:
+              - link "Ra Radarr" [ref=e170] [cursor=pointer]:
+                - /url: https://radarr.home.lab
+                - generic [ref=e171]: Ra
+                - generic [ref=e172]: Radarr
+            - listitem [ref=e173]:
+              - link "So Sonarr" [ref=e174] [cursor=pointer]:
+                - /url: https://sonarr.home.lab
+                - generic [ref=e175]: So
+                - generic [ref=e176]: Sonarr
+            - listitem [ref=e177]:
+              - link "Pr Prowlarr" [ref=e178] [cursor=pointer]:
+                - /url: https://prowlarr.home.lab
+                - generic [ref=e179]: Pr
+                - generic [ref=e180]: Prowlarr
+            - listitem [ref=e181]:
+              - link "Js Jellyseerr" [ref=e182] [cursor=pointer]:
+                - /url: https://jellyseer.home.lab
+                - generic [ref=e183]: Js
+                - generic [ref=e184]: Jellyseerr
+            - listitem [ref=e185]:
+              - link "Jf Jellyfin" [ref=e186] [cursor=pointer]:
+                - /url: https://jellyfin.home.lab
+                - generic [ref=e187]: Jf
+                - generic [ref=e188]: Jellyfin
+      - generic [ref=e189]:
+        - heading "Apply log" [level=3] [ref=e190]
+        - generic [ref=e191]: Apply output will appear here.
+```

@@ -71,6 +71,36 @@ class ApplyRunner:
         self.repo.save_stack(config)
         self._record(run_id, events, "persist", "ok", str(self.repo.stack_path))
 
+        # Stop conflicting dev compose services before deploying
+        enabled_services = []
+        if config.services.qbittorrent.enabled:
+            enabled_services.append("qbittorrent")
+        if config.services.radarr.enabled:
+            enabled_services.append("radarr")
+        if config.services.sonarr.enabled:
+            enabled_services.append("sonarr")
+        if config.services.prowlarr.enabled:
+            enabled_services.append("prowlarr")
+        if config.services.jellyseerr.enabled:
+            enabled_services.append("jellyseerr")
+        if config.services.jellyfin.enabled:
+            enabled_services.append("jellyfin")
+        
+        if enabled_services:
+            self._record(run_id, events, "prepare.conflicts", "started")
+            # Use the generated compose path to find project root
+            project_root = result.compose_path.parent.parent
+            conflict_ok, conflict_detail, _ = DockerComposeRunner.stop_conflicting_dev_services(
+                enabled_services, project_root=project_root
+            )
+            self._record(
+                run_id,
+                events,
+                "prepare.conflicts",
+                "ok" if conflict_ok else "warning",
+                conflict_detail,
+            )
+
         compose_runner = DockerComposeRunner(result.compose_path)
         self._record(run_id, events, "deploy.compose", "started")
         compose_ok, compose_detail = compose_runner.up()
@@ -179,6 +209,16 @@ class ApplyRunner:
         )
 
     def _wait_for_services(self, run_id: str, events: List[StageEvent], config: StackConfig) -> bool:
+        # Map service names to their internal container ports
+        # These are the ports the containers listen on internally, not the host-mapped ports
+        internal_ports = {
+            "qbittorrent": 8080,
+            "radarr": 7878,
+            "sonarr": 8989,
+            "prowlarr": 9696,
+            "jellyseerr": 5055,
+            "jellyfin": 8096,
+        }
         service_configs = {
             "qbittorrent": config.services.qbittorrent,
             "radarr": config.services.radarr,
@@ -191,8 +231,10 @@ class ApplyRunner:
             if not svc.enabled or not svc.port:
                 continue
             stage = f"wait.{name}"
-            self._record(run_id, events, stage, "started", f"port={svc.port}")
-            ok, detail = self._wait_for_port("127.0.0.1", svc.port, timeout=180)
+            internal_port = internal_ports.get(name, svc.port)
+            self._record(run_id, events, stage, "started", f"container={name}:{internal_port}")
+            # Use Docker container name for internal networking
+            ok, detail = self._wait_for_port(name, internal_port, timeout=180)
             self._record(run_id, events, stage, "ok" if ok else "failed", detail)
             if not ok:
                 return False

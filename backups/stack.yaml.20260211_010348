@@ -1,0 +1,71 @@
+version: 1
+paths:
+  pool: /mnt/pool
+  scratch: /mnt/pool/media
+  appdata: /home/ethan/eznas/test_appdata
+services:
+  qbittorrent:
+    enabled: true
+    port: 8077
+    proxy_url: torrent.home.lab
+    stop_after_download: true
+    username: admin
+    password: admin12345
+  radarr:
+    enabled: true
+    port: 7878
+    proxy_url: radarr.home.lab
+  sonarr:
+    enabled: true
+    port: 8989
+    proxy_url: sonarr.home.lab
+  prowlarr:
+    enabled: true
+    port: 9696
+    proxy_url: prowlarr.home.lab
+    language_filter: false
+  jellyseerr:
+    enabled: true
+    port: 5055
+    proxy_url: jellyseer.home.lab
+  jellyfin:
+    enabled: true
+    port: 8098
+    proxy_url: jellyfin.home.lab
+  pipeline:
+    enabled: true
+    port: null
+    proxy_url: null
+proxy:
+  enabled: true
+  image: traefik:v3.1
+  http_port: 80
+  https_port: 9443
+  dashboard: true
+  additional_args: []
+download_policy:
+  categories:
+    radarr: movies
+    sonarr: tv
+media_policy:
+  movies:
+    keep_audio:
+    - eng
+    keep_subs:
+    - eng
+    - forced
+quality:
+  preset: balanced
+  target_resolution: null
+  max_bitrate_mbps: null
+  preferred_container: mkv
+ui:
+  port: 8443
+runtime:
+  user_id: 1000
+  group_id: 1000
+  timezone: UTC
+users:
+- username: admin
+  email: admin@example.com
+  role: owner

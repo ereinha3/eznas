@@ -1,0 +1,38 @@
+# Bootstrap compose - zero-touch deployment for fresh installs
+# Usage: docker compose -f docker-compose.bootstrap.yml up -d
+#
+# This brings up the NAS Orchestrator with its web UI for initial setup.
+# After startup, visit http://localhost:8443 to complete the setup wizard.
+
+services:
+  orchestrator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nas-orchestrator
+    restart: unless-stopped
+    ports:
+      - "${ORCH_PORT:-8443}:8443"
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+      - FIRST_RUN_MODE=true
+    volumes:
+      # Config persistence
+      - orchestrator_config:/config
+      # Access to host filesystem for path configuration
+      - /:/host:ro
+      # Docker socket for managing containers
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Generated compose output
+      - ./generated:/config/generated
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8443/api/setup/status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  orchestrator_config:
+    driver: local

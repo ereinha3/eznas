@@ -11,6 +11,7 @@ import httpx
 
 from .arr import wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
+from .util import get_service_config_dir
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -28,13 +29,14 @@ class JellyseerrClient(ServiceClient):
     """Provision Jellyseerr via HTTP API."""
 
     name = "jellyseerr"
+    INTERNAL_PORT = 5055
 
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://127.0.0.1:{svc_cfg.port}"
+        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
         status_url = f"{base_url}/api/v1/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -122,7 +124,7 @@ class JellyseerrClient(ServiceClient):
             return EnsureOutcome(detail="api key missing", changed=False, success=False)
 
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://127.0.0.1:{svc_cfg.port}"
+        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
         headers = {"Accept": "application/json", "X-Api-Key": api_key}
 
         try:
@@ -188,26 +190,57 @@ class JellyseerrClient(ServiceClient):
         password: str,
         config: StackConfig,
     ) -> _EnsureResult:
+        """Complete Jellyseerr initialization, handling partial states.
+
+        Jellyseerr requires a session cookie (connect.sid) to call /settings/initialize.
+        The auth endpoint has two modes:
+        - With 'hostname': Sets up a new Jellyfin connection (first-time only)
+        - Without 'hostname': Logs in with existing Jellyfin credentials
+
+        This handles the edge case where Jellyfin is configured but initialization
+        wasn't completed (e.g., container restart, network timeout).
+        """
         with httpx.Client(base_url=base_url, timeout=httpx.Timeout(30.0, connect=5.0)) as client:
-            jellyfin_cfg = config.services.jellyfin
-            payload = {
-                "hostname": "jellyfin",
-                "port": jellyfin_cfg.port,
-                "useSsl": False,
-                "urlBase": "",
-                "serverType": 2,  # MediaServerType.JELLYFIN
-                "username": username,
-                "password": password,
-                "email": f"{username}@example.com",
-            }
-            client.post("/api/v1/auth/jellyfin", json=payload).raise_for_status()
+            # Check current state
+            public = client.get("/api/v1/settings/public")
+            public.raise_for_status()
+            settings = public.json()
+
+            # MediaServerType: 1=Plex, 2=Jellyfin, 3=Emby, 4=None
+            jellyfin_configured = settings.get("mediaServerType") == 2
+
+            if jellyfin_configured:
+                # Jellyfin already connected - just login to get session cookie
+                log.debug("Jellyfin already configured, logging in to complete initialization")
+                login_resp = client.post("/api/v1/auth/jellyfin", json={
+                    "username": username,
+                    "password": password,
+                })
+                login_resp.raise_for_status()
+            else:
+                # First time setup - configure Jellyfin connection
+                log.debug("Setting up Jellyfin connection for Jellyseerr")
+                jellyfin_cfg = config.services.jellyfin
+                payload = {
+                    "hostname": "jellyfin",
+                    "port": 8096,  # JellyfinClient.INTERNAL_PORT (container-to-container)
+                    "useSsl": False,
+                    "urlBase": "",
+                    "serverType": 2,  # MediaServerType.JELLYFIN
+                    "username": username,
+                    "password": password,
+                    "email": f"{username}@example.com",
+                }
+                client.post("/api/v1/auth/jellyfin", json=payload).raise_for_status()
+
+            # Complete initialization (requires session cookie from auth call)
             client.post("/api/v1/settings/initialize", json={}).raise_for_status()
+
         return _EnsureResult(changed=True, detail="startup=completed")
 
     def _read_api_key(self, config: StackConfig) -> Optional[str]:
-        settings_path = (
-            Path(config.paths.appdata) / "jellyseerr" / "settings.json"
-        )
+        config_dir = get_service_config_dir("jellyseerr", config)
+        settings_path = config_dir / "settings.json"
         try:
             data = json.loads(settings_path.read_text())
         except FileNotFoundError:
@@ -235,7 +268,7 @@ class JellyseerrClient(ServiceClient):
         if not config.services.radarr.enabled:
             return _EnsureResult(False, "radarr=skipped (disabled)")
 
-        radarr_secrets = state.get("services", {}).get("radarr", {})
+        radarr_secrets = state.get("secrets", {}).get("radarr", {})
         api_key = radarr_secrets.get("api_key")
         if not api_key:
             return _EnsureResult(False, "radarr=skipped (no api key)")
@@ -299,7 +332,7 @@ class JellyseerrClient(ServiceClient):
         if not config.services.sonarr.enabled:
             return _EnsureResult(False, "sonarr=skipped (disabled)")
 
-        sonarr_secrets = state.get("services", {}).get("sonarr", {})
+        sonarr_secrets = state.get("secrets", {}).get("sonarr", {})
         api_key = sonarr_secrets.get("api_key")
         if not api_key:
             return _EnsureResult(False, "sonarr=skipped (no api key)")

@@ -1,21 +1,23 @@
 import { useEffect, useState } from 'react'
 import './App.css'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
 import {
   applyConfig,
-  fetchStatus,
   loadConfig,
-  renderConfig,
   saveConfig,
   validateConfig,
   fetchServiceCredentials,
-  updateQbCredentials,
-  createJellyfinUser,
+  fetchHealth,
 } from './api'
-import { ApplyLog } from './components/ApplyLog'
-import { ConfigForm } from './components/ConfigForm'
-import { SummaryPanel } from './components/SummaryPanel'
-import { CredentialsPanel } from './components/CredentialsPanel'
-import type { CredentialsResponse, ServiceStatus, StackConfig } from './components/types'
+import { LeftNavigation, type PageKey } from './components/LeftNavigation'
+import { DashboardPage } from './pages/DashboardPage'
+import { EnhancedSetupWizard } from './components/EnhancedSetupWizard'
+import { ServicesPage } from './pages/ServicesPage'
+import { ProxyPage } from './pages/ProxyPage'
+import { MediaPolicyPage } from './pages/MediaPolicyPage'
+import { LogsPage } from './pages/LogsPage'
+import { LoginPage } from './pages/LoginPage'
+import type { CredentialsResponse, HealthResponse, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
   version: 1,
@@ -40,17 +42,16 @@ const DEFAULT_CONFIG: StackConfig = {
     },
     radarr: { enabled: true, port: 7878, proxy_url: null },
     sonarr: { enabled: true, port: 8989, proxy_url: null },
-    prowlarr: { enabled: true, port: 9696, proxy_url: null },
+    prowlarr: { enabled: true, port: 9696, proxy_url: null, language_filter: false },
     jellyseerr: { enabled: true, port: 5055, proxy_url: null },
     jellyfin: { enabled: true, port: 8096, proxy_url: null },
     pipeline: { enabled: true, port: null, proxy_url: null },
   },
   download_policy: {
-    categories: { radarr: 'movies', sonarr: 'tv', anime: 'anime' },
+    categories: { radarr: 'movies', sonarr: 'tv' },
   },
   media_policy: {
     movies: { keep_audio: ['eng', 'und'], keep_subs: ['eng', 'forced'] },
-    anime: { keep_audio: ['jpn', 'eng', 'und'], keep_subs: ['eng'] },
   },
   quality: {
     preset: 'balanced',
@@ -62,19 +63,17 @@ const DEFAULT_CONFIG: StackConfig = {
   users: [],
 }
 
-type TabKey = 'setup' | 'services' | 'preferences'
-
-function App() {
+// Main authenticated app content
+function AuthenticatedApp() {
+  const { logout, user, sudoActive } = useAuth()
   const [config, setConfig] = useState<StackConfig>(DEFAULT_CONFIG)
   const [status, setStatus] = useState('')
   const [statusVariant, setStatusVariant] = useState<'info' | 'success' | 'error'>('info')
   const [logEntries, setLogEntries] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
-  const [serviceStatus, setServiceStatus] = useState<ServiceStatus[]>([])
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
-  const [credentialsLoading, setCredentialsLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<TabKey>('setup')
-
+  const [activePage, setActivePage] = useState<PageKey>('dashboard')
+  const [health, setHealth] = useState<HealthResponse | null>(null)
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     setStatus(message)
@@ -82,15 +81,12 @@ function App() {
   }
 
   const loadCredentials = async () => {
-    setCredentialsLoading(true)
     try {
       const data = await fetchServiceCredentials()
       setCredentials(data)
     } catch (error: any) {
       setStatusMessage(error.message || 'Failed to load credentials.', 'error')
       throw error
-    } finally {
-      setCredentialsLoading(false)
     }
   }
 
@@ -105,42 +101,21 @@ function App() {
     }
   }
 
-  const refreshStatus = async () => {
-    try {
-      const data = await fetchStatus()
-      setServiceStatus(data.services)
-    } catch (error) {
-      // backend may not expose /api/status yet: ignore
-    }
-  }
-
-  const handleUpdateQbCredentials = async (username: string, password: string) => {
-    try {
-      await updateQbCredentials({ username, password })
-      setStatusMessage('qBittorrent credentials updated.', 'success')
-      const updated = await loadConfig()
-      setConfig(updated)
-      await loadCredentials()
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to update qBittorrent credentials.', 'error')
-      throw error
-    }
-  }
-
-  const handleAddJellyfinUser = async (username: string, password: string) => {
-    try {
-      await createJellyfinUser({ username, password })
-      setStatusMessage(`Created Jellyfin user ${username}.`, 'success')
-      await loadCredentials()
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to create Jellyfin user.', 'error')
-      throw error
-    }
-  }
-
   useEffect(() => {
     refreshConfig()
-    refreshStatus()
+  }, [])
+
+  useEffect(() => {
+    const refreshHealth = async () => {
+      try {
+        setHealth(await fetchHealth())
+      } catch {
+        // Health endpoint may not be available yet
+      }
+    }
+    refreshHealth()
+    const id = setInterval(refreshHealth, 10000)
+    return () => clearInterval(id)
   }, [])
 
   const handleSave = async (cfg: StackConfig) => {
@@ -170,15 +145,19 @@ function App() {
     }
   }
 
-  const handleRender = async (cfg: StackConfig) => {
+  const handleBuild = async () => {
     try {
-      const result = await renderConfig(cfg)
-      setStatusMessage(
-        `Rendered compose to ${result.compose_path} and env to ${result.env_path}`,
-        'success',
-      )
+      setStatusMessage('Building orchestrator image...', 'info')
+      const response = await fetch('/api/build', { method: 'POST' })
+      const result = await response.json()
+
+      if (result.ok) {
+        setStatusMessage('Image built successfully!', 'success')
+      } else {
+        setStatusMessage(`Build failed: ${result.message}`, 'error')
+      }
     } catch (error: any) {
-      setStatusMessage(error.message || 'Render failed', 'error')
+      setStatusMessage(error.message || 'Build failed', 'error')
     }
   }
 
@@ -219,7 +198,6 @@ function App() {
           eventSource?.close()
           setIsApplying(false)
           refreshConfig()
-          refreshStatus()
         }
       })
 
@@ -228,7 +206,6 @@ function App() {
         setStatusMessage('Apply stream ended unexpectedly.', 'error')
         eventSource?.close()
         setIsApplying(false)
-        refreshStatus()
         loadCredentials()
       })
     } catch (error: any) {
@@ -241,6 +218,10 @@ function App() {
 
   const appendLog = (line: string) => {
     setLogEntries((prev) => [...prev, line])
+  }
+
+  const handleLogout = async () => {
+    await logout()
   }
 
   return (
@@ -259,60 +240,153 @@ function App() {
             <span className="pill">Language-aware pipeline</span>
           </div>
         </div>
+        <div className="user-controls">
+          <div className="user-info">
+            <span className="username">{user?.username}</span>
+            {sudoActive && <span className="sudo-badge">SUDO</span>}
+          </div>
+          <button onClick={handleLogout} className="logout-button">
+            Logout
+          </button>
+        </div>
       </header>
 
-      <main className="grid-layout">
-        <section className="panel">
-          <nav className="tab-nav">
-            <button
-              type="button"
-              className={`tab-button${activeTab === 'setup' ? ' active' : ''}`}
-              onClick={() => setActiveTab('setup')}
-            >
-              Setup
-            </button>
-            <button
-              type="button"
-              className={`tab-button${activeTab === 'services' ? ' active' : ''}`}
-              onClick={() => setActiveTab('services')}
-            >
-              Services
-            </button>
-            <button
-              type="button"
-              className={`tab-button${activeTab === 'preferences' ? ' active' : ''}`}
-              onClick={() => setActiveTab('preferences')}
-            >
-              Preferences
-            </button>
-          </nav>
-          <ConfigForm
-            config={config}
-            onChange={setConfig}
-            onLoad={refreshConfig}
-            onSave={handleSave}
-            onValidate={handleValidate}
-            onRender={handleRender}
-            onApply={handleApply}
-            status={status}
-            statusVariant={statusVariant}
-            isApplying={isApplying}
-            activeTab={activeTab}
-          />
-        </section>
-        <aside className="sidebar">
-          <CredentialsPanel
-            credentials={credentials}
-            loading={credentialsLoading}
-            onRefresh={loadCredentials}
-            onUpdateQb={handleUpdateQbCredentials}
-            onAddJellyfinUser={handleAddJellyfinUser}
-          />
-          <SummaryPanel config={config} serviceStatus={serviceStatus} />
-          <ApplyLog entries={logEntries} />
-        </aside>
+      <main className="main-layout">
+        <div className="left-nav-column">
+          <LeftNavigation activePage={activePage} onNavigate={setActivePage} />
+        </div>
+
+        <div className="page-container">
+          {status && (
+            <div className={`status-alert ${statusVariant}`}>
+              {status}
+            </div>
+          )}
+
+          {activePage === 'dashboard' && (
+            <DashboardPage
+              config={config}
+              health={health}
+            />
+          )}
+          {activePage === 'setup' && (
+            <SetupPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+            />
+          )}
+          {activePage === 'services' && (
+            <ServicesPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+              credentials={credentials}
+              health={health}
+            />
+          )}
+          {activePage === 'proxy' && (
+            <ProxyPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+              onNavigate={setActivePage}
+            />
+          )}
+          {activePage === 'media-policy' && (
+            <MediaPolicyPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onValidate={handleValidate}
+              onApply={handleApply}
+              onBuild={handleBuild}
+              isApplying={isApplying}
+            />
+          )}
+          {activePage === 'logs' && (
+            <LogsPage logEntries={logEntries} />
+          )}
+        </div>
       </main>
     </div>
+  )
+}
+
+// Wrapper that handles auth state and routing
+function AppWithAuth() {
+  const { isAuthenticated, isLoading, checkSession } = useAuth()
+  const [defaultCreds, setDefaultCreds] = useState<{ username: string; password: string } | undefined>(undefined)
+
+  useEffect(() => {
+    // Check if first-time setup is needed
+    const checkSetup = async () => {
+      try {
+        const response = await fetch('/api/setup/status')
+        const data = await response.json()
+        
+        // Show default credentials if available (regardless of needs_setup)
+        if (data.default_password) {
+          setDefaultCreds({ username: 'admin', password: data.default_password })
+        }
+      } catch {
+        // Ignore errors
+      }
+    }
+    
+    if (!isAuthenticated && !isLoading) {
+      checkSetup()
+    }
+  }, [isAuthenticated, isLoading])
+
+  const handleLoginSuccess = () => {
+    checkSession()
+  }
+
+  if (isLoading) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        background: '#1a1a2e'
+      }}>
+        <div style={{ color: '#888' }}>Loading...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <LoginPage 
+        onLoginSuccess={handleLoginSuccess}
+        defaultCredentials={defaultCreds}
+      />
+    )
+  }
+
+  return <AuthenticatedApp />
+}
+
+// Root app with provider
+function App() {
+  return (
+    <AuthProvider>
+      <AppWithAuth />
+    </AuthProvider>
   )
 }
 

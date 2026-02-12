@@ -1,7 +1,6 @@
 export interface DownloadCategories {
   radarr: string
   sonarr: string
-  anime: string
 }
 
 export interface DownloadPolicy {
@@ -15,7 +14,6 @@ export interface MediaPolicyEntry {
 
 export interface MediaPolicy {
   movies: MediaPolicyEntry
-  anime: MediaPolicyEntry
 }
 
 export interface ServiceBaseConfig {
@@ -32,7 +30,11 @@ export interface QbittorrentConfig extends ServiceBaseConfig {
 
 export interface RadarrConfig extends ServiceBaseConfig {}
 export interface SonarrConfig extends ServiceBaseConfig {}
-export interface ProwlarrConfig extends ServiceBaseConfig {}
+export interface ProwlarrConfig extends ServiceBaseConfig {
+  // When true, only add indexers matching user's language preferences
+  // When false, add all public indexers with Movies/TV categories
+  language_filter: boolean
+}
 export interface JellyseerrConfig extends ServiceBaseConfig {}
 export interface JellyfinConfig extends ServiceBaseConfig {}
 export interface PipelineConfig extends ServiceBaseConfig {}
@@ -137,4 +139,59 @@ export interface ServiceCredential {
 
 export interface CredentialsResponse {
   services: ServiceCredential[]
+}
+
+export interface HealthCheck {
+  name: string
+  healthy: boolean
+  port: number | null
+  message: string | null
+}
+
+export interface HealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy'
+  services: HealthCheck[]
+}
+
+// Indexer types
+export interface IndexerSchema {
+  id: number
+  name: string
+  description?: string | null
+  encoding?: string | null
+  language?: string | null
+  privacy: string
+  protocol: string
+  categories: Array<{ id: number; name: string }>
+  supportsRss: boolean
+  supportsSearch: boolean
+}
+
+export interface IndexerInfo {
+  id: number
+  name: string
+  implementation: string
+  enable: boolean
+  priority: number
+  protocol: string
+}
+
+export interface AvailableIndexersResponse {
+  indexers: IndexerSchema[]
+}
+
+export interface ConfiguredIndexersResponse {
+  indexers: IndexerInfo[]
+}
+
+export interface AddIndexersResponse {
+  added: string[]
+  failed: string[]
+}
+
+export interface AutoPopulateIndexersResponse {
+  added: string[]
+  skipped: string[]
+  failed: string[]
+  message: string
 }

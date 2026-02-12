@@ -1,5 +1,22 @@
 # TODO
 
+## In Progress / Current Work
+
+### Prowlarr Authentication & Provisioning (Recently Fixed)
+- ✅ **Fixed**: API key sync from config.xml on every ensure run
+- ✅ **Fixed**: Dual authentication configuration (before and inside ArrAPI context)
+- ✅ **Fixed**: Retry logic for stale API keys (401/403 errors trigger refresh)
+- ✅ **Fixed**: Network connectivity when orchestrator runs in container (use `127.0.0.1:{port}`)
+- ✅ **Fixed**: Health check fallback for containerized orchestrator
+- 🔄 **Testing**: Verify provisioning works end-to-end after migration
+- 🔄 **Documentation**: Add troubleshooting guide for Prowlarr setup issues
+
+### Known Issues to Address
+- **Port conflicts**: Dev compose services conflict with generated stack. Need better
+  isolation or clear documentation on when to use which.
+- **Network isolation**: Health checks may still fail in some Docker network configurations.
+  Consider adding more robust network detection.
+
 ## Immediate Essentials (High Priority)
 
 - **Bootstrap compose**: Single `docker compose up` that brings up orchestrator +
@@ -44,8 +61,9 @@
   addition to auth and categories.
 - **Radarr/Sonarr**: Verify root folders and UI auth config. Currently only
   download client is verified.
-- **Prowlarr**: Verify API key + tags + app sync settings. Currently only app
-  links are verified.
+- **Prowlarr**: Verify API key + tags + app sync settings + UI authentication.
+  Currently only app links are verified. Authentication provisioning was recently
+  fixed but verification should confirm it's properly configured.
 - **Jellyseerr**: Verify Jellyfin settings and media server connection. Currently
   only initialization and Radarr/Sonarr links are verified.
 - **Jellyfin**: Verify libraries and media paths. Currently only user creation

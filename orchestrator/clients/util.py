@@ -3,12 +3,74 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import os
 import secrets
 import sqlite3
 import time
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 from xml.etree import ElementTree
+
+if TYPE_CHECKING:
+    from ..models import StackConfig
+
+
+# Container mount points (fixed in docker-compose files)
+CONTAINER_APPDATA = Path("/appdata")
+CONTAINER_DATA = Path("/data")
+CONTAINER_SCRATCH = Path("/scratch")
+
+
+def translate_path_to_container(host_path: Path, config: "StackConfig") -> Path:
+    """Translate a host path to the equivalent container path.
+
+    The orchestrator container has fixed mount points:
+    - config.paths.appdata → /appdata
+    - config.paths.pool → /data
+    - config.paths.scratch → /scratch
+
+    This function converts host paths from the config to paths accessible
+    inside the orchestrator container.
+    """
+    host_str = str(host_path)
+
+    # Check if we're running inside a container (these mount points exist)
+    # This allows the same code to work in both dev (local) and prod (container) modes
+    running_in_container = CONTAINER_APPDATA.exists() or os.getenv("ORCH_ROOT") == "/config"
+
+    if not running_in_container:
+        # Running locally, no translation needed
+        return host_path
+
+    # Translate appdata paths
+    appdata_host = str(config.paths.appdata) if config.paths.appdata else None
+    if appdata_host and host_str.startswith(appdata_host):
+        relative = host_str[len(appdata_host):].lstrip("/")
+        return CONTAINER_APPDATA / relative
+
+    # Translate pool paths
+    pool_host = str(config.paths.pool) if config.paths.pool else None
+    if pool_host and host_str.startswith(pool_host):
+        relative = host_str[len(pool_host):].lstrip("/")
+        return CONTAINER_DATA / relative
+
+    # Translate scratch paths
+    scratch_host = str(config.paths.scratch) if config.paths.scratch else None
+    if scratch_host and host_str.startswith(scratch_host):
+        relative = host_str[len(scratch_host):].lstrip("/")
+        return CONTAINER_SCRATCH / relative
+
+    # No translation needed or path not recognized
+    return host_path
+
+
+def get_service_config_dir(service_name: str, config: "StackConfig") -> Path:
+    """Get the config directory for a service, translated for container access.
+
+    This is a convenience function that handles path translation automatically.
+    """
+    host_path = Path(config.paths.appdata) / service_name
+    return translate_path_to_container(host_path, config)
 
 
 def read_arr_api_key(config_dir: Path) -> Optional[str]:

@@ -6,26 +6,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 NAS Orchestrator is an automated, zero-touch provisioning system for a NAS media stack (qBittorrent, Radarr, Sonarr, Prowlarr, Jellyseerr, Jellyfin, optional Traefik). It provides a FastAPI backend with React frontend that renders Docker Compose from Jinja2 templates, deploys services, configures them via their APIs, and runs a media processing pipeline.
 
-## Common Commands
+## Development Workflows
 
-### Backend Development
+### Option 1: Docker Dev Environment (Recommended)
 ```bash
-cd /home/ethan/eznas/nas_orchestrator
+# Start with hot reload (backend + frontend)
+./scripts/dev.sh up
+
+# Start with all media services
+./scripts/dev.sh up-full
+
+# Start with pipeline worker
+./scripts/dev.sh up-pipeline
+
+# Stop everything
+./scripts/dev.sh down
+```
+
+### Option 2: Local Development (No Docker)
+```bash
+# Terminal 1: Backend with auto-reload
 source .venv/bin/activate
-uvicorn orchestrator.app:app --host 0.0.0.0 --port 8443
+uvicorn orchestrator.app:app --reload --port 8443
+
+# Terminal 2: Frontend with HMR
+cd frontend
+VITE_API_ORIGIN=http://localhost:8443 npm run dev
 ```
 
-### Frontend Development
+### Production Deployment
 ```bash
-cd /home/ethan/eznas/nas_orchestrator/frontend
-npm install
-VITE_API_ORIGIN=http://localhost:8443 npm run dev -- --host 0.0.0.0 --port 5173
-```
+# Bootstrap the orchestrator (first time)
+cp .env.example .env  # Edit paths
+docker compose -f docker-compose.bootstrap.yml up -d
 
-### Build Frontend for Production
-```bash
-cd /home/ethan/eznas/nas_orchestrator/frontend
-npm run build
+# Access UI at http://localhost:8443
+# Configure and deploy media stack through UI
 ```
 
 ### Testing
@@ -38,19 +54,16 @@ mypy orchestrator/
 
 # Linting
 ruff check orchestrator/
-
-# Frontend lint
 cd frontend && npm run lint
 
 # Pipeline testing (direct mode, no qBittorrent needed)
 python test_pipeline.py --source /path/to/file.mkv --category movies --direct
 ```
 
-### Docker Compose (after rendering via UI)
-```bash
-cd /home/ethan/eznas/nas_orchestrator/generated
-docker compose up -d --build
-```
+### Docker Compose Files
+- `docker-compose.dev.yml` - Development with hot reload
+- `docker-compose.bootstrap.yml` - Production deployment
+- `generated/docker-compose.yml` - Rendered media stack (created by UI)
 
 ## Architecture
 

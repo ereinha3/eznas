@@ -1,6 +1,8 @@
 """Rendering helpers for docker compose and environment files."""
 from __future__ import annotations
 
+import json
+import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import List, Optional
@@ -32,6 +34,47 @@ class ComposeRenderer:
         self.template_dir = template_dir
         self.env = Environment(loader=FileSystemLoader(str(template_dir)))
 
+    @staticmethod
+    def _get_config_host_path() -> Optional[str]:
+        """
+        Detect the host path for the config directory by inspecting the current container.
+        Returns the directory path containing stack.yaml on the host, or None if not in a container.
+        """
+        try:
+            # Get our own container name/ID from /proc/self/cgroup
+            with open("/proc/1/cpuset", "r") as f:
+                cpuset = f.read().strip()
+                # Format: /docker/<container_id> or /system.slice/docker-<container_id>.scope
+                if not ("/docker/" in cpuset or "docker-" in cpuset):
+                    return None
+
+            # Try common orchestrator container names
+            for container_name in ["orchestrator-dev", "nas-orchestrator"]:
+                result = subprocess.run(
+                    ["docker", "inspect", container_name, "--format={{json .Mounts}}"],
+                    capture_output=True,
+                    text=True,
+                    timeout=2,
+                )
+                if result.returncode != 0:
+                    continue
+
+                mounts = json.loads(result.stdout)
+                for mount in mounts:
+                    # Look for the stack.yaml bind mount
+                    if mount.get("Destination") == "/config/stack.yaml":
+                        source = mount.get("Source", "")
+                        # Return the parent directory
+                        return str(Path(source).parent)
+                    # Or look for /config directory mount
+                    elif mount.get("Destination") == "/config" and mount.get("Type") == "bind":
+                        return mount.get("Source")
+
+            return None
+        except Exception:
+            # If anything fails, return None (not in a container or can't introspect)
+            return None
+
     def load_templates(self) -> TemplateBundle:
         compose_template = self.env.get_template("docker-compose.yml.j2")
         env_template = self.env.get_template("env.j2")
@@ -59,11 +102,13 @@ class ComposeRenderer:
         config: StackConfig,
         secrets: Optional[dict[str, dict[str, str]]],
     ) -> dict:
+        config_host_path = self._get_config_host_path()
         return {
             "config": config.model_dump(mode="json"),
             "config_obj": config,
             "config_hash": config.model_dump_json(),
             "secrets": secrets or {},
+            "config_host_path": config_host_path,
         }
 
     def _write_secrets(

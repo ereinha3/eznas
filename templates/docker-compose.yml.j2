@@ -6,26 +6,6 @@
 {% set traefik_tls_enabled = proxy.https_port is not none %}
 {% set traefik_entrypoint = "websecure" if traefik_tls_enabled else "web" %}
 services:
-  orchestrator:
-    build:
-      context: ..
-      dockerfile: Dockerfile
-    container_name: nas-orchestrator
-    restart: unless-stopped
-    environment:
-      - ORCH_ROOT=/config
-    ports:
-      - "{{ config.ui.port }}:8443"
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - {{ paths.appdata }}/orchestrator:/config
-      - {{ paths.pool }}:{{ paths.pool }}
-      - {{ paths.appdata }}:{{ paths.appdata }}
-{% if paths.scratch %}
-      - {{ paths.scratch }}:{{ paths.scratch }}
-{% endif %}
-    networks:
-      - nas_net
 {% if proxy.enabled %}
   traefik:
     image: {{ proxy.image }}
@@ -101,7 +81,7 @@ services:
     volumes:
       - {{ paths.appdata }}/radarr:/config
       - {{ paths.pool }}:/data
-      - {{ scratch_host }}:/scratch
+      - {{ scratch_host }}:/downloads
 {% if services.radarr.port %}
     ports:
       - "{{ services.radarr.port }}:7878"
@@ -136,7 +116,7 @@ services:
     volumes:
       - {{ paths.appdata }}/sonarr:/config
       - {{ paths.pool }}:/data
-      - {{ scratch_host }}:/scratch
+      - {{ scratch_host }}:/downloads
 {% if services.sonarr.port %}
     ports:
       - "{{ services.sonarr.port }}:8989"
@@ -259,25 +239,30 @@ services:
 
 {% if services.pipeline.enabled %}
   pipeline-worker:
-    build:
-      context: ..
-      dockerfile: Dockerfile
+    image: nas_orchestrator-orchestrator:latest
     container_name: pipeline-worker
     restart: unless-stopped
     environment:
       - TZ={{ runtime.timezone }}
       - ORCH_ROOT=/config
-      - PIPELINE_INTERVAL=60
+      - PIPELINE_INTERVAL={{ services.pipeline.interval | default(60) }}
     command: ["python", "-m", "orchestrator.pipeline.runner"]
     volumes:
       - {{ paths.pool }}:/data
-      - {{ scratch_host }}:/scratch
-      - {{ paths.appdata }}/orchestrator:/config
+      # Match qBittorrent's internal save paths (it reports /downloads/... via API).
+      - {{ scratch_host }}:/downloads
+{% if config_host_path %}
+      # Dev mode: bind mount to host config directory
+      - {{ config_host_path }}/stack.yaml:/config/stack.yaml:ro
+      - {{ config_host_path }}/state.json:/config/state.json
+{% else %}
+      # Production mode: use shared volume (needs write access for state.json)
+      - orchestrator_config:/config
+{% endif %}
     depends_on:
 {% if services.qbittorrent.enabled %}
       - qbittorrent
 {% endif %}
-      - orchestrator
     networks:
       - nas_net
 {% endif %}
@@ -285,3 +270,8 @@ services:
 networks:
   nas_net:
     driver: bridge
+
+{% if services.pipeline.enabled and not config_host_path %}
+volumes:
+  orchestrator_config:
+{% endif %}

@@ -108,7 +108,10 @@ class PipelineRunner:
             return
 
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{qb_cfg.port or 8080}"
+        # NOTE: Within the docker compose network, services must talk to the
+        # qBittorrent container on its *container port* (LinuxServer image: 8080),
+        # not the host-mapped port configured for external access.
+        base_url = "http://qbittorrent:8080"
         api = QbittorrentAPI(
             base_url=base_url,
             username=qb_cfg.username,
@@ -129,8 +132,19 @@ class PipelineRunner:
             api.close()
 
     def _should_process(self, config: StackConfig, category: str) -> bool:
+        """Check if a torrent category should be processed.
+
+        Normalizes category to handle *arr service suffixes (e.g., 'tv-sonarr' -> 'tv').
+        """
+        # Normalize category to strip *arr suffixes
+        normalized = category
+        for suffix in ["-sonarr", "-radarr"]:
+            if category.endswith(suffix):
+                normalized = category[: -len(suffix)]
+                break
+
         categories = config.download_policy.categories
-        return category in {categories.radarr, categories.sonarr, categories.anime}
+        return normalized in {categories.radarr, categories.sonarr}
 
     def _is_processed(self, torrent_hash: str) -> bool:
         state = self.repo.load_state()
@@ -175,6 +189,8 @@ class PipelineRunner:
         plan.final_output.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(plan.staging_output), str(plan.final_output))
         self._cleanup_path(torrent.content_path)
+        # Clean up empty staging directory
+        self._cleanup_path(plan.staging_output.parent)
         api.remove_torrents([torrent.hash])
         self._mark_processed(torrent.hash, "ok")
 
@@ -204,7 +220,8 @@ class PipelineRunner:
 
 def main() -> None:
     root = Path(os.getenv("ORCH_ROOT", Path(__file__).resolve().parents[2]))
-    repo = ConfigRepository(root)
+    # Pipeline worker runs with read-only config access
+    repo = ConfigRepository(root, read_only=True)
     interval = float(os.getenv("PIPELINE_INTERVAL", "60"))
     runner = PipelineRunner(repo)
     runner.run_forever(interval=interval)
@@ -212,5 +229,8 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+
 
 
