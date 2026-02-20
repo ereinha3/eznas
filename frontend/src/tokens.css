@@ -1,0 +1,134 @@
+/*  ============================================================
+ *  Design Tokens — Single source of truth for the UI theme.
+ *
+ *  Import this file FIRST (before App.css / any page CSS)
+ *  so every other stylesheet can use var(--token-name).
+ *  ============================================================ */
+
+:root {
+  /* -------- Palette: raw color values -------- */
+
+  /* Backgrounds */
+  --color-bg-primary:    #0f172a;   /* page body, hero bar */
+  --color-bg-sidebar:    #0c1222;   /* left nav column */
+  --color-bg-input:      #132544;   /* text inputs / selects */
+  --color-bg-login:      #1e1e2e;   /* login box */
+  --color-bg-deep:       #0b1120;   /* dark button text */
+
+  /* Text */
+  --color-text-primary:    #e2e8f0;
+  --color-text-secondary:  #cbd5e1;
+  --color-text-muted:      #94a3b8;
+  --color-text-dim:        #64748b;
+  --color-text-log:        #cbd5f5;  /* monospace log output */
+
+  /* Accent — cyan / indigo */
+  --color-accent:          #38bdf8;
+  --color-accent-hover:    #7dd3fc;
+  --color-accent-indigo:   #6366f1;
+
+  /* Semantic */
+  --color-success:         #22c55e;
+  --color-success-light:   #86efac;
+  --color-success-pale:    #bbf7d0;
+  --color-error:           #f87171;
+  --color-error-light:     #fecdd3;
+  --color-warning:         #fbbf24;
+
+  /* -------- Surfaces (semi-transparent) -------- */
+
+  /* Slate surfaces (rgba 148, 163, 184) */
+  --surface-slate-5:    rgba(148, 163, 184, 0.05);
+  --surface-slate-10:   rgba(148, 163, 184, 0.10);
+  --surface-slate-12:   rgba(148, 163, 184, 0.12);
+  --surface-slate-15:   rgba(148, 163, 184, 0.15);
+  --surface-slate-16:   rgba(148, 163, 184, 0.16);
+  --surface-slate-18:   rgba(148, 163, 184, 0.18);
+  --surface-slate-20:   rgba(148, 163, 184, 0.20);
+  --surface-slate-22:   rgba(148, 163, 184, 0.22);
+  --surface-slate-25:   rgba(148, 163, 184, 0.25);
+  --surface-slate-30:   rgba(148, 163, 184, 0.30);
+
+  /* Accent surfaces (rgba 56, 189, 248) */
+  --surface-accent-8:   rgba(56, 189, 248, 0.08);
+  --surface-accent-10:  rgba(56, 189, 248, 0.10);
+  --surface-accent-12:  rgba(56, 189, 248, 0.12);
+  --surface-accent-15:  rgba(56, 189, 248, 0.15);
+  --surface-accent-18:  rgba(56, 189, 248, 0.18);
+  --surface-accent-20:  rgba(56, 189, 248, 0.20);
+  --surface-accent-25:  rgba(56, 189, 248, 0.25);
+  --surface-accent-30:  rgba(56, 189, 248, 0.30);
+  --surface-accent-35:  rgba(56, 189, 248, 0.35);
+  --surface-accent-45:  rgba(56, 189, 248, 0.45);
+
+  /* Card / panel surfaces (rgba 15, 23, 42) */
+  --surface-card-90:    rgba(15, 23, 42, 0.90);
+  --surface-card-80:    rgba(15, 23, 42, 0.80);
+  --surface-card-70:    rgba(15, 23, 42, 0.70);
+  --surface-card-60:    rgba(15, 23, 42, 0.60);
+
+  /* Deep surfaces (rgba 12, 18, 34) */
+  --surface-deep-78:    rgba(12, 18, 34, 0.78);
+  --surface-deep-65:    rgba(12, 18, 34, 0.65);
+  --surface-deep-60:    rgba(12, 18, 34, 0.60);
+  --surface-deep-40:    rgba(12, 18, 34, 0.40);
+
+  /* Success surfaces */
+  --surface-success-18: rgba(34, 197, 94, 0.18);
+  --surface-success-25: rgba(34, 197, 94, 0.25);
+  --surface-success-35: rgba(34, 197, 94, 0.35);
+  --surface-success-40: rgba(34, 197, 94, 0.40);
+  --surface-success-45: rgba(34, 197, 94, 0.45);
+  --surface-success-50: rgba(34, 197, 94, 0.50);
+
+  /* Error surfaces */
+  --surface-error-15:   rgba(248, 113, 113, 0.15);
+  --surface-error-18:   rgba(248, 113, 113, 0.18);
+  --surface-error-22:   rgba(248, 113, 113, 0.22);
+  --surface-error-25:   rgba(248, 113, 113, 0.25);
+  --surface-error-30:   rgba(248, 113, 113, 0.30);
+  --surface-error-45:   rgba(248, 113, 113, 0.45);
+
+  /* Warning surfaces */
+  --surface-warning-10: rgba(251, 191, 36, 0.10);
+  --surface-warning-30: rgba(251, 191, 36, 0.30);
+
+  /* -------- Shadows -------- */
+  --shadow-card:       0 12px 28px rgba(4, 9, 21, 0.45);
+  --shadow-dropdown:   0 12px 28px rgba(4, 9, 21, 0.60);
+  --shadow-login:      0 10px 40px rgba(0, 0, 0, 0.30);
+  --shadow-glow-accent: 0 20px 40px rgba(56, 189, 248, 0.35);
+
+  /* -------- Typography -------- */
+  --font-sans:   'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono:   'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+  --font-weight-normal:   400;
+  --font-weight-medium:   500;
+  --font-weight-semibold: 600;
+  --font-weight-bold:     700;
+
+  /* -------- Radii -------- */
+  --radius-sm:    6px;
+  --radius-md:    8px;
+  --radius-lg:   12px;
+  --radius-xl:   16px;
+  --radius-pill: 999px;
+
+  /* -------- Layout -------- */
+  --header-height: 4.5rem;
+  --sidebar-width: 240px;
+
+  /* -------- Transitions -------- */
+  --transition-fast:    0.15s ease;
+  --transition-normal:  0.2s ease;
+  --transition-slow:    0.3s ease;
+
+  /* -------- Gradients (reusable) -------- */
+  --gradient-primary: linear-gradient(135deg, var(--color-accent), var(--color-accent-indigo));
+  --gradient-card:    linear-gradient(155deg, rgba(17, 28, 52, 0.92), rgba(15, 28, 52, 0.74));
+  --gradient-login:   linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  --gradient-body:
+    radial-gradient(circle at top left, rgba(56, 189, 248, 0.2), transparent 52%),
+    radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.18), transparent 48%),
+    var(--color-bg-primary);
+}

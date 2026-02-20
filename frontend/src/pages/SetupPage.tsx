@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import type { StackConfig } from '../components/types'
 import { ActionBar } from '../components/ActionBar'
+import { validatePath } from '../api'
 
 interface SetupPageProps {
   config: StackConfig
@@ -11,6 +12,14 @@ interface SetupPageProps {
   onBuild?: () => Promise<void>
   isApplying: boolean
 }
+
+interface PathValidation {
+  valid: boolean | null
+  message: string
+  isValidating: boolean
+}
+
+const DEBOUNCE_MS = 500
 
 export function SetupPage({
   config,
@@ -23,6 +32,10 @@ export function SetupPage({
 }: SetupPageProps) {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [touched, setTouched] = useState<Record<string, boolean>>({})
+
+  // Path validation state (async, debounced)
+  const [pathValidation, setPathValidation] = useState<Record<string, PathValidation>>({})
+  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const validateField = useCallback(
     (field: string, value: string | number | null): string | undefined => {
@@ -53,6 +66,59 @@ export function SetupPage({
     [validateField],
   )
 
+  /** Trigger debounced async path validation. */
+  const debouncedPathValidate = useCallback(
+    (field: string, path: string) => {
+      // Clear any pending debounce for this field
+      if (debounceTimers.current[field]) {
+        clearTimeout(debounceTimers.current[field])
+      }
+
+      // If path is empty, clear validation
+      if (!path.trim()) {
+        setPathValidation((prev) => {
+          const { [field]: _, ...rest } = prev
+          return rest
+        })
+        return
+      }
+
+      // Show spinner immediately
+      setPathValidation((prev) => ({
+        ...prev,
+        [field]: { valid: null, message: '', isValidating: true },
+      }))
+
+      debounceTimers.current[field] = setTimeout(async () => {
+        try {
+          const result = await validatePath(path, true, false, false)
+          setPathValidation((prev) => ({
+            ...prev,
+            [field]: {
+              valid: result.valid,
+              message: result.error || result.warning || (result.valid ? 'Path is valid' : 'Path not accessible'),
+              isValidating: false,
+            },
+          }))
+        } catch {
+          setPathValidation((prev) => ({
+            ...prev,
+            [field]: { valid: null, message: '', isValidating: false },
+          }))
+        }
+      }, DEBOUNCE_MS)
+    },
+    [],
+  )
+
+  // Cleanup debounce timers on unmount
+  useEffect(() => {
+    const timers = debounceTimers.current
+    return () => {
+      Object.values(timers).forEach(clearTimeout)
+    }
+  }, [])
+
   const updatePaths = useCallback(
     (field: keyof StackConfig['paths'], value: string) => {
       const nextValue = field === 'scratch' ? (value.trim() === '' ? null : value) : value
@@ -63,8 +129,12 @@ export function SetupPage({
           [field]: nextValue,
         },
       })
+      // Trigger async path validation
+      if (value.trim()) {
+        debouncedPathValidate(field, value)
+      }
     },
-    [config, onChange],
+    [config, onChange, debouncedPathValidate],
   )
 
   const updateRuntime = useCallback(
@@ -93,6 +163,37 @@ export function SetupPage({
     [config, onChange],
   )
 
+  const renderPathStatus = (field: string) => {
+    const pv = pathValidation[field]
+    if (!pv) return null
+
+    if (pv.isValidating) {
+      return (
+        <span className="field-validating" role="status">
+          <span className="field-spinner" /> Checking path...
+        </span>
+      )
+    }
+
+    if (pv.valid === true) {
+      return (
+        <span className="field-valid" role="status">
+          &#10003; {pv.message}
+        </span>
+      )
+    }
+
+    if (pv.valid === false) {
+      return (
+        <span className="field-warning" role="alert">
+          {pv.message}
+        </span>
+      )
+    }
+
+    return null
+  }
+
   return (
     <div className="setup-page">
       <h1>Setup</h1>
@@ -115,6 +216,7 @@ export function SetupPage({
                 {errors.pool}
               </span>
             )}
+            {renderPathStatus('pool')}
           </label>
           <label htmlFor="scratch-path">
             Scratch volume (optional)
@@ -124,6 +226,7 @@ export function SetupPage({
               placeholder="/mnt/scratch"
               onChange={(e) => updatePaths('scratch', e.target.value)}
             />
+            {renderPathStatus('scratch')}
           </label>
           <label htmlFor="appdata-path">
             Appdata path
@@ -140,6 +243,7 @@ export function SetupPage({
                 {errors.appdata}
               </span>
             )}
+            {renderPathStatus('appdata')}
           </label>
         </div>
       </div>

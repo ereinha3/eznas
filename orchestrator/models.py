@@ -87,7 +87,7 @@ class QbittorrentConfig(ServiceBaseConfig):
     proxy_url: Optional[str] = None
     stop_after_download: bool = True
     username: str = "admin"
-    password: str = "adminadmin"
+    password: str = ""  # Set during setup wizard, never hardcode defaults
 
 
 class RadarrConfig(ServiceBaseConfig):
@@ -408,6 +408,7 @@ class InitializeRequest(BaseModel):
     pool_path: str
     scratch_path: Optional[str] = None
     appdata_path: str
+    enabled_services: Optional[List[str]] = None  # e.g. ["qbittorrent", "radarr"]
 
 
 class InitializeResponse(BaseModel):

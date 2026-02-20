@@ -1,4 +1,4 @@
-export type PageKey = 'dashboard' | 'setup' | 'services' | 'proxy' | 'media-policy' | 'logs'
+export type PageKey = 'dashboard' | 'settings' | 'services' | 'logs'
 
 interface NavItem {
   id: PageKey
@@ -8,10 +8,8 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { id: 'setup', label: 'Setup', icon: '⚙️' },
   { id: 'services', label: 'Services', icon: '🔲' },
-  { id: 'proxy', label: 'Proxy', icon: '🔀' },
-  { id: 'media-policy', label: 'Media Policy', icon: '🎬' },
+  { id: 'settings', label: 'Settings', icon: '⚙️' },
   { id: 'logs', label: 'Logs', icon: '📄' },
 ]
 

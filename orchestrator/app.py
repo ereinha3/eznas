@@ -16,48 +16,46 @@ from fastapi import FastAPI, HTTPException, Request, Depends
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sse_starlette.sse import EventSourceResponse
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, ValidationError
 
-from .converge.runner import ApplyRunner
-from .converge.services import ServiceConfigurator
-from .converge.verification_engine import VerificationEngine
-from .clients.jellyfin import JellyfinClient
+# ... existing imports ...
+
 from .models import (
-    AddIndexersRequest,
-    ApplyResponse,
-    AvailableIndexersResponse,
-    ChangePasswordRequest,
-    ConfiguredIndexersResponse,
-    CreateUserRequest,
-    DownloadPolicy,
-    HealthCheck,
-    HealthResponse,
-    IndexerInfo,
-    IndexerSchema,
-    InitializeRequest,
-    InitializeResponse,
-    LoginRequest,
-    LoginResponse,
-    MediaPolicy,
-    PathConfig,
-    QualityConfig,
-    RenderResult,
-    RuntimeConfig,
-    ServicesConfig,
-    Session,
-    SessionResponse,
     StackConfig,
+    PathConfig,
+    ServicesConfig,
+    TraefikConfig,
     StatusResponse,
     ServiceStatus,
+    HealthResponse,
+    HealthCheck,
+    InitializeRequest,
+    InitializeResponse,
+    ValidationResult,
+    RenderResult,
+    ApplyResponse,
+    RunRecord,
+    Session,
+    User,
+    UserRole,
+    LoginRequest,
+    LoginResponse,
+    SessionResponse,
     SudoVerifyRequest,
     SudoVerifyResponse,
-    TraefikConfig,
-    UIConfig,
+    ChangePasswordRequest,
+    CreateUserRequest,
     UserListResponse,
-    UserRole,
-    ValidationResult,
     VolumeInfo,
     VolumesResponse,
+    DownloadPolicy,
+    MediaPolicy,
+    QualityConfig,
+    UIConfig,
+    RuntimeConfig,
+    AvailableIndexersResponse,
+    ConfiguredIndexersResponse,
+    AddIndexersRequest,
 )
 from .system import scan_volumes, validate_path
 from .auth import (
@@ -69,9 +67,14 @@ from .auth import (
     get_auth_manager,
 )
 from .clients.prowlarr import ProwlarrClient
+from .clients.jellyfin import JellyfinClient
 from .rendering import ComposeRenderer
 from .storage import ConfigRepository
 from .validators import run_validation
+from .converge.services import ServiceConfigurator
+from .constants import INTERNAL_PORTS
+from .converge.runner import ApplyRunner
+from .converge.verification_engine import VerificationEngine
 
 logger = logging.getLogger(__name__)
 
@@ -123,20 +126,7 @@ async def startup_event():
     auth_manager = AuthManager(state)
 
     if not auth_manager.has_users():
-        # Create default admin user
-        import secrets
-
-        password = secrets.token_urlsafe(12)
-        auth_manager.create_user("admin", password, UserRole.ADMIN)
-        # Store default password for setup wizard display
-        if "auth" not in state:
-            state["auth"] = {}
-        if "_setup" not in state["auth"]:
-            state["auth"]["_setup"] = {}
-        state["auth"]["_setup"]["default_password"] = password
-        repo.save_state(state)
-        logger.warning(f"Created default admin user (admin / {password})")
-        logger.warning("Please change the default password immediately after login!")
+        logger.info("No users found. Setup wizard will handle admin creation.")
 
 
 repo = ConfigRepository(CONFIG_ROOT)
@@ -335,10 +325,18 @@ def serve_vite_icon() -> FileResponse:
 
 
 @app.get("/api/config", response_model=StackConfig)
-def get_config() -> StackConfig:
-    """Return the saved stack configuration."""
+def get_config():
     try:
         return repo.load_stack()
+    except ValidationError:
+        # If config is invalid (e.g. factory reset), return empty config
+        # so user can fix it via setup UI. We use construct() to bypass
+        # the "must be absolute" path validation.
+        return StackConfig.construct(
+            paths=PathConfig.construct(pool=Path(""), appdata=Path("")),
+            services=ServicesConfig(),
+            proxy=TraefikConfig(),
+        )
     except FileNotFoundError as exc:  # pragma: no cover - initial bootstrap
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -384,21 +382,21 @@ def _check_port(host: str, port: int, timeout: float = 2.0) -> bool:
         return False
 
 
-# Default internal ports for services (used for container-to-container health checks)
-_SERVICE_INTERNAL_PORTS: dict[str, int] = {
-    "qbittorrent": 8080,
-    "radarr": 7878,
-    "sonarr": 8989,
-    "prowlarr": 9696,
-    "jellyseerr": 5055,
-    "jellyfin": 8096,
-}
+# Use centralized port constants for container-to-container health checks
+_SERVICE_INTERNAL_PORTS = INTERNAL_PORTS
 
 
 @app.get("/api/health", response_model=HealthResponse)
 def get_health() -> HealthResponse:
     """Return health status with actual port connectivity checks."""
-    cfg = repo.load_stack()
+    try:
+        cfg = repo.load_stack()
+    except Exception:
+        # Configuration invalid (fresh install) - return minimal health response
+        return HealthResponse(
+            status="unhealthy",
+            services=[],
+        )
     checks: List[HealthCheck] = []
     healthy_count = 0
     total_enabled = 0
@@ -747,6 +745,23 @@ def build_orchestrator_image(session: Session = Depends(require_admin)) -> JSONR
         )
 
 
+@app.post("/api/config/preview")
+def preview_config_changes(
+    config: StackConfig, session: Session = Depends(require_auth)
+) -> dict:
+    """Preview what would change if this config were applied.
+
+    Returns a structured diff showing:
+      - Every field that changed (old → new)
+      - Which services would need restart
+      - Which services would need reconfiguration
+
+    This powers the "BIOS-like" settings experience: edit → preview → confirm.
+    """
+    diff = runner.preview(config)
+    return diff.to_dict()
+
+
 @app.post("/api/apply", response_model=ApplyResponse)
 def apply_stack(
     config: StackConfig, session: Session = Depends(require_admin)
@@ -786,6 +801,9 @@ def login(
     session = auth_manager.authenticate(request.username, request.password)
     if not session:
         return LoginResponse(success=False, message="Invalid credentials")
+
+    # Persist the session to state
+    repo.save_state(auth_manager.state)
 
     return LoginResponse(
         success=True,
@@ -892,6 +910,13 @@ def change_password(
     return {"ok": True}
 
 
+@app.get("/api/runs")
+def list_runs(limit: int = 10) -> dict:
+    """Return recent apply/converge runs, newest first."""
+    runs = repo.list_runs(limit=limit)
+    return {"runs": [r.model_dump(mode="json") for r in runs]}
+
+
 @app.get("/api/runs/{run_id}/events")
 async def stream_run_events(run_id: str) -> EventSourceResponse:
     """Stream converge events for a given run identifier."""
@@ -938,10 +963,69 @@ def get_volumes() -> VolumesResponse:
 
 
 @app.post("/api/system/validate-path")
-def validate_storage_path(path: str, require_writable: bool = True) -> dict:
-    """Validate a storage path."""
-    result = validate_path(path, require_writable)
+def validate_storage_path(request: dict) -> dict:
+    """Validate a storage path with auto-creation and permission fixing."""
+    path = request.get("path", "")
+    require_writable = request.get("require_writable", True)
+    auto_create = request.get("auto_create", False)
+    fix_permissions = request.get("fix_permissions", False)
+    result = validate_path(path, require_writable, auto_create, fix_permissions)
     return result
+
+
+@app.get("/api/system/browse-path")
+def browse_path(path: str = "/") -> dict:
+    """Browse directories for path autocomplete.
+
+    Returns a list of directories within the given path.
+    Uses /host prefix when running in Docker to access host filesystem.
+    """
+    try:
+        # Import here to avoid circular import
+        from .system import _get_host_path
+
+        # Get the actual path to browse (handles Docker /host mount)
+        host_path = _get_host_path(path)
+
+        if not host_path.exists():
+            return {"success": False, "error": "Path does not exist", "directories": []}
+
+        if not host_path.is_dir():
+            host_path = host_path.parent
+
+        directories = []
+        try:
+            for item in host_path.iterdir():
+                if item.is_dir():
+                    # Return the original path (without /host prefix) to the user
+                    original_path = path if path.endswith("/") else path + "/"
+                    display_path = (
+                        original_path + item.name if path != "/" else "/" + item.name
+                    )
+
+                    directories.append(
+                        {
+                            "name": item.name,
+                            "path": display_path,
+                            "writable": item.stat().st_mode & 0o200,
+                        }
+                    )
+        except PermissionError:
+            return {"success": False, "error": "Permission denied", "directories": []}
+
+        # Sort directories alphabetically
+        directories.sort(key=lambda x: x["name"])
+
+        return {
+            "success": True,
+            "current_path": path,
+            "parent_path": str(Path(path).parent)
+            if Path(path).parent != Path(path)
+            else None,
+            "directories": directories,
+        }
+    except Exception as e:
+        return {"success": False, "error": str(e), "directories": []}
 
 
 @app.post("/api/setup/verify")
@@ -1031,7 +1115,32 @@ def initialize_system(request: InitializeRequest) -> InitializeResponse:
             request.admin_username, request.admin_password, UserRole.ADMIN
         )
 
+        # Store admin credentials in secrets for Jellyfin/Jellyseerr provisioning.
+        # The converge pipeline reads these instead of hardcoding defaults.
+        secrets_section = state.setdefault("secrets", {})
+        secrets_section.setdefault("jellyfin", {}).update({
+            "admin_username": request.admin_username,
+            "admin_password": request.admin_password,
+        })
+        secrets_section.setdefault("jellyseerr", {}).update({
+            "admin_username": request.admin_username,
+            "admin_password": request.admin_password,
+        })
+        secrets_section.setdefault("qbittorrent", {}).update({
+            "username": "admin",
+            "password": request.admin_password,
+        })
+
         # Create initial config
+        services = ServicesConfig()
+
+        # Apply service selections from wizard (if provided)
+        if request.enabled_services is not None:
+            all_service_names = list(services.model_fields.keys())
+            for name in all_service_names:
+                svc = getattr(services, name)
+                svc.enabled = name in request.enabled_services
+
         initial_config = StackConfig(
             version=1,
             paths=PathConfig(
@@ -1039,7 +1148,7 @@ def initialize_system(request: InitializeRequest) -> InitializeResponse:
                 scratch=Path(request.scratch_path) if request.scratch_path else None,
                 appdata=Path(request.appdata_path),
             ),
-            services=ServicesConfig(),
+            services=services,
             proxy=TraefikConfig(),
             download_policy=DownloadPolicy(),
             media_policy=MediaPolicy(),
@@ -1049,10 +1158,22 @@ def initialize_system(request: InitializeRequest) -> InitializeResponse:
             users=[],
         )
 
-        # Ensure directories exist
-        repo.ensure_directories(initial_config)
+        # Ensure directories exist with correct permissions.
+        # This will raise PermissionError with the exact fix command if it fails.
+        try:
+            repo.ensure_directories(initial_config)
+        except PermissionError as perm_err:
+            # Save config and user FIRST — user shouldn't have to re-enter
+            # everything just because of a permission issue.
+            repo.save_stack(initial_config)
+            repo.save_state(state)
+            return InitializeResponse(
+                success=False,
+                message=str(perm_err),
+                config_created=True,
+            )
 
-        # Save config
+        # All directories created successfully
         repo.save_stack(initial_config)
         repo.save_state(state)
 

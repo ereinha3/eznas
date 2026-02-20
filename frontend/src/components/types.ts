@@ -104,10 +104,27 @@ export interface RenderResult {
   env_path: string
 }
 
+export interface StageEvent {
+  stage: string
+  status: 'started' | 'ok' | 'failed'
+  detail?: string | null
+}
+
 export interface ApplyResponse {
   ok: boolean
   run_id: string
-  events: Array<{ stage: string; status: string; detail?: string | null }>
+  events: StageEvent[]
+}
+
+export interface RunRecord {
+  run_id: string
+  ok: boolean | null
+  events: StageEvent[]
+  summary?: string | null
+}
+
+export interface RecentRunsResponse {
+  runs: RunRecord[]
 }
 
 export interface ServiceStatus {

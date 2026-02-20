@@ -12,6 +12,7 @@ import httpx
 from .arr import wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
 from .util import get_service_config_dir
+from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -294,7 +295,7 @@ class JellyseerrClient(ServiceClient):
         body = test.json()
 
         profile = self._pick_first(body.get("profiles"))
-        root_dir = self._select_root(body.get("rootFolders"), "/data/media/movies")
+        root_dir = self._select_root(body.get("rootFolders"), CONTAINER_PATHS["media_movies"])
 
         if profile is None or root_dir is None:
             return _EnsureResult(
@@ -359,7 +360,7 @@ class JellyseerrClient(ServiceClient):
 
         profile = self._pick_first(body.get("profiles"))
         language_profile = self._pick_first(body.get("languageProfiles"))
-        root_dir = self._select_root(body.get("rootFolders"), "/data/media/tv")
+        root_dir = self._select_root(body.get("rootFolders"), CONTAINER_PATHS["media_tv"])
 
         if profile is None or root_dir is None:
             return _EnsureResult(

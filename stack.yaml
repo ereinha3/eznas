@@ -1,8 +1,8 @@
 version: 1
 paths:
-  pool: ''
+  pool: /mnt/pool/media
   scratch: null
-  appdata: ''
+  appdata: /home/ethan/eznas/app-data
 services:
   qbittorrent:
     enabled: true
@@ -10,7 +10,7 @@ services:
     proxy_url: null
     stop_after_download: true
     username: admin
-    password: adminadmin
+    password: ''
   radarr:
     enabled: true
     port: 7878
@@ -23,7 +23,7 @@ services:
     enabled: true
     port: 9696
     proxy_url: null
-    language_filter: false
+    language_filter: true
   jellyseerr:
     enabled: true
     port: 5055
@@ -54,7 +54,6 @@ media_policy:
     - und
     keep_subs:
     - eng
-    - forced
 quality:
   preset: balanced
   target_resolution: null

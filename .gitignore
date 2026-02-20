@@ -23,16 +23,31 @@ frontend/dist/
 *.swo
 *~
 
-# Generated files
+# Generated files (rendered by orchestrator at runtime)
 generated/
+
+# Runtime state files (contain secrets, sessions, API keys)
+# Legacy monolithic file:
 state.json
+state.json.migrated
+# Split section files (Phase 1):
+auth.json
+secrets.json
+services.json
+runs.json
+pipeline.json
+# Recovery artifacts:
+*.json.corrupted
+*.json.bak
+
+# Planning artifacts
 PLAN.md
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Secrets (should use .secrets/ in generated/)
+# Secrets
 *.pem
 *.key
 .env.local
@@ -40,5 +55,8 @@ Thumbs.db
 # Test artifacts
 /tmp/
 *.log
+tests/e2e/playwright-report/
+tests/e2e/test-results/
 
-**/test*/
+# Screenshots and binary artifacts
+*.png

@@ -4,6 +4,7 @@ import type {
   AutoPopulateIndexersResponse,
   AvailableIndexersResponse,
   ConfiguredIndexersResponse,
+  RecentRunsResponse,
   RenderResult,
   StackConfig,
   StatusResponse,
@@ -81,6 +82,30 @@ export async function applyConfig(config: StackConfig): Promise<ApplyResponse> {
   return handleResponse(response)
 }
 
+export interface ConfigChangeItem {
+  path: string
+  old_value: unknown
+  new_value: unknown
+  affected_services: string[]
+}
+
+export interface ConfigPreview {
+  has_changes: boolean
+  changes: ConfigChangeItem[]
+  services_to_restart: string[]
+  services_to_reconfigure: string[]
+  summary: string[]
+}
+
+export async function previewConfigChanges(config: StackConfig): Promise<ConfigPreview> {
+  const response = await fetch('/api/config/preview', {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(config),
+  })
+  return handleResponse(response)
+}
+
 export async function fetchStatus(): Promise<StatusResponse> {
   const response = await fetch('/api/status', {
     headers: buildHeaders(false),
@@ -122,6 +147,14 @@ export async function fetchHealth(): Promise<HealthResponse> {
   })
   if (!response.ok) throw new Error('Failed to fetch health')
   return response.json()
+}
+
+// Recent apply runs
+export async function fetchRecentRuns(limit: number = 10): Promise<RecentRunsResponse> {
+  const response = await fetch(`/api/runs?limit=${limit}`, {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
 }
 
 // Indexer management
@@ -294,6 +327,7 @@ export interface InitializeRequest {
   pool_path: string;
   scratch_path?: string;
   appdata_path: string;
+  enabled_services?: string[];
 }
 
 export interface InitializeResponse {
@@ -309,16 +343,46 @@ export async function fetchVolumes(): Promise<VolumesResponse> {
   return handleResponse(response)
 }
 
-export async function validatePath(path: string, requireWritable: boolean = true): Promise<{
+export async function validatePath(
+  path: string,
+  requireWritable: boolean = true,
+  autoCreate: boolean = false,
+  fixPermissions: boolean = false
+): Promise<{
   valid: boolean;
   exists: boolean;
   writable: boolean;
+  created: boolean;
+  permissions_fixed: boolean;
+  warning: string | null;
   error: string | null;
 }> {
   const response = await fetch('/api/system/validate-path', {
     method: 'POST',
     headers: buildHeaders(),
-    body: JSON.stringify({ path, require_writable: requireWritable }),
+    body: JSON.stringify({
+      path,
+      require_writable: requireWritable,
+      auto_create: autoCreate,
+      fix_permissions: fixPermissions,
+    }),
+  })
+  return handleResponse(response)
+}
+
+export async function browsePath(path: string = '/'): Promise<{
+  success: boolean;
+  current_path: string;
+  parent_path: string | null;
+  directories: Array<{
+    name: string;
+    path: string;
+    writable: boolean;
+  }>;
+  error?: string;
+}> {
+  const response = await fetch(`/api/system/browse-path?path=${encodeURIComponent(path)}`, {
+    headers: buildHeaders(false),
   })
   return handleResponse(response)
 }

@@ -1,4 +1,5 @@
 """qBittorrent service configuration client."""
+
 from __future__ import annotations
 
 import base64
@@ -16,6 +17,7 @@ from typing import Iterable, List, Optional, Tuple
 
 import httpx
 
+from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
 from .base import EnsureOutcome, ServiceClient
@@ -92,9 +94,7 @@ class QBittorrentClient(ServiceClient):
                 )
             except AuthenticationError:
                 client.close()
-                target_password = (
-                    desired_password or stored_password or "adminadmin"
-                )
+                target_password = desired_password or stored_password or "adminadmin"
                 if not self._repair_credentials(
                     config=config,
                     username=desired_username,
@@ -169,7 +169,9 @@ class QBittorrentClient(ServiceClient):
             f"user={qb_state.get('username')} "
             f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr}"
         )
-        return EnsureOutcome(detail=detail, changed=update_result.changed or categories_changed)
+        return EnsureOutcome(
+            detail=detail, changed=update_result.changed or categories_changed
+        )
 
     def verify(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
@@ -241,8 +243,8 @@ class QBittorrentClient(ServiceClient):
             categories_payload = categories_response.json() or {}
 
             expected = {
-                config.download_policy.categories.radarr: "/downloads/complete/movies",
-                config.download_policy.categories.sonarr: "/downloads/complete/tv",
+                config.download_policy.categories.radarr: f'{CONTAINER_PATHS["downloads_complete"]}/movies',
+                config.download_policy.categories.sonarr: f'{CONTAINER_PATHS["downloads_complete"]}/tv',
             }
             missing = []
             mismatched = []
@@ -376,6 +378,17 @@ class QBittorrentClient(ServiceClient):
             )
             return False
 
+        # Stop container before editing config to prevent overwrite on shutdown
+        try:
+            subprocess.run(
+                ["docker", "stop", "qbittorrent"],
+                check=False,
+                capture_output=True,
+                timeout=30,
+            )
+        except Exception as exc:
+            log.warning("Failed to stop qbittorrent for config repair: %s", exc)
+
         try:
             raw_text = config_path.read_text(encoding="utf-8")
         except FileNotFoundError:
@@ -393,12 +406,17 @@ class QBittorrentClient(ServiceClient):
         stored_hash = self._get_config_value(lines, "WebUI\\Password_PBKDF2")
         if not stored_hash or not self._password_matches(stored_hash, password):
             new_hash = self._generate_password_hash(password)
-            changed |= self._set_config_value(
-                lines, "WebUI\\Password_PBKDF2", new_hash
-            )
+            changed |= self._set_config_value(lines, "WebUI\\Password_PBKDF2", new_hash)
 
         changed |= self._set_config_value(lines, "WebUI\\Password_ha1", "")
         changed |= self._set_config_value(lines, "WebUI\\Port", str(self.INTERNAL_PORT))
+
+        # Bypass Host Header validation to allow access via LAN IP
+        changed |= self._set_config_value(lines, "WebUI\\HostHeaderValidation", "false")
+        changed |= self._set_config_value(lines, "WebUI\\CSRFProtection", "false")
+        changed |= self._set_config_value(
+            lines, "WebUI\\ClickjackingProtection", "false"
+        )
 
         if changed:
             try:
@@ -407,12 +425,21 @@ class QBittorrentClient(ServiceClient):
                 log.debug("Unable to write qBittorrent config: %s", exc, exc_info=True)
                 return False
 
-        if not self._restart_container():
+        # Start container after config repair
+        try:
+            subprocess.run(
+                ["docker", "start", "qbittorrent"],
+                check=False,
+                capture_output=True,
+                timeout=30,
+            )
+            return True
+        except Exception as exc:
+            log.warning("Failed to start qbittorrent after config repair: %s", exc)
+            return False
             return False
 
-        return self._wait_for_ready(
-            f"http://qbittorrent:{self.INTERNAL_PORT}"
-        )
+        return self._wait_for_ready(f"http://qbittorrent:{self.INTERNAL_PORT}")
 
     def _restart_container(self) -> bool:
         try:
@@ -527,11 +554,13 @@ class QBittorrentClient(ServiceClient):
         desired_password: Optional[str],
     ) -> Tuple[EnsureOutcome, str]:
         qb_cfg = config.services.qbittorrent
-        downloads_root = "/downloads"
-        complete_path = f"{downloads_root}/complete"
-        incomplete_path = f"{downloads_root}/incomplete"
+        downloads_root = CONTAINER_PATHS["downloads"]
+        complete_path = CONTAINER_PATHS["downloads_complete"]
+        incomplete_path = CONTAINER_PATHS["downloads_incomplete"]
 
-        target_password = desired_password or current_password or secrets.token_urlsafe(16)
+        target_password = (
+            desired_password or current_password or secrets.token_urlsafe(16)
+        )
         password_changed = target_password != current_password
         username_changed = desired_username != current_username
 
@@ -570,8 +599,8 @@ class QBittorrentClient(ServiceClient):
     def _ensure_categories(self, client: httpx.Client, config: StackConfig) -> bool:
         categories = config.download_policy.categories
         mapping = {
-            categories.radarr: "/downloads/complete/movies",
-            categories.sonarr: "/downloads/complete/tv",
+            categories.radarr: f'{CONTAINER_PATHS["downloads_complete"]}/movies',
+            categories.sonarr: f'{CONTAINER_PATHS["downloads_complete"]}/tv',
         }
         changed = False
         for name, path in mapping.items():
@@ -581,7 +610,9 @@ class QBittorrentClient(ServiceClient):
                 changed = True
         return changed
 
-    def _create_or_update_category(self, client: httpx.Client, *, name: str, save_path: str) -> bool:
+    def _create_or_update_category(
+        self, client: httpx.Client, *, name: str, save_path: str
+    ) -> bool:
         """Return True if the category was created or updated."""
         response = client.post(
             "/api/v2/torrents/createCategory",

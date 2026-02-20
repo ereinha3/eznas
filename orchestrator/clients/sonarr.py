@@ -1,4 +1,5 @@
 """Sonarr automation client."""
+
 from __future__ import annotations
 
 import logging
@@ -11,13 +12,18 @@ import httpx
 from .arr import ArrAPI, describe_changes, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
 from .qb import QBittorrentClient
-from .util import arr_password_matches, get_service_config_dir, read_arr_api_key, wait_for_arr_config
+from .util import (
+    arr_password_matches,
+    get_service_config_dir,
+    read_arr_api_key,
+    wait_for_arr_config,
+)
+from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
 
 log = logging.getLogger(__name__)
-
 
 
 class SonarrClient(ServiceClient):
@@ -43,8 +49,23 @@ class SonarrClient(ServiceClient):
 
         config_dir = get_service_config_dir("sonarr", config)
         config_dir.mkdir(parents=True, exist_ok=True)
-        api_key = sonarr_secrets.get("api_key")
-        if not api_key:
+
+        # Always prefer the actual API key from disk if available
+        file_api_key: Optional[str] = None
+        if wait_for_arr_config(config_dir, timeout=5):
+            file_api_key = read_arr_api_key(config_dir)
+
+        stored_api_key = sonarr_secrets.get("api_key")
+
+        if file_api_key:
+            api_key = file_api_key
+            if stored_api_key != file_api_key:
+                sonarr_secrets["api_key"] = file_api_key
+                state_dirty = True
+                detail_messages.append("refreshed API key from config.xml")
+        elif stored_api_key:
+            api_key = stored_api_key
+        else:
             if not wait_for_arr_config(config_dir):
                 return EnsureOutcome(
                     detail=f"config.xml did not appear at {config_dir}",
@@ -109,12 +130,12 @@ class SonarrClient(ServiceClient):
             with ArrAPI(base_url, api_key) as api:
                 status = api.get_json("/system/status")
                 version = status.get("version")
-                detail_messages.append(
-                    f"online (v{version})" if version else "online"
-                )
+                detail_messages.append(f"online (v{version})" if version else "online")
 
                 host_config = api.get_json("/config/host")
-                password_matches = arr_password_matches(db_path, ui_username, ui_password)
+                password_matches = arr_password_matches(
+                    db_path, ui_username, ui_password
+                )
                 desired_method = "forms"
                 desired_required = "enabled"
                 analytics_flag = host_config.get("analyticsEnabled")
@@ -143,7 +164,7 @@ class SonarrClient(ServiceClient):
 
                 rf_changes = []
                 tv_changed, tv_msg, tv_id = self._ensure_root_folder(
-                    api, config, "/data/media/tv"
+                    api, config, CONTAINER_PATHS["tv"]
                 )
                 rf_changes.append((tv_changed, tv_msg))
                 if tv_id is not None:
@@ -155,11 +176,17 @@ class SonarrClient(ServiceClient):
                 if dl_config.get("enableCompletedDownloadHandling"):
                     dl_config["enableCompletedDownloadHandling"] = False
                     api.put_json("/config/downloadclient", dl_config)
-                    detail_messages.append("disabled auto-import (pipeline handles imports)")
+                    detail_messages.append(
+                        "disabled auto-import (pipeline handles imports)"
+                    )
                     changed = True
 
-                qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
-                qb_password = qb_secrets.get("password", config.services.qbittorrent.password)
+                qb_username = qb_secrets.get(
+                    "username", config.services.qbittorrent.username
+                )
+                qb_password = qb_secrets.get(
+                    "password", config.services.qbittorrent.password
+                )
                 prev_dl_username = sonarr_state.get("download_client_username")
                 prev_dl_password = sonarr_state.get("download_client_password")
                 dl_changed, dl_msg, client_id = self._ensure_download_client(
@@ -170,7 +197,9 @@ class SonarrClient(ServiceClient):
                     prev_dl_username,
                     prev_dl_password,
                 )
-                changed_any, aggregated = describe_changes(rf_changes + [(dl_changed, dl_msg)])
+                changed_any, aggregated = describe_changes(
+                    rf_changes + [(dl_changed, dl_msg)]
+                )
                 if aggregated:
                     detail_messages.append(aggregated)
                 changed = changed or changed_any
@@ -267,7 +296,9 @@ class SonarrClient(ServiceClient):
                     changed=False,
                     success=False,
                 )
-            return EnsureOutcome(detail="download client ok", changed=False, success=True)
+            return EnsureOutcome(
+                detail="download client ok", changed=False, success=True
+            )
 
         return EnsureOutcome(
             detail="download client missing (qbittorrent)",
@@ -288,7 +319,7 @@ class SonarrClient(ServiceClient):
         import httpx
 
         with httpx.Client(
-            base_url=base_url.rstrip('/'),
+            base_url=base_url.rstrip("/"),
             headers={"X-Api-Key": api_key},
             timeout=httpx.Timeout(15.0, connect=5.0),
         ) as client:
@@ -333,7 +364,6 @@ class SonarrClient(ServiceClient):
             raise RuntimeError(message)
         return True
 
-
     def _ensure_root_folder(
         self,
         api: ArrAPI,
@@ -353,7 +383,9 @@ class SonarrClient(ServiceClient):
         default_quality = self._select_quality_profile_id(quality_profiles, config)
         # Use movies policy for all content (original language detection handles foreign content)
         preferred_languages = config.media_policy.movies.keep_audio
-        default_language = self._select_language_profile_id(language_profiles, preferred_languages)
+        default_language = self._select_language_profile_id(
+            language_profiles, preferred_languages
+        )
 
         payload: Dict[str, object] = {
             "path": target,
@@ -397,15 +429,26 @@ class SonarrClient(ServiceClient):
             category_ok = current.get("tvCategory") == category
             url_base_ok = (current.get("urlBase") or "") == ""
             username_ok = current.get("username") == username
-            password_ok = previous_password is not None and previous_password == password
+            password_ok = (
+                previous_password is not None and previous_password == password
+            )
 
-            if host_ok and port_ok and category_ok and url_base_ok and username_ok and password_ok:
+            if (
+                host_ok
+                and port_ok
+                and category_ok
+                and url_base_ok
+                and username_ok
+                and password_ok
+            ):
                 return False, "download client ready", client_id
 
             updated = dict(client)
             updated["enable"] = True
             updated["removeCompletedDownloads"] = False  # Pipeline handles imports
-            updated["fields"] = set_field_values(client.get("fields", []), desired_fields)
+            updated["fields"] = set_field_values(
+                client.get("fields", []), desired_fields
+            )
             api.put_json(f"/downloadclient/{client_id}", updated)
             return True, f"updated download client {client_id}", client_id
 

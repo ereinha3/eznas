@@ -16,6 +16,9 @@ def run_validation(config: StackConfig) -> ValidationResult:
     checks: Dict[str, str] = {}
     overall_ok = True
 
+    uid = config.runtime.user_id
+    gid = config.runtime.group_id
+
     # Path mapping: host paths -> container paths (for containerized validation)
     # These match the mounts in docker-compose.dev.yml
     path_mappings = _get_path_mappings()
@@ -37,13 +40,14 @@ def run_validation(config: StackConfig) -> ValidationResult:
         check_path = _resolve_path(path, path_mappings)
 
         if not check_path.exists():
-            checks[label] = "missing"
+            checks[label] = f"missing (run: sudo mkdir -p {path})"
             overall_ok = False
         elif not check_path.is_dir():
             checks[label] = "not_directory"
             overall_ok = False
         elif not _is_writable(check_path):
-            checks[label] = "not_writable"
+            fix_cmd = f"sudo chown -R {uid}:{gid} {path} && sudo chmod -R 775 {path}"
+            checks[label] = f"not_writable (run: {fix_cmd})"
             overall_ok = False
         else:
             checks[label] = "ok"

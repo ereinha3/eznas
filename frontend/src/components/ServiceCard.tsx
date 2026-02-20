@@ -23,12 +23,25 @@ const SERVICE_METADATA: Record<
   pipeline: { label: 'Pipeline worker', role: 'Post-processing', icon: 'PP', showPort: false, showProxy: false },
 }
 
+const SERVICE_LABELS: Record<string, string> = {
+  qbittorrent: 'qBittorrent',
+  radarr: 'Radarr',
+  sonarr: 'Sonarr',
+  prowlarr: 'Prowlarr',
+  jellyseerr: 'Jellyseerr',
+  jellyfin: 'Jellyfin',
+  pipeline: 'Pipeline',
+  ui: 'Orchestrator UI',
+  'proxy-http': 'Proxy HTTP',
+  'proxy-https': 'Proxy HTTPS',
+}
+
 interface ServiceCardProps<T extends ServiceBaseConfig = ServiceBaseConfig> {
   serviceKey: ServiceKey
   service: T
   credentials?: ServiceCredential
   health?: HealthCheck
-  duplicatePorts: Set<number>
+  portConflictMap: Map<number, string[]>
   errors: Record<string, string>
   touched: Record<string, boolean>
   onUpdate: (patch: Partial<T>) => void
@@ -43,7 +56,7 @@ export function ServiceCard({
   service,
   credentials,
   health,
-  duplicatePorts,
+  portConflictMap,
   errors,
   touched,
   onUpdate,
@@ -110,11 +123,16 @@ export function ServiceCard({
                   {errors[`${serviceKey}-port`]}
                 </span>
               )}
-              {service.port && duplicatePorts.has(service.port) && (
-                <span className="field-warning" role="alert">
-                  Port conflict with another service
-                </span>
-              )}
+              {service.port && portConflictMap.has(service.port) && (() => {
+                const others = portConflictMap.get(service.port)!
+                  .filter((name) => name !== serviceKey)
+                  .map((name) => SERVICE_LABELS[name] || name)
+                return others.length > 0 ? (
+                  <span className="field-warning" role="alert">
+                    Port conflict — also used by: {others.join(', ')}
+                  </span>
+                ) : null
+              })()}
             </label>
           )}
           {metadata.showProxy && (

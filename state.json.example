@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "auth": {
+    "version": 1,
+    "users": [],
+    "sessions": [],
+    "settings": {
+      "session_timeout_hours": 24,
+      "sudo_timeout_minutes": 10
+    }
+  },
+  "secrets": {},
+  "services": {},
+  "pipeline": {
+    "processed": {}
+  },
+  "runs": []
+}

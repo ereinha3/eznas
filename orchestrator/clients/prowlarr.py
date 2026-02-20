@@ -1,4 +1,5 @@
 """Prowlarr automation client."""
+
 from __future__ import annotations
 
 import logging
@@ -46,27 +47,40 @@ class ProwlarrClient(ServiceClient):
 
         config_dir = get_service_config_dir("prowlarr", config)
         config_dir.mkdir(parents=True, exist_ok=True)
-        stored_api_key = prowlarr_secrets.get("api_key")
-        config_api_key: Optional[str] = None
-        if not wait_for_arr_config(config_dir):
-            return EnsureOutcome(
-                detail=f"config.xml did not appear at {config_dir}",
-                changed=False,
-                success=False,
-            )
-        config_api_key = read_arr_api_key(config_dir)
-        if not config_api_key:
-            return EnsureOutcome(
-                detail=f"Prowlarr API key missing in config.xml at {config_dir}",
-                changed=False,
-                success=False,
-            )
 
-        api_key = config_api_key
-        if stored_api_key != config_api_key:
+        # Always prefer the actual API key from disk if available
+        file_api_key: Optional[str] = None
+        if wait_for_arr_config(config_dir, timeout=5):
+            file_api_key = read_arr_api_key(config_dir)
+
+        stored_api_key = prowlarr_secrets.get("api_key")
+
+        if file_api_key:
+            api_key = file_api_key
+            if stored_api_key != file_api_key:
+                prowlarr_secrets["api_key"] = file_api_key
+                state_dirty = True
+                detail_messages.append("refreshed API key from config.xml")
+        elif stored_api_key:
+            api_key = stored_api_key
+        else:
+            if not wait_for_arr_config(config_dir):
+                return EnsureOutcome(
+                    detail=f"config.xml did not appear at {config_dir}",
+                    changed=False,
+                    success=False,
+                )
+            config_api_key = read_arr_api_key(config_dir)
+            if not config_api_key:
+                return EnsureOutcome(
+                    detail=f"Prowlarr API key missing in config.xml at {config_dir}",
+                    changed=False,
+                    success=False,
+                )
+            api_key = config_api_key
             prowlarr_secrets["api_key"] = config_api_key
             state_dirty = True
-            detail_messages.append("refreshed API key from config.xml")
+            detail_messages.append("stored API key")
 
         ui_username = prowlarr_secrets.get("ui_username")
         if not ui_username:
@@ -116,6 +130,7 @@ class ProwlarrClient(ServiceClient):
                 changed=changed,
                 success=False,
             )
+
         def _provision(active_api_key: str) -> None:
             nonlocal changed, state_dirty
             log.info(f"Provisioning Prowlarr with API key: {active_api_key[:8]}...")
@@ -150,16 +165,16 @@ class ProwlarrClient(ServiceClient):
             with ArrAPI(base_url, active_api_key) as api:
                 status = api.get_json("/system/status")
                 version = status.get("version")
-                detail_messages.append(
-                    f"online (v{version})" if version else "online"
-                )
+                detail_messages.append(f"online (v{version})" if version else "online")
 
                 # Configure UI authentication (fallback/verification inside API context)
                 log.debug("Checking host config inside API context")
                 host_config = api.get_json("/config/host")
                 current_auth_method = host_config.get("authenticationMethod")
                 log.debug(f"Current auth method: {current_auth_method}")
-                password_matches = arr_password_matches(db_path, ui_username, ui_password)
+                password_matches = arr_password_matches(
+                    db_path, ui_username, ui_password
+                )
                 desired_method = "forms"
                 desired_required = "enabled"
                 analytics_flag = host_config.get("analyticsEnabled")
@@ -171,7 +186,9 @@ class ProwlarrClient(ServiceClient):
                     or not password_matches
                 )
                 if host_update_required:
-                    log.info(f"Updating host settings: authMethod={current_auth_method} -> {desired_method}, username={ui_username}")
+                    log.info(
+                        f"Updating host settings: authMethod={current_auth_method} -> {desired_method}, username={ui_username}"
+                    )
                     payload = dict(host_config)
                     payload.update(
                         {
@@ -265,7 +282,11 @@ class ProwlarrClient(ServiceClient):
                 success=False,
             )
 
-        if detail_messages and detail_messages[0].startswith("online") and len(detail_messages) > 1:
+        if (
+            detail_messages
+            and detail_messages[0].startswith("online")
+            and len(detail_messages) > 1
+        ):
             detail_combined = "; ".join(detail_messages)
         else:
             detail_combined = "; ".join(detail_messages) if detail_messages else "ok"
@@ -343,7 +364,10 @@ class ProwlarrClient(ServiceClient):
             fields = {f["name"]: f.get("value") for f in found.get("fields", [])}
             current_base = self._normalize_base_url(fields.get("baseUrl"))
             current_prowlarr = self._normalize_base_url(fields.get("prowlarrUrl"))
-            if current_base != expected_fields["baseUrl"] or current_prowlarr != expected_fields["prowlarrUrl"]:
+            if (
+                current_base != expected_fields["baseUrl"]
+                or current_prowlarr != expected_fields["prowlarrUrl"]
+            ):
                 mismatched.append(display_name)
 
         detail_parts = []
@@ -352,7 +376,9 @@ class ProwlarrClient(ServiceClient):
         if mismatched:
             detail_parts.append(f"mismatched apps: {', '.join(mismatched)}")
         if detail_parts:
-            return EnsureOutcome(detail="; ".join(detail_parts), changed=False, success=False)
+            return EnsureOutcome(
+                detail="; ".join(detail_parts), changed=False, success=False
+            )
 
         return EnsureOutcome(detail="applications ok", changed=False, success=True)
 
@@ -369,7 +395,7 @@ class ProwlarrClient(ServiceClient):
     ) -> bool:
         """Configure Prowlarr's authentication settings."""
         with httpx.Client(
-            base_url=base_url.rstrip('/'),
+            base_url=base_url.rstrip("/"),
             headers={"X-Api-Key": api_key},
             timeout=httpx.Timeout(15.0, connect=5.0),
         ) as client:
@@ -457,7 +483,9 @@ class ProwlarrClient(ServiceClient):
                 app_id = entry.get("id")
                 fields = {f["name"]: f.get("value") for f in entry.get("fields", [])}
                 current_base_url = self._normalize_base_url(fields.get("baseUrl"))
-                current_prowlarr_url = self._normalize_base_url(fields.get("prowlarrUrl"))
+                current_prowlarr_url = self._normalize_base_url(
+                    fields.get("prowlarrUrl")
+                )
                 if (
                     current_base_url == normalized_targets.get("baseUrl")
                     and current_prowlarr_url == normalized_targets.get("prowlarrUrl")
@@ -504,7 +532,6 @@ class ProwlarrClient(ServiceClient):
         payload["fields"] = set_field_values(template.get("fields", []), overrides)
         api.post_json("/applications", payload)
         return True, f"created {display_name} application"
-
 
     def _build_service_url(
         self,
@@ -572,18 +599,20 @@ class ProwlarrClient(ServiceClient):
                     caps = schema.get("capabilities", {})
                     categories = caps.get("categories", [])
 
-                    available.append(IndexerSchema(
-                        id=schema.get("id", 0),
-                        name=schema.get("name", ""),
-                        description=schema.get("description"),
-                        encoding=schema.get("encoding"),
-                        language=schema.get("language"),
-                        privacy=privacy,
-                        protocol=schema.get("protocol", "torrent"),
-                        categories=categories,
-                        supports_rss=caps.get("supportsRss", False),
-                        supports_search=caps.get("supportsSearch", False),
-                    ))
+                    available.append(
+                        IndexerSchema(
+                            id=schema.get("id", 0),
+                            name=schema.get("name", ""),
+                            description=schema.get("description"),
+                            encoding=schema.get("encoding"),
+                            language=schema.get("language"),
+                            privacy=privacy,
+                            protocol=schema.get("protocol", "torrent"),
+                            categories=categories,
+                            supports_rss=caps.get("supportsRss", False),
+                            supports_search=caps.get("supportsSearch", False),
+                        )
+                    )
 
                 return sorted(available, key=lambda x: x.name.lower())
 
@@ -591,7 +620,9 @@ class ProwlarrClient(ServiceClient):
             log.warning(f"Failed to fetch indexer schemas: {exc}")
             return []
         except httpx.HTTPStatusError as exc:
-            log.warning(f"Prowlarr API error fetching schemas: {exc.response.status_code}")
+            log.warning(
+                f"Prowlarr API error fetching schemas: {exc.response.status_code}"
+            )
             return []
 
     def get_configured_indexers(self, config: StackConfig) -> List[IndexerInfo]:
@@ -631,7 +662,9 @@ class ProwlarrClient(ServiceClient):
             log.warning(f"Prowlarr API error: {exc.response.status_code}")
             return []
 
-    def add_indexers(self, config: StackConfig, indexer_names: List[str]) -> Tuple[List[str], List[str]]:
+    def add_indexers(
+        self, config: StackConfig, indexer_names: List[str]
+    ) -> Tuple[List[str], List[str]]:
         """Add indexers by their definition names.
 
         Returns a tuple of (added, failed) indexer names.
@@ -659,7 +692,9 @@ class ProwlarrClient(ServiceClient):
                 # Get existing indexers to avoid duplicates
                 existing = api.get_json("/indexer") or []
                 existing_names = {idx.get("name", "").lower() for idx in existing}
-                existing_impls = {idx.get("implementation", "").lower() for idx in existing}
+                existing_impls = {
+                    idx.get("implementation", "").lower() for idx in existing
+                }
 
                 for name in indexer_names:
                     name_lower = name.lower()
@@ -667,7 +702,7 @@ class ProwlarrClient(ServiceClient):
                     # Find matching schema
                     schema = next(
                         (s for s in schemas if s.get("name", "").lower() == name_lower),
-                        None
+                        None,
                     )
 
                     if not schema:
@@ -689,7 +724,9 @@ class ProwlarrClient(ServiceClient):
                         added.append(name)
                         log.info(f"Added indexer: {name}")
                     except httpx.HTTPStatusError as exc:
-                        log.warning(f"Failed to add indexer {name}: {exc.response.text}")
+                        log.warning(
+                            f"Failed to add indexer {name}: {exc.response.text}"
+                        )
                         failed.append(name)
 
         except httpx.RequestError as exc:
@@ -707,7 +744,9 @@ class ProwlarrClient(ServiceClient):
         payload: Dict[str, Any] = {
             "name": schema.get("name", ""),
             "implementation": schema.get("implementation", schema.get("name", "")),
-            "implementationName": schema.get("implementationName", schema.get("name", "")),
+            "implementationName": schema.get(
+                "implementationName", schema.get("name", "")
+            ),
             "configContract": schema.get("configContract", ""),
             "protocol": schema.get("protocol", "torrent"),
             "privacy": schema.get("privacy", "public"),
@@ -762,32 +801,34 @@ class ProwlarrClient(ServiceClient):
     # Map ISO 639-2 (3-letter) language codes to Prowlarr language patterns
     # Prowlarr uses formats like "en-US", "en-GB", "ja-JP", "de-DE", etc.
     LANGUAGE_MAP = {
-        "eng": ["en-"],      # English: matches en-US, en-GB, en-AU, etc.
-        "jpn": ["ja-"],      # Japanese
-        "spa": ["es-"],      # Spanish
-        "fre": ["fr-"],      # French
-        "ger": ["de-"],      # German
-        "ita": ["it-"],      # Italian
-        "por": ["pt-"],      # Portuguese
-        "rus": ["ru-"],      # Russian
-        "chi": ["zh-"],      # Chinese
-        "kor": ["ko-"],      # Korean
-        "ara": ["ar-"],      # Arabic
-        "hin": ["hi-"],      # Hindi
-        "pol": ["pl-"],      # Polish
-        "dut": ["nl-"],      # Dutch
-        "swe": ["sv-"],      # Swedish
+        "eng": ["en-"],  # English: matches en-US, en-GB, en-AU, etc.
+        "jpn": ["ja-"],  # Japanese
+        "spa": ["es-"],  # Spanish
+        "fre": ["fr-"],  # French
+        "ger": ["de-"],  # German
+        "ita": ["it-"],  # Italian
+        "por": ["pt-"],  # Portuguese
+        "rus": ["ru-"],  # Russian
+        "chi": ["zh-"],  # Chinese
+        "kor": ["ko-"],  # Korean
+        "ara": ["ar-"],  # Arabic
+        "hin": ["hi-"],  # Hindi
+        "pol": ["pl-"],  # Polish
+        "dut": ["nl-"],  # Dutch
+        "swe": ["sv-"],  # Swedish
         "nor": ["no-", "nb-", "nn-"],  # Norwegian
-        "dan": ["da-"],      # Danish
-        "fin": ["fi-"],      # Finnish
-        "tur": ["tr-"],      # Turkish
-        "vie": ["vi-"],      # Vietnamese
-        "tha": ["th-"],      # Thai
-        "ind": ["id-"],      # Indonesian
-        "und": [],           # Undefined - matches any language
+        "dan": ["da-"],  # Danish
+        "fin": ["fi-"],  # Finnish
+        "tur": ["tr-"],  # Turkish
+        "vie": ["vi-"],  # Vietnamese
+        "tha": ["th-"],  # Thai
+        "ind": ["id-"],  # Indonesian
+        "und": [],  # Undefined - matches any language
     }
 
-    def auto_populate_indexers(self, config: StackConfig) -> Tuple[List[str], List[str], List[str]]:
+    def auto_populate_indexers(
+        self, config: StackConfig
+    ) -> Tuple[List[str], List[str], List[str]]:
         """Auto-populate indexers based on user preferences.
 
         Filters public indexers that:
@@ -831,13 +872,17 @@ class ProwlarrClient(ServiceClient):
                 # Get existing indexers to check for duplicates
                 existing = api.get_json("/indexer") or []
                 existing_names = {idx.get("name", "").lower() for idx in existing}
-                existing_impls = {idx.get("implementation", "").lower() for idx in existing}
+                existing_impls = {
+                    idx.get("implementation", "").lower() for idx in existing
+                }
 
                 # Filter schemas to find matching indexers
                 candidates = self._filter_indexer_candidates(
                     schemas, user_languages, language_filter=language_filter
                 )
-                log.info(f"Found {len(candidates)} candidate indexers matching criteria")
+                log.info(
+                    f"Found {len(candidates)} candidate indexers matching criteria"
+                )
 
                 added: List[str] = []
                 skipped: List[str] = []
@@ -863,7 +908,9 @@ class ProwlarrClient(ServiceClient):
                         # Update existing sets to prevent duplicates in same batch
                         existing_names.add(name_lower)
                     except httpx.HTTPStatusError as exc:
-                        log.warning(f"Failed to add indexer {name}: {exc.response.text}")
+                        log.warning(
+                            f"Failed to add indexer {name}: {exc.response.text}"
+                        )
                         failed.append(name)
 
                 return added, skipped, failed
@@ -880,7 +927,7 @@ class ProwlarrClient(ServiceClient):
         languages = set()
 
         # Get languages from movies policy
-        if hasattr(config, 'media_policy') and config.media_policy:
+        if hasattr(config, "media_policy") and config.media_policy:
             movies_audio = config.media_policy.movies.keep_audio
             languages.update(movies_audio)
 
@@ -915,7 +962,9 @@ class ProwlarrClient(ServiceClient):
             # Check if indexer supports Movies or TV categories
             caps = schema.get("capabilities", {})
             categories = caps.get("categories", [])
-            category_ids = {cat.get("id") for cat in categories if isinstance(cat, dict)}
+            category_ids = {
+                cat.get("id") for cat in categories if isinstance(cat, dict)
+            }
 
             # Must support either Movies (2000) or TV (5000)
             supports_movies = self.CATEGORY_MOVIES in category_ids
@@ -942,7 +991,9 @@ class ProwlarrClient(ServiceClient):
 
         return candidates
 
-    def _language_matches(self, indexer_language: str, user_languages: List[str]) -> bool:
+    def _language_matches(
+        self, indexer_language: str, user_languages: List[str]
+    ) -> bool:
         """Check if indexer language matches any of the user's preferred languages."""
         if not indexer_language:
             # No language specified - include it (likely multi-language)
@@ -966,4 +1017,3 @@ class ProwlarrClient(ServiceClient):
                     return True
 
         return False
-

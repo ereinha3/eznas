@@ -1,0 +1,81 @@
+{"ip":"::ffff:172.18.0.1","jellyfinUsername":"admin","label":"API","level":"info","message":"Sign-in attempt from Jellyfin user with access to the media server; creating initial admin user for Jellyseerr","timestamp":"2026-01-21T03:51:43.745Z"}
+{"label":"Jobs","level":"info","message":"Scheduled jobs loaded","timestamp":"2026-01-21T03:51:43.797Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:52:00.004Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:53:00.002Z"}
+{"ip":"::ffff:172.18.0.1","jellyfinUsername":"admin","label":"API","level":"info","message":"Found matching Jellyfin user; updating user with Jellyfin","timestamp":"2026-01-21T03:53:19.995Z"}
+{"ip":"::ffff:172.18.0.1","jellyfinUsername":"admin","label":"API","level":"info","message":"Found matching Jellyfin user; updating user with Jellyfin","timestamp":"2026-01-21T03:53:26.475Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:54:00.003Z"}
+{"label":"Radarr","level":"error","message":"[Radarr] Failed to retrieve profiles: Request failed with status code 401","timestamp":"2026-01-21T03:54:29.997Z"}
+{"label":"Sonarr","level":"error","message":"[Sonarr] Failed to retrieve system status: Request failed with status code 401","timestamp":"2026-01-21T03:54:30.039Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:55:00.002Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T03:55:00.004Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"9151958c-b2eb-433e-9464-d81caee9d356","timestamp":"2026-01-21T03:55:00.004Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T03:55:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:56:00.004Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:57:00.002Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:58:00.012Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T03:59:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:00:00.006Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:00:00.010Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"12193439-2ccf-4e14-ba2b-13422727da4e","timestamp":"2026-01-21T04:00:00.010Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Radarr Scan","timestamp":"2026-01-21T04:00:00.016Z"}
+{"label":"Radarr Scan","level":"info","message":"Scan starting","sessionId":"7096f4d8-9b7f-468a-a606-ddf9a68cc743","timestamp":"2026-01-21T04:00:00.016Z"}
+{"label":"Radarr Scan","level":"info","message":"Beginning to process Radarr server: Radarr","timestamp":"2026-01-21T04:00:00.016Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:00:00.020Z"}
+{"label":"Radarr Scan","level":"info","message":"Radarr scan complete","timestamp":"2026-01-21T04:00:00.029Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:01:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:02:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:03:00.006Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:04:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:05:00.006Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:05:00.009Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"3b8d8a2f-bd03-4620-9e5e-4b48317aff2b","timestamp":"2026-01-21T04:05:00.009Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:05:00.011Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:06:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:07:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:08:00.006Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:09:00.006Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:10:00.006Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:10:00.008Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"87d535f9-5220-4493-b9e4-846a799aca54","timestamp":"2026-01-21T04:10:00.008Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:10:00.010Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:11:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:12:00.004Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:13:00.002Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:14:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:15:00.004Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:15:00.007Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"548d0d51-4a29-44dd-83f9-6e9e252a67db","timestamp":"2026-01-21T04:15:00.008Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:15:00.009Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:16:00.002Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:17:00.001Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:18:00.001Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:19:00.002Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:20:00.005Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:20:00.007Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"14a27003-7b14-4f4b-a655-d40c3566d943","timestamp":"2026-01-21T04:20:00.007Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:20:00.009Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:21:00.006Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:22:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:23:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:24:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:25:00.006Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:25:00.017Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"903c8892-beeb-4487-8032-86122dbee145","timestamp":"2026-01-21T04:25:00.018Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:25:00.020Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:26:00.006Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:27:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:28:00.005Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:29:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:30:00.003Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Jellyfin Recently Added Scan","timestamp":"2026-01-21T04:30:00.006Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Jellyfin Sync Starting","sessionId":"d85f16ff-0dae-4b97-9afb-447a68402ce3","timestamp":"2026-01-21T04:30:00.006Z"}
+{"label":"Jobs","level":"info","message":"Starting scheduled job: Sonarr Scan","timestamp":"2026-01-21T04:30:00.008Z"}
+{"label":"Sonarr Scan","level":"info","message":"Scan starting","sessionId":"52384e4f-ff63-43ad-9fb1-f8a6786b7363","timestamp":"2026-01-21T04:30:00.008Z"}
+{"label":"Sonarr Scan","level":"info","message":"Beginning to process Sonarr server: Sonarr","timestamp":"2026-01-21T04:30:00.008Z"}
+{"label":"Jellyfin Sync","level":"info","message":"Recently Added Scan Complete","timestamp":"2026-01-21T04:30:00.010Z"}
+{"label":"Sonarr Scan","level":"info","message":"Sonarr scan complete","timestamp":"2026-01-21T04:30:00.038Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:31:00.007Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:32:00.004Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:33:00.003Z"}
+{"label":"Jobs","level":"debug","message":"Starting scheduled job: Download Sync","timestamp":"2026-01-21T04:34:00.006Z"}

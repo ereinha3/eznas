@@ -7,9 +7,16 @@ from typing import Any, Dict, Iterable, Optional, Tuple
 
 import httpx
 
+from .retry import retry_request
+
 
 class ArrAPI(AbstractContextManager):
-    """Thin wrapper around an *arr API endpoint."""
+    """Thin wrapper around an *arr API endpoint.
+
+    All HTTP methods use retry_request() for automatic exponential-backoff
+    retries on transient failures (connection errors, 5xx responses).
+    Client errors (4xx) are never retried.
+    """
 
     def __init__(self, base_url: str, api_key: str, timeout: float = 10.0) -> None:
         self._client = httpx.Client(
@@ -25,12 +32,12 @@ class ArrAPI(AbstractContextManager):
         self._client.close()
 
     def get_json(self, path: str, **kwargs: Any) -> Any:
-        response = self._client.get(path, **kwargs)
+        response = retry_request(self._client.get, path, **kwargs)
         response.raise_for_status()
         return response.json()
 
     def post_json(self, path: str, json: Any, **kwargs: Any) -> Any:
-        response = self._client.post(path, json=json, **kwargs)
+        response = retry_request(self._client.post, path, json=json, **kwargs)
         response.raise_for_status()
         if response.content:
             try:
@@ -40,7 +47,7 @@ class ArrAPI(AbstractContextManager):
         return None
 
     def put_json(self, path: str, json: Any, **kwargs: Any) -> Any:
-        response = self._client.put(path, json=json, **kwargs)
+        response = retry_request(self._client.put, path, json=json, **kwargs)
         response.raise_for_status()
         if response.content:
             try:

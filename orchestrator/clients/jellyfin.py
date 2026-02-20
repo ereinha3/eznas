@@ -1,4 +1,5 @@
 """Jellyfin automation client."""
+
 from __future__ import annotations
 
 import logging
@@ -10,6 +11,7 @@ import httpx
 
 from .arr import wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
+from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
 
@@ -82,7 +84,9 @@ class JellyfinClient(ServiceClient):
                 config=config,
             )
         except httpx.RequestError as exc:
-            log.debug("Failed to contact Jellyfin at %s: %s", base_url, exc, exc_info=True)
+            log.debug(
+                "Failed to contact Jellyfin at %s: %s", base_url, exc, exc_info=True
+            )
             return EnsureOutcome(
                 detail=f"connection failed ({exc.__class__.__name__}: {exc})",
                 success=False,
@@ -112,7 +116,11 @@ class JellyfinClient(ServiceClient):
                 changed=changed,
             )
         except httpx.RequestError as exc:
-            log.debug("Jellyfin request error while ensuring libraries: %s", exc, exc_info=True)
+            log.debug(
+                "Jellyfin request error while ensuring libraries: %s",
+                exc,
+                exc_info=True,
+            )
             return EnsureOutcome(
                 detail=f"library ensure failed ({exc.__class__.__name__}: {exc})",
                 success=False,
@@ -164,7 +172,9 @@ class JellyfinClient(ServiceClient):
         response.raise_for_status()
         return response.json()
 
-    def _post_startup_configuration(self, client: httpx.Client, config: StackConfig) -> None:
+    def _post_startup_configuration(
+        self, client: httpx.Client, config: StackConfig
+    ) -> None:
         payload = {
             "ServerName": f"NAS Orchestrator ({config.paths.pool.name})",
             "UICulture": "en-US",
@@ -180,7 +190,9 @@ class JellyfinClient(ServiceClient):
         }
         client.post("/Startup/RemoteAccess", json=payload).raise_for_status()
 
-    def _ensure_startup_user(self, client: httpx.Client, *, username: str, password: str) -> None:
+    def _ensure_startup_user(
+        self, client: httpx.Client, *, username: str, password: str
+    ) -> None:
         client.get("/Startup/FirstUser").raise_for_status()
         client.post(
             "/Startup/User",
@@ -190,7 +202,9 @@ class JellyfinClient(ServiceClient):
     def _post_startup_complete(self, client: httpx.Client) -> None:
         client.post("/Startup/Complete").raise_for_status()
 
-    def _authenticate(self, client: httpx.Client, *, username: str, password: str) -> Optional[str]:
+    def _authenticate(
+        self, client: httpx.Client, *, username: str, password: str
+    ) -> Optional[str]:
         response = client.post(
             "/Users/AuthenticateByName",
             json={"Username": username, "Pw": password},
@@ -202,14 +216,16 @@ class JellyfinClient(ServiceClient):
             log.warning("Jellyfin authentication succeeded without access token")
         return token
 
-    def _ensure_libraries(self, client: httpx.Client, config: StackConfig) -> Tuple[bool, str]:
+    def _ensure_libraries(
+        self, client: httpx.Client, config: StackConfig
+    ) -> Tuple[bool, str]:
         response = client.get("/Library/VirtualFolders")
         response.raise_for_status()
         existing = response.json() or []
 
         desired = [
-            ("Movies", "movies", "/data/media/movies"),
-            ("TV", "tvshows", "/data/media/tv"),
+            ("Movies", "movies", CONTAINER_PATHS["movies"]),
+            ("TV", "tvshows", CONTAINER_PATHS["tv"]),
         ]
 
         created: List[str] = []
@@ -248,7 +264,9 @@ class JellyfinClient(ServiceClient):
         client.post(query, json=payload).raise_for_status()
 
     # ------------------------------------------------------------------ mutations
-    def create_user(self, config: StackConfig, username: str, password: str) -> Dict[str, str]:
+    def create_user(
+        self, config: StackConfig, username: str, password: str
+    ) -> Dict[str, str]:
         """Create or update a Jellyfin user using stored admin credentials."""
         # Use internal container port for container-to-container communication
         base_url = f"http://jellyfin:{self.INTERNAL_PORT}"
@@ -270,7 +288,9 @@ class JellyfinClient(ServiceClient):
             headers=headers,
             timeout=httpx.Timeout(20.0, connect=5.0),
         ) as client:
-            token = self._authenticate(client, username=admin_username, password=admin_password)
+            token = self._authenticate(
+                client, username=admin_username, password=admin_password
+            )
             if not token:
                 raise RuntimeError("Unable to authenticate with Jellyfin admin")
             client.headers["X-Emby-Token"] = token
@@ -297,10 +317,14 @@ class JellyfinClient(ServiceClient):
                 "CurrentPassword": "",
                 "NewPassword": password,
             }
-            client.post(f"/Users/{existing_user_id}/Password", json=password_payload).raise_for_status()
+            client.post(
+                f"/Users/{existing_user_id}/Password", json=password_payload
+            ).raise_for_status()
 
         users_list: List[Dict[str, str]] = jellyfin_secrets.setdefault("users", [])
-        users_list = [entry for entry in users_list if entry.get("username") != username]
+        users_list = [
+            entry for entry in users_list if entry.get("username") != username
+        ]
         users_list.append({"username": username, "password": password})
         jellyfin_secrets["users"] = users_list
         self.repo.save_state(state)

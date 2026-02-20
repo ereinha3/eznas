@@ -1,0 +1,47 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+.venv
+venv
+*.egg-info
+
+# Node (frontend built in multi-stage)
+node_modules
+frontend/node_modules
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# Runtime state (should never be baked into image)
+state.json
+auth.json
+secrets.json
+runs.json
+*.json.corrupted
+*.json.bak
+
+# Generated files (created at runtime)
+generated/
+
+# Test artifacts
+tests/
+*.log
+*.png
+
+# Documentation
+docs/
+*.md
+!requirements.txt
+
+# Development files
+docker-compose.dev.yml
+Dockerfile.dev
+.env
+.env.example
+scripts/

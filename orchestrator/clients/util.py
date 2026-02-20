@@ -1,4 +1,5 @@
 """Utility helpers shared across service clients."""
+
 from __future__ import annotations
 
 import base64
@@ -36,29 +37,47 @@ def translate_path_to_container(host_path: Path, config: "StackConfig") -> Path:
 
     # Check if we're running inside a container (these mount points exist)
     # This allows the same code to work in both dev (local) and prod (container) modes
-    running_in_container = CONTAINER_APPDATA.exists() or os.getenv("ORCH_ROOT") == "/config"
+    running_in_container = (
+        CONTAINER_APPDATA.exists() or os.getenv("ORCH_ROOT") == "/config"
+    )
 
     if not running_in_container:
         # Running locally, no translation needed
         return host_path
 
+    # Check if we can access via host mount (always prefer this if available for consistency)
+    if Path("/host").exists():
+        # Map host path to /host/...
+        # e.g. /mnt/pool/appdata -> /host/mnt/pool/appdata
+        return Path("/host") / host_str.lstrip("/")
+
     # Translate appdata paths
     appdata_host = str(config.paths.appdata) if config.paths.appdata else None
     if appdata_host and host_str.startswith(appdata_host):
-        relative = host_str[len(appdata_host):].lstrip("/")
-        return CONTAINER_APPDATA / relative
+        relative = host_str[len(appdata_host) :].lstrip("/")
+        target = CONTAINER_APPDATA / relative
+        if CONTAINER_APPDATA.exists():
+            return target
 
     # Translate pool paths
     pool_host = str(config.paths.pool) if config.paths.pool else None
     if pool_host and host_str.startswith(pool_host):
-        relative = host_str[len(pool_host):].lstrip("/")
-        return CONTAINER_DATA / relative
+        relative = host_str[len(pool_host) :].lstrip("/")
+        target = CONTAINER_DATA / relative
+        if CONTAINER_DATA.exists():
+            return target
 
     # Translate scratch paths
     scratch_host = str(config.paths.scratch) if config.paths.scratch else None
     if scratch_host and host_str.startswith(scratch_host):
-        relative = host_str[len(scratch_host):].lstrip("/")
-        return CONTAINER_SCRATCH / relative
+        relative = host_str[len(scratch_host) :].lstrip("/")
+        target = CONTAINER_SCRATCH / relative
+        if CONTAINER_SCRATCH.exists():
+            return target
+
+    # Fallback: Check if we can access via host mount (e.g. dev mode)
+    if Path("/host").exists():
+        return Path("/host") / host_str.lstrip("/")
 
     # No translation needed or path not recognized
     return host_path
@@ -117,11 +136,13 @@ def read_arr_url_base(config_dir: Path) -> Optional[str]:
     url_base = tree.findtext("UrlBase")
     if not url_base:
         return None
-    sanitized = url_base.strip().strip('/')
+    sanitized = url_base.strip().strip("/")
     return sanitized or None
 
 
-def wait_for_arr_config(config_dir: Path, timeout: int = 180, interval: float = 2.0) -> bool:
+def wait_for_arr_config(
+    config_dir: Path, timeout: int = 180, interval: float = 2.0
+) -> bool:
     """Poll until config.xml is present for an *arr application."""
     config_file = config_dir / "config.xml"
     deadline = time.monotonic() + timeout
@@ -143,7 +164,9 @@ def arr_hash_password(
         salt = secrets.token_bytes(16)
     else:
         salt = base64.b64decode(salt_b64)
-    derived = hashlib.pbkdf2_hmac("sha512", password.encode("utf-8"), salt, iterations, dklen=32)
+    derived = hashlib.pbkdf2_hmac(
+        "sha512", password.encode("utf-8"), salt, iterations, dklen=32
+    )
     return (
         base64.b64encode(derived).decode("ascii"),
         base64.b64encode(salt).decode("ascii"),
@@ -159,7 +182,9 @@ def arr_verify_password(
     iterations: int,
 ) -> bool:
     """Return True if password matches stored hash."""
-    derived, _, _ = arr_hash_password(password, iterations=iterations, salt_b64=salt_b64)
+    derived, _, _ = arr_hash_password(
+        password, iterations=iterations, salt_b64=salt_b64
+    )
     return secrets.compare_digest(derived, hash_b64)
 
 

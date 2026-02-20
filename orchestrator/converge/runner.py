@@ -7,11 +7,13 @@ from dataclasses import dataclass
 from copy import deepcopy
 from typing import List, Optional, Tuple
 
+from ..constants import INTERNAL_PORTS, SERVICE_DEPENDENCY_ORDER
 from ..models import StackConfig, StageEvent
 from ..rendering import ComposeRenderer
 from ..runtime.docker import DockerComposeRunner
 from ..storage import ConfigRepository
 from ..validators import run_validation
+from .diff import ConfigDiff, compute_diff
 from .services import ServiceConfigurator
 from ..proxy import ensure_traefik_assets
 
@@ -22,9 +24,35 @@ class ApplyRunner:
     renderer: ComposeRenderer
     services: ServiceConfigurator
 
+    def preview(self, config: StackConfig) -> ConfigDiff:
+        """Compute what would change without actually applying.
+
+        Loads the current saved config and diffs it against the proposed
+        config.  Returns a structured diff the frontend can display.
+        """
+        try:
+            current = self.repo.load_stack()
+        except FileNotFoundError:
+            # No existing config — everything is new; return empty diff
+            # since there's nothing to compare against.
+            return ConfigDiff()
+        return compute_diff(old=current, new=config)
+
     def run(self, run_id: str, config: StackConfig) -> Tuple[bool, List[StageEvent]]:
         events: List[StageEvent] = []
         self.repo.start_run(run_id)
+
+        # Compute diff before applying so we can record what changed
+        diff = self.preview(config)
+        if diff.has_changes:
+            change_lines = "; ".join(
+                f"{c.path}: {c.old_value!r} → {c.new_value!r}" for c in diff.changes[:10]
+            )
+            if len(diff.changes) > 10:
+                change_lines += f" (+{len(diff.changes) - 10} more)"
+            self._record(run_id, events, "diff", "ok", change_lines)
+        else:
+            self._record(run_id, events, "diff", "ok", "no config changes detected")
 
         self._record(run_id, events, "validate", "started")
         validation = run_validation(config)
@@ -35,7 +63,12 @@ class ApplyRunner:
             self.repo.finalize_run(run_id, ok=False, summary="Validation failed")
             return False, events
 
-        fs_changes = self.repo.ensure_directories(config)
+        try:
+            fs_changes = self.repo.ensure_directories(config)
+        except PermissionError as exc:
+            self._record(run_id, events, "prepare.paths", "failed", str(exc))
+            self.repo.finalize_run(run_id, ok=False, summary="Directory permissions error")
+            return False, events
         fs_detail = ", ".join(fs_changes) if fs_changes else "directories ready"
         self._record(run_id, events, "prepare.paths", "ok", fs_detail)
 
@@ -191,14 +224,38 @@ class ApplyRunner:
         ensure_secret("qbittorrent", "username", qb_cfg.username, "qbittorrent username set")
         ensure_secret("qbittorrent", "password", qb_cfg.password, "qbittorrent password set")
 
-        admin_username = "admin"
-        admin_password = "adminadmin"
+        # Derive Jellyfin/Jellyseerr admin credentials from the orchestrator's
+        # admin account (created during setup wizard), NOT hardcoded defaults.
+        # Falls back to existing secrets if already set (idempotent).
+        auth_state = state.get("auth", {})
+        auth_users = auth_state.get("users", [])
+        admin_user = next(
+            (u for u in auth_users if u.get("role") == "admin"),
+            None,
+        )
 
-        ensure_secret("jellyseerr", "admin_username", admin_username, "jellyseerr admin username set")
-        ensure_secret("jellyseerr", "admin_password", admin_password, "jellyseerr admin password set")
+        if admin_user:
+            admin_username = admin_user["username"]
+        else:
+            # No admin user found — use existing secrets or warn
+            admin_username = secrets.get("jellyfin", {}).get("admin_username")
 
-        ensure_secret("jellyfin", "admin_username", admin_username, "jellyfin admin username set")
-        ensure_secret("jellyfin", "admin_password", admin_password, "jellyfin admin password set")
+        # For password: we only set it from secrets (never from auth hash).
+        # The setup wizard stores the plaintext admin password in secrets
+        # on first initialization. After that, it persists there.
+        existing_jf_pass = secrets.get("jellyfin", {}).get("admin_password")
+        existing_js_pass = secrets.get("jellyseerr", {}).get("admin_password")
+
+        if admin_username:
+            ensure_secret("jellyfin", "admin_username", admin_username, "jellyfin admin username set")
+            ensure_secret("jellyseerr", "admin_username", admin_username, "jellyseerr admin username set")
+
+        # Only set passwords if they exist in secrets (from setup wizard)
+        # Never hardcode fallback passwords
+        if existing_jf_pass:
+            ensure_secret("jellyfin", "admin_password", existing_jf_pass, "jellyfin admin password set")
+        if existing_js_pass:
+            ensure_secret("jellyseerr", "admin_password", existing_js_pass, "jellyseerr admin password set")
 
         if state_dirty:
             self.repo.save_state(state)
@@ -209,16 +266,6 @@ class ApplyRunner:
         )
 
     def _wait_for_services(self, run_id: str, events: List[StageEvent], config: StackConfig) -> bool:
-        # Map service names to their internal container ports
-        # These are the ports the containers listen on internally, not the host-mapped ports
-        internal_ports = {
-            "qbittorrent": 8080,
-            "radarr": 7878,
-            "sonarr": 8989,
-            "prowlarr": 9696,
-            "jellyseerr": 5055,
-            "jellyfin": 8096,
-        }
         service_configs = {
             "qbittorrent": config.services.qbittorrent,
             "radarr": config.services.radarr,
@@ -231,7 +278,7 @@ class ApplyRunner:
             if not svc.enabled or not svc.port:
                 continue
             stage = f"wait.{name}"
-            internal_port = internal_ports.get(name, svc.port)
+            internal_port = INTERNAL_PORTS.get(name, svc.port)
             self._record(run_id, events, stage, "started", f"container={name}:{internal_port}")
             # Use Docker container name for internal networking
             ok, detail = self._wait_for_port(name, internal_port, timeout=180)

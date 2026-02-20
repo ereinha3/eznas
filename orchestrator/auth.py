@@ -49,20 +49,61 @@ class AuthManager:
                 },
             }
 
+    # scrypt parameters (memory-hard KDF, resistant to GPU/ASIC attacks)
+    _SCRYPT_N = 16384  # CPU/memory cost (2^14)
+    _SCRYPT_R = 8  # block size
+    _SCRYPT_P = 1  # parallelization
+    _SCRYPT_DKLEN = 64  # derived key length in bytes
+
     def _hash_password(self, password: str) -> str:
-        """Hash a password using SHA-256 with salt."""
-        salt = secrets.token_hex(16)
-        pwdhash = hashlib.sha256((password + salt).encode()).hexdigest()
-        return f"{salt}${pwdhash}"
+        """Hash a password using scrypt (memory-hard KDF).
+
+        Format: ``scrypt${salt_hex}${hash_hex}``
+
+        Uses hashlib.scrypt from the Python stdlib — no extra dependencies.
+        """
+        salt = secrets.token_bytes(16)
+        dk = hashlib.scrypt(
+            password.encode(),
+            salt=salt,
+            n=self._SCRYPT_N,
+            r=self._SCRYPT_R,
+            p=self._SCRYPT_P,
+            dklen=self._SCRYPT_DKLEN,
+        )
+        return f"scrypt${salt.hex()}${dk.hex()}"
 
     def _verify_password(self, password: str, hashed: str) -> bool:
-        """Verify a password against a hash."""
+        """Verify a password against a hash.
+
+        Supports both the new scrypt format (``scrypt$salt$hash``) and
+        the legacy SHA-256 format (``salt$hash``) for backward compatibility.
+        """
         try:
-            salt, stored_hash = hashed.split("$")
-            pwdhash = hashlib.sha256((password + salt).encode()).hexdigest()
-            return pwdhash == stored_hash
-        except ValueError:
+            if hashed.startswith("scrypt$"):
+                # New format: scrypt$salt_hex$hash_hex
+                _, salt_hex, stored_hex = hashed.split("$")
+                salt = bytes.fromhex(salt_hex)
+                dk = hashlib.scrypt(
+                    password.encode(),
+                    salt=salt,
+                    n=self._SCRYPT_N,
+                    r=self._SCRYPT_R,
+                    p=self._SCRYPT_P,
+                    dklen=self._SCRYPT_DKLEN,
+                )
+                return secrets.compare_digest(dk.hex(), stored_hex)
+            else:
+                # Legacy format: salt_hex$sha256_hex
+                salt, stored_hash = hashed.split("$")
+                pwdhash = hashlib.sha256((password + salt).encode()).hexdigest()
+                return secrets.compare_digest(pwdhash, stored_hash)
+        except (ValueError, KeyError):
             return False
+
+    def _needs_rehash(self, hashed: str) -> bool:
+        """Check if a hash uses the legacy format and should be upgraded."""
+        return not hashed.startswith("scrypt$")
 
     def _generate_token(self) -> str:
         """Generate a secure random session token."""
@@ -94,12 +135,23 @@ class AuthManager:
         return User.model_validate(user_data)
 
     def authenticate(self, username: str, password: str) -> Optional[Session]:
-        """Authenticate a user and create a session."""
+        """Authenticate a user and create a session.
+
+        On successful login with a legacy SHA-256 hash, the hash is
+        transparently upgraded to scrypt (progressive rehashing).
+        """
         users = self.state["auth"]["users"]
 
         for user_data in users:
             if user_data["username"] == username:
                 if self._verify_password(password, user_data["password_hash"]):
+                    # Progressive rehash: upgrade legacy hashes on login
+                    if self._needs_rehash(user_data["password_hash"]):
+                        user_data["password_hash"] = self._hash_password(password)
+                        logger.info(
+                            "Upgraded password hash for user %s to scrypt", username
+                        )
+
                     # Create session
                     session_data = {
                         "token": self._generate_token(),

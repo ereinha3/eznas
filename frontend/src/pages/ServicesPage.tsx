@@ -74,7 +74,8 @@ export function ServicesPage({
     [validateField],
   )
 
-  const duplicatePorts = useMemo(() => {
+  /** Map of port → list of service names using that port (only entries with conflicts). */
+  const portConflictMap = useMemo(() => {
     const portMap = new Map<number, string[]>()
     Object.entries(config.services).forEach(([name, svc]) => {
       if (svc.enabled && svc.port) {
@@ -83,12 +84,28 @@ export function ServicesPage({
         portMap.set(svc.port, list)
       }
     })
-    const dupes = new Set<number>()
+    // Also check UI port and proxy ports for conflicts
+    if (config.ui.port) {
+      const list = portMap.get(config.ui.port) || []
+      list.push('ui')
+      portMap.set(config.ui.port, list)
+    }
+    if (config.proxy.enabled && config.proxy.http_port) {
+      const list = portMap.get(config.proxy.http_port) || []
+      list.push('proxy-http')
+      portMap.set(config.proxy.http_port, list)
+    }
+    if (config.proxy.enabled && config.proxy.https_port) {
+      const list = portMap.get(config.proxy.https_port) || []
+      list.push('proxy-https')
+      portMap.set(config.proxy.https_port, list)
+    }
+    const conflicts = new Map<number, string[]>()
     portMap.forEach((services, port) => {
-      if (services.length > 1) dupes.add(port)
+      if (services.length > 1) conflicts.set(port, services)
     })
-    return dupes
-  }, [config.services])
+    return conflicts
+  }, [config.services, config.ui.port, config.proxy])
 
   const handleServiceUpdate = useCallback(
     <K extends ServiceKey>(key: K, patch: Partial<StackConfig['services'][K]>) => {
@@ -162,7 +179,7 @@ export function ServicesPage({
               service={config.services[key]}
               credentials={credentials?.services.find((c) => c.service === credKey)}
               health={health?.services.find((h) => h.name === key)}
-              duplicatePorts={duplicatePorts}
+              portConflictMap={portConflictMap}
             errors={errors}
             touched={touched}
             onUpdate={(patch) => handleServiceUpdate(key, patch)}

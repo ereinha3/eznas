@@ -11,12 +11,11 @@ import {
 } from './api'
 import { LeftNavigation, type PageKey } from './components/LeftNavigation'
 import { DashboardPage } from './pages/DashboardPage'
-import { EnhancedSetupWizard } from './components/EnhancedSetupWizard'
 import { ServicesPage } from './pages/ServicesPage'
-import { ProxyPage } from './pages/ProxyPage'
-import { MediaPolicyPage } from './pages/MediaPolicyPage'
+import { SettingsPage } from './pages/SettingsPage'
 import { LogsPage } from './pages/LogsPage'
 import { LoginPage } from './pages/LoginPage'
+import { WizardPage } from './pages/WizardPage'
 import type { CredentialsResponse, HealthResponse, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
@@ -38,7 +37,7 @@ const DEFAULT_CONFIG: StackConfig = {
       proxy_url: null,
       stop_after_download: true,
       username: 'admin',
-      password: 'adminadmin',
+      password: '',
     },
     radarr: { enabled: true, port: 7878, proxy_url: null },
     sonarr: { enabled: true, port: 8989, proxy_url: null },
@@ -269,17 +268,6 @@ function AuthenticatedApp() {
               health={health}
             />
           )}
-          {activePage === 'setup' && (
-            <SetupPage
-              config={config}
-              onChange={setConfig}
-              onSave={handleSave}
-              onValidate={handleValidate}
-              onApply={handleApply}
-              onBuild={handleBuild}
-              isApplying={isApplying}
-            />
-          )}
           {activePage === 'services' && (
             <ServicesPage
               config={config}
@@ -293,20 +281,8 @@ function AuthenticatedApp() {
               health={health}
             />
           )}
-          {activePage === 'proxy' && (
-            <ProxyPage
-              config={config}
-              onChange={setConfig}
-              onSave={handleSave}
-              onValidate={handleValidate}
-              onApply={handleApply}
-              onBuild={handleBuild}
-              isApplying={isApplying}
-              onNavigate={setActivePage}
-            />
-          )}
-          {activePage === 'media-policy' && (
-            <MediaPolicyPage
+          {activePage === 'settings' && (
+            <SettingsPage
               config={config}
               onChange={setConfig}
               onSave={handleSave}
@@ -329,6 +305,8 @@ function AuthenticatedApp() {
 function AppWithAuth() {
   const { isAuthenticated, isLoading, checkSession } = useAuth()
   const [defaultCreds, setDefaultCreds] = useState<{ username: string; password: string } | undefined>(undefined)
+  const [needsSetup, setNeedsSetup] = useState(false)
+  const [isCheckingSetup, setIsCheckingSetup] = useState(true)
 
   useEffect(() => {
     // Check if first-time setup is needed
@@ -337,25 +315,35 @@ function AppWithAuth() {
         const response = await fetch('/api/setup/status')
         const data = await response.json()
         
+        if (data.needs_setup) {
+          setNeedsSetup(true)
+        }
+
         // Show default credentials if available (regardless of needs_setup)
         if (data.default_password) {
           setDefaultCreds({ username: 'admin', password: data.default_password })
         }
       } catch {
         // Ignore errors
+      } finally {
+        setIsCheckingSetup(false)
       }
     }
     
-    if (!isAuthenticated && !isLoading) {
-      checkSetup()
-    }
-  }, [isAuthenticated, isLoading])
+    // Always check setup status on mount
+    checkSetup()
+  }, [])
 
   const handleLoginSuccess = () => {
     checkSession()
   }
 
-  if (isLoading) {
+  const handleSetupComplete = () => {
+    // Reload to clear setup state and show login
+    window.location.reload()
+  }
+
+  if (isLoading || isCheckingSetup) {
     return (
       <div style={{ 
         minHeight: '100vh', 
@@ -367,6 +355,10 @@ function AppWithAuth() {
         <div style={{ color: '#888' }}>Loading...</div>
       </div>
     )
+  }
+
+  if (needsSetup) {
+    return <WizardPage onSetupComplete={handleSetupComplete} />
   }
 
   if (!isAuthenticated) {
