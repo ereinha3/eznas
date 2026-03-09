@@ -1279,6 +1279,37 @@ _active_sweep: dict = {
 _sweep_lock = threading.Lock()
 
 
+@app.get("/api/pipeline/health")
+def pipeline_health(session: Session = Depends(require_auth)):
+    """Return pipeline health: status, last tick, last error, and item counts."""
+    state = repo.load_state()
+    pipeline = state.get("pipeline", {})
+    processed = pipeline.get("processed", {})
+
+    last_tick = pipeline.get("last_tick")  # ISO timestamp or None
+    last_error = pipeline.get("last_error")  # error string or None
+
+    # Count regular vs orphan hashes
+    orphan_count = sum(1 for h in processed if h.startswith("orphan_"))
+    processed_count = len(processed)
+
+    # Determine status
+    if last_error:
+        status = "error"
+    elif last_tick:
+        status = "running"
+    else:
+        status = "stopped"
+
+    return {
+        "status": status,
+        "last_tick": last_tick,
+        "last_error": last_error,
+        "processed_count": processed_count,
+        "orphan_count": orphan_count,
+    }
+
+
 @app.post("/api/pipeline/sweep/scan", response_model=SweepScanResponse)
 def sweep_scan(session: Session = Depends(require_admin)) -> SweepScanResponse:
     """Dry-run scan: preview which library files need track stripping."""

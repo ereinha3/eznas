@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 import shutil
@@ -18,6 +19,17 @@ from ..models import StackConfig
 from ..storage import ConfigRepository
 from .languages import arr_language_to_iso
 from .worker import PipelineWorker, TorrentInfo, parse_movie_name
+
+log = logging.getLogger("pipeline")
+
+if not log.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter(
+        "%(asctime)s [%(name)s] %(levelname)s %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    ))
+    log.addHandler(handler)
+    log.setLevel(logging.DEBUG)
 
 
 @dataclass
@@ -210,18 +222,36 @@ class PipelineRunner:
         self.repo = repo
 
     def run_forever(self, interval: float = 60.0) -> None:
-        print(f"[pipeline] starting worker loop (interval={interval}s)")
+        log.info("starting worker loop (interval=%ss)", interval)
         while True:
             try:
                 self._tick()
+                self._save_tick_health(error=None)
             except Exception as exc:  # pragma: no cover - runtime safety net
-                print(f"[pipeline] error: {exc}")
+                log.error("error: %s", exc)
+                self._save_tick_health(error=str(exc))
             time.sleep(interval)
+
+    def _save_tick_health(self, error: str | None) -> None:
+        """Persist last_tick timestamp and optional error to pipeline state."""
+        from datetime import datetime, timezone
+
+        state = self.repo.load_state()
+        pipeline = state.setdefault("pipeline", {})
+        pipeline["last_tick"] = datetime.now(timezone.utc).isoformat()
+        if error is not None:
+            pipeline["last_error"] = error
+        else:
+            pipeline.pop("last_error", None)
+        self.repo.save_state(state)
 
     def _tick(self) -> None:
         config = self.repo.load_stack()
         if not config.services.pipeline.enabled:
             return
+
+        state = self.repo.load_state()
+        qb_secrets = state.get("secrets", {}).get("qbittorrent", {})
 
         qb_cfg = config.services.qbittorrent
         # When VPN is active, qBittorrent shares gluetun's network namespace
@@ -231,8 +261,8 @@ class PipelineRunner:
         base_url = f"http://{qb_host}:8080"
         api = QbittorrentAPI(
             base_url=base_url,
-            username=qb_cfg.username,
-            password=qb_cfg.password,
+            username=qb_secrets.get("username") or qb_cfg.username,
+            password=qb_secrets.get("password") or qb_cfg.password,
         )
 
         needs_refresh: dict[str, bool] = {}  # category -> True
@@ -268,40 +298,38 @@ class PipelineRunner:
 
                     if t.completion_on > 0 and processed_at > 0:
                         if t.completion_on > processed_at:
-                            print(
-                                f"[pipeline] re-download detected: "
-                                f"{t.name[:60]} — clearing old '{status}' "
-                                f"state to reprocess"
+                            log.info(
+                                "re-download detected: %s — clearing old '%s' "
+                                "state to reprocess",
+                                t.name[:60], status,
                             )
                             reprocess_hashes.append(t.hash)
                             continue
 
                     if status == "ok":
-                        print(
-                            f"[pipeline] stale cleanup: {t.name[:60]} "
-                            f"({t.size / (1024**3):.1f} GB)"
+                        log.info(
+                            "stale cleanup: %s (%.1f GB)",
+                            t.name[:60], t.size / (1024**3),
                         )
                         stale_hashes.append(t.hash)
                     elif status == "partial":
                         if not t.content_path.exists():
-                            print(
-                                f"[pipeline] stale cleanup (partial, no files): "
-                                f"{t.name[:60]}"
+                            log.info(
+                                "stale cleanup (partial, no files): %s",
+                                t.name[:60],
                             )
                             stale_hashes.append(t.hash)
                         elif age > STALE_AGE:
-                            print(
-                                f"[pipeline] stale cleanup (partial, "
-                                f"{age / 3600:.0f}h old): {t.name[:60]} "
-                                f"({t.size / (1024**3):.1f} GB)"
+                            log.info(
+                                "stale cleanup (partial, %.0fh old): %s (%.1f GB)",
+                                age / 3600, t.name[:60], t.size / (1024**3),
                             )
                             stale_hashes.append(t.hash)
                     elif status in ("ffmpeg_failed", "plan_failed"):
                         if age > STALE_AGE:
-                            print(
-                                f"[pipeline] stale cleanup ({status}, "
-                                f"{age / 3600:.0f}h old): {t.name[:60]} "
-                                f"({t.size / (1024**3):.1f} GB)"
+                            log.info(
+                                "stale cleanup (%s, %.0fh old): %s (%.1f GB)",
+                                status, age / 3600, t.name[:60], t.size / (1024**3),
                             )
                             stale_hashes.append(t.hash)
 
@@ -310,9 +338,9 @@ class PipelineRunner:
 
                 if stale_hashes:
                     api.remove_torrents(stale_hashes, delete_files=True)
-                    print(
-                        f"[pipeline] removed {len(stale_hashes)} stale "
-                        f"torrent(s) from qBittorrent"
+                    log.info(
+                        "removed %d stale torrent(s) from qBittorrent",
+                        len(stale_hashes),
                     )
 
                 # Filter to processable torrents, then sort smallest-first.
@@ -327,11 +355,10 @@ class PipelineRunner:
                     dest_free = self._get_dest_free(config)
                     needed = torrent.size
                     if needed > 0 and dest_free < needed:
-                        print(
-                            f"[pipeline] skipping {torrent.name[:50]}... "
-                            f"({torrent.size / (1024**3):.1f} GB) — "
-                            f"only {dest_free / (1024**3):.1f} GB free "
-                            f"on pool"
+                        log.warning(
+                            "skipping %s... (%.1f GB) — only %.1f GB free on pool",
+                            torrent.name[:50], torrent.size / (1024**3),
+                            dest_free / (1024**3),
                         )
                         continue
                     ok = self._process_torrent(api, config, torrent)
@@ -339,11 +366,30 @@ class PipelineRunner:
                         needs_refresh[torrent.category] = True
 
         except Exception as exc:
-            print(f"[pipeline] qBittorrent error: {exc}")
+            log.error("qBittorrent error: %s", exc)
         finally:
             api.close()
 
         # ── Phase 2: Process orphans on disk not tracked by qBittorrent ──
+
+        # Expire old orphan hashes (7 days)
+        ORPHAN_EXPIRY = 7 * 86400
+        now = time.time()
+        _state = self.repo.load_state()
+        _pipeline = _state.get("pipeline", {})
+        _processed = _pipeline.get("processed", {})
+        expired = [
+            h for h, entry in _processed.items()
+            if h.startswith("orphan_")
+            and isinstance(entry, dict)
+            and now - entry.get("timestamp", now) > ORPHAN_EXPIRY
+        ]
+        if expired:
+            for h in expired:
+                del _processed[h]
+            self.repo.save_state(_state)
+            log.info("expired %d orphan hash(es)", len(expired))
+
         try:
             orphan_ok = self._scan_orphans(config, qbt_all_names)
             if orphan_ok:
@@ -351,7 +397,7 @@ class PipelineRunner:
                 for cat in orphan_ok:
                     needs_refresh[cat] = True
         except Exception as exc:
-            print(f"[pipeline] orphan scan error: {exc}")
+            log.error("orphan scan error: %s", exc)
 
         # ── Phase 3: Trigger Sonarr/Radarr library refresh ───────────
         if needs_refresh:
@@ -483,18 +529,17 @@ class PipelineRunner:
 
             size = sum(f.stat().st_size for f in files)
             size_gb = size / (1024 ** 3)
-            print(
-                f"[pipeline] orphan detected: {name} "
-                f"({size_gb:.1f} GB, category={category})"
+            log.info(
+                "orphan detected: %s (%.1f GB, category=%s)",
+                name, size_gb, category,
             )
 
             # Check destination space
             dest_free = self._get_dest_free(config)
             if size > 0 and dest_free < size:
-                print(
-                    f"[pipeline] skipping orphan {name[:50]}... "
-                    f"({size_gb:.1f} GB) — "
-                    f"only {dest_free / (1024**3):.1f} GB free on pool"
+                log.warning(
+                    "skipping orphan %s... (%.1f GB) — only %.1f GB free on pool",
+                    name[:50], size_gb, dest_free / (1024**3),
                 )
                 continue
 
@@ -553,7 +598,7 @@ class PipelineRunner:
             try:
                 iso_dir = self._open_iso(iso_file, torrent.hash)
             except (RuntimeError, OSError) as exc:
-                print(f"[pipeline] orphan ISO open failed: {exc}")
+                log.error("orphan ISO open failed: %s", exc)
                 self._mark_processed(
                     torrent.hash, "plan_failed", f"ISO: {exc}"
                 )
@@ -588,7 +633,7 @@ class PipelineRunner:
                 iso_mount_dir=iso_mount_dir,
             )
         except ValueError as exc:
-            print(f"[pipeline] orphan plan failed for {torrent.name}: {exc}")
+            log.error("orphan plan failed for %s: %s", torrent.name, exc)
             self._cleanup_path(torrent.content_path)
             self._cleanup_empty_parent(torrent.content_path)
             self._mark_processed(torrent.hash, "plan_failed", str(exc))
@@ -599,17 +644,17 @@ class PipelineRunner:
         failed = 0
 
         for i, plan in enumerate(plans, 1):
-            print(
-                f"[pipeline]   [{i}/{total}] remuxing: "
-                f"{plan.source.name} -> {plan.final_output.name}"
+            log.info(
+                "  [%d/%d] remuxing: %s -> %s",
+                i, total, plan.source.name, plan.final_output.name,
             )
             success = self._run_ffmpeg(
                 plan.ffmpeg_command, source=plan.source
             )
             if not success:
-                print(
-                    f"[pipeline]   [{i}/{total}] ffmpeg FAILED "
-                    f"for {plan.source.name}"
+                log.error(
+                    "  [%d/%d] ffmpeg FAILED for %s",
+                    i, total, plan.source.name,
                 )
                 if plan.staging_output.exists():
                     try:
@@ -623,9 +668,9 @@ class PipelineRunner:
                 plan.staging_output, plan.source,
                 keep_audio_langs=keep_audio_langs,
             ):
-                print(
-                    f"[pipeline]   [{i}/{total}] REJECTED: "
-                    f"output failed validation"
+                log.error(
+                    "  [%d/%d] REJECTED: output failed validation",
+                    i, total,
                 )
                 failed += 1
                 continue
@@ -635,11 +680,11 @@ class PipelineRunner:
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
                 if existing_size > new_size:
-                    print(
-                        f"[pipeline]   [{i}/{total}] REFUSED to overwrite "
-                        f"existing {plan.final_output.name} "
-                        f"({existing_size / (1024**3):.2f} GB) with smaller "
-                        f"file ({new_size / (1024**3):.2f} GB)"
+                    log.warning(
+                        "  [%d/%d] REFUSED to overwrite existing %s "
+                        "(%.2f GB) with smaller file (%.2f GB)",
+                        i, total, plan.final_output.name,
+                        existing_size / (1024**3), new_size / (1024**3),
                     )
                     try:
                         plan.staging_output.unlink()
@@ -649,7 +694,7 @@ class PipelineRunner:
                     continue
 
             shutil.move(str(plan.staging_output), str(plan.final_output))
-            print(f"[pipeline]   [{i}/{total}] moved to {plan.final_output}")
+            log.info("  [%d/%d] moved to %s", i, total, plan.final_output)
             succeeded += 1
 
         # Clean up staging files
@@ -669,9 +714,9 @@ class PipelineRunner:
                 f"orphan: {succeeded}/{total} files processed"
             )
             size_gb = torrent.size / (1024 ** 3)
-            print(
-                f"[pipeline] orphan completed: {torrent.name} "
-                f"({succeeded}/{total} files, freed {size_gb:.1f} GB)"
+            log.info(
+                "orphan completed: %s (%d/%d files, freed %.1f GB)",
+                torrent.name, succeeded, total, size_gb,
             )
             return True
         elif succeeded > 0:
@@ -679,9 +724,9 @@ class PipelineRunner:
                 torrent.hash, "partial",
                 f"orphan: {succeeded}/{total} ok, {failed}/{total} failed"
             )
-            print(
-                f"[pipeline] orphan partial: {torrent.name} "
-                f"({succeeded}/{total} ok, {failed}/{total} failed)"
+            log.warning(
+                "orphan partial: %s (%d/%d ok, %d/%d failed)",
+                torrent.name, succeeded, total, failed, total,
             )
             return True
         else:
@@ -689,9 +734,9 @@ class PipelineRunner:
                 torrent.hash, "ffmpeg_failed",
                 f"orphan: all {total} files failed"
             )
-            print(
-                f"[pipeline] orphan FAILED: {torrent.name} "
-                f"(all {total} files failed)"
+            log.error(
+                "orphan FAILED: %s (all %d files failed)",
+                torrent.name, total,
             )
             return False
 
@@ -798,7 +843,7 @@ class PipelineRunner:
 
         api_key = secrets_state.get(service_name, {}).get("api_key")
         if not api_key:
-            print(f"[pipeline] no API key for {service_name}, skipping metadata lookup")
+            log.debug("no API key for %s, skipping metadata lookup", service_name)
             return None
 
         headers = {"X-Api-Key": api_key}
@@ -838,18 +883,18 @@ class PipelineRunner:
                     item_response.raise_for_status()
                     matched_item = item_response.json()
                     title = matched_item.get("title", "")
-                    print(
-                        f"[pipeline] hash lookup: {download_id[:12]}... "
-                        f"-> '{title}' (id={media_id})"
+                    log.debug(
+                        "hash lookup: %s... -> '%s' (id=%s)",
+                        download_id[:12], title, media_id,
                     )
                     return self._extract_arr_metadata(
                         matched_item, service_name=service_name,
                     )
 
             # ── Fallback: word-boundary name matching ────────────────────
-            print(
-                f"[pipeline] hash not in {service_name} history, "
-                f"falling back to name matching"
+            log.debug(
+                "hash not in %s history, falling back to name matching",
+                service_name,
             )
             response = httpx.get(
                 f"{base}{movie_endpoint}",
@@ -865,19 +910,19 @@ class PipelineRunner:
 
             if best_match:
                 title = best_match.get("title", "")
-                print(f"[pipeline] name match: '{torrent.name[:50]}' -> '{title}'")
+                log.debug("name match: '%s' -> '%s'", torrent.name[:50], title)
                 return self._extract_arr_metadata(
                     best_match, service_name=service_name,
                 )
             else:
-                print(
-                    f"[pipeline] could not match torrent '{torrent.name}' "
-                    f"to any {service_name} entry"
+                log.warning(
+                    "could not match torrent '%s' to any %s entry",
+                    torrent.name, service_name,
                 )
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-            print(f"[pipeline] {service_name} metadata lookup failed: {exc}")
+            log.error("%s metadata lookup failed: %s", service_name, exc)
         except Exception as exc:
-            print(f"[pipeline] unexpected error in metadata lookup: {exc}")
+            log.error("unexpected error in metadata lookup: %s", exc)
 
         return None
 
@@ -898,10 +943,7 @@ class PipelineRunner:
         arr_path = item.get("path")
         if arr_path:
             metadata.library_path = Path(arr_path)
-            print(
-                f"[pipeline] library path for "
-                f"'{title}': {metadata.library_path}"
-            )
+            log.debug("library path for '%s': %s", title, metadata.library_path)
 
         # Extract original language
         orig_lang = item.get("originalLanguage", {})
@@ -909,15 +951,15 @@ class PipelineRunner:
         if lang_name:
             iso_code = arr_language_to_iso(lang_name)
             if iso_code and iso_code != "und":
-                print(
-                    f"[pipeline] original language for "
-                    f"'{title}': {lang_name} -> {iso_code}"
+                log.debug(
+                    "original language for '%s': %s -> %s",
+                    title, lang_name, iso_code,
                 )
                 metadata.original_language = iso_code
             else:
-                print(
-                    f"[pipeline] unrecognized original language "
-                    f"'{lang_name}' for '{title}'"
+                log.warning(
+                    "unrecognized original language '%s' for '%s'",
+                    lang_name, title,
                 )
 
         return metadata
@@ -932,10 +974,10 @@ class PipelineRunner:
 
         Returns True if ALL files were processed successfully.
         """
-        print(f"[pipeline] processing: {torrent.name} ({torrent.hash[:8]}...)")
+        log.info("processing: %s (%s...)", torrent.name, torrent.hash[:8])
         files = api.list_files(torrent.hash)
         if not files:
-            print(f"[pipeline] no files for {torrent.name}, skipping")
+            log.warning("no files for %s, skipping", torrent.name)
             self._mark_processed(torrent.hash, "skipped_no_files")
             return False
 
@@ -956,7 +998,7 @@ class PipelineRunner:
             try:
                 iso_dir = self._open_iso(iso_file, torrent.hash)
             except (RuntimeError, OSError) as exc:
-                print(f"[pipeline] ISO open failed for {torrent.name}: {exc}")
+                log.error("ISO open failed for %s: %s", torrent.name, exc)
                 self._mark_processed(torrent.hash, "plan_failed", f"ISO: {exc}")
                 return False
 
@@ -997,7 +1039,7 @@ class PipelineRunner:
                 iso_mount_dir=iso_mount_dir,
             )
         except ValueError as exc:
-            print(f"[pipeline] plan failed for {torrent.name}: {exc}")
+            log.error("plan failed for %s: %s", torrent.name, exc)
             # Task 1d: Clean up source files for torrents that can never be
             # processed (e.g. no video files found).  These will just waste
             # scratch space forever since they'll never succeed on retry.
@@ -1013,18 +1055,18 @@ class PipelineRunner:
         succeeded_plans: list = []
 
         for i, plan in enumerate(plans, 1):
-            print(
-                f"[pipeline]   [{i}/{total}] remuxing: "
-                f"{plan.source.name} -> {plan.final_output.name}"
+            log.info(
+                "  [%d/%d] remuxing: %s -> %s",
+                i, total, plan.source.name, plan.final_output.name,
             )
             success = self._run_ffmpeg(plan.ffmpeg_command, source=plan.source)
             if not success:
-                print(f"[pipeline]   [{i}/{total}] ffmpeg FAILED for {plan.source.name}")
+                log.error("  [%d/%d] ffmpeg FAILED for %s", i, total, plan.source.name)
                 # Clean up any partial output to free disk space immediately
                 if plan.staging_output.exists():
                     try:
                         plan.staging_output.unlink()
-                        print(f"[pipeline]   cleaned up partial output: {plan.staging_output.name}")
+                        log.info("  cleaned up partial output: %s", plan.staging_output.name)
                     except OSError:
                         pass
                 failed += 1
@@ -1035,9 +1077,9 @@ class PipelineRunner:
                 plan.staging_output, plan.source,
                 keep_audio_langs=keep_audio_langs,
             ):
-                print(
-                    f"[pipeline]   [{i}/{total}] REJECTED: output failed "
-                    f"validation for {plan.source.name}"
+                log.error(
+                    "  [%d/%d] REJECTED: output failed validation for %s",
+                    i, total, plan.source.name,
                 )
                 failed += 1
                 continue
@@ -1051,11 +1093,11 @@ class PipelineRunner:
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
                 if existing_size > new_size:
-                    print(
-                        f"[pipeline]   [{i}/{total}] REFUSED to overwrite "
-                        f"existing {plan.final_output.name} "
-                        f"({existing_size / (1024**3):.2f} GB) with smaller "
-                        f"file ({new_size / (1024**3):.2f} GB)"
+                    log.warning(
+                        "  [%d/%d] REFUSED to overwrite existing %s "
+                        "(%.2f GB) with smaller file (%.2f GB)",
+                        i, total, plan.final_output.name,
+                        existing_size / (1024**3), new_size / (1024**3),
                     )
                     try:
                         plan.staging_output.unlink()
@@ -1064,15 +1106,14 @@ class PipelineRunner:
                     failed += 1
                     continue
                 else:
-                    print(
-                        f"[pipeline]   [{i}/{total}] replacing existing "
-                        f"{plan.final_output.name} "
-                        f"({existing_size / (1024**3):.2f} GB -> "
-                        f"{new_size / (1024**3):.2f} GB)"
+                    log.info(
+                        "  [%d/%d] replacing existing %s (%.2f GB -> %.2f GB)",
+                        i, total, plan.final_output.name,
+                        existing_size / (1024**3), new_size / (1024**3),
                     )
 
             shutil.move(str(plan.staging_output), str(plan.final_output))
-            print(f"[pipeline]   [{i}/{total}] moved to {plan.final_output}")
+            log.info("  [%d/%d] moved to %s", i, total, plan.final_output)
             succeeded += 1
             succeeded_plans.append(plan)
 
@@ -1113,9 +1154,9 @@ class PipelineRunner:
             # the file immediately instead of waiting for a bulk library scan.
             if metadata and metadata.media_id and metadata.service_name:
                 self._refresh_arr_item(config, metadata)
-            print(
-                f"[pipeline] completed: {torrent.name} "
-                f"({succeeded}/{total} files)"
+            log.info(
+                "completed: %s (%d/%d files)",
+                torrent.name, succeeded, total,
             )
             return True
         elif succeeded > 0:
@@ -1130,9 +1171,9 @@ class PipelineRunner:
                 torrent.hash, "partial",
                 f"{succeeded}/{total} succeeded, {failed}/{total} failed"
             )
-            print(
-                f"[pipeline] partial: {torrent.name} "
-                f"({succeeded}/{total} ok, {failed}/{total} failed)"
+            log.warning(
+                "partial: %s (%d/%d ok, %d/%d failed)",
+                torrent.name, succeeded, total, failed, total,
             )
             return True  # still trigger refresh for the files that did succeed
         else:
@@ -1141,7 +1182,7 @@ class PipelineRunner:
                 torrent.hash, "ffmpeg_failed",
                 f"all {total} files failed"
             )
-            print(f"[pipeline] FAILED: {torrent.name} (all {total} files failed)")
+            log.error("FAILED: %s (all %d files failed)", torrent.name, total)
             return False
 
     def _compute_ffmpeg_timeout(self, source: Path) -> int:
@@ -1166,17 +1207,17 @@ class PipelineRunner:
                 timeout=timeout,
             )
         except subprocess.TimeoutExpired:
-            print(f"[pipeline] ffmpeg timed out after {timeout_hours:.1f} hours")
+            log.error("ffmpeg timed out after %.1f hours", timeout_hours)
             return False
         except OSError as exc:
-            print(f"[pipeline] ffmpeg failed to start: {exc}")
+            log.error("ffmpeg failed to start: %s", exc)
             return False
         if result.returncode != 0:
             stderr = result.stderr.strip()
             # Only log last few lines of stderr to avoid flooding
             lines = stderr.split("\n")
             tail = "\n".join(lines[-5:]) if len(lines) > 5 else stderr
-            print(f"[pipeline] ffmpeg error (exit {result.returncode}): {tail}")
+            log.error("ffmpeg error (exit %d): %s", result.returncode, tail)
             return False
         return True
 
@@ -1196,16 +1237,16 @@ class PipelineRunner:
         Returns True if the output looks valid, False otherwise.
         """
         if not staging_output.exists():
-            print(f"[pipeline] VALIDATION FAILED: output file does not exist: {staging_output}")
+            log.error("VALIDATION FAILED: output file does not exist: %s", staging_output)
             return False
 
         output_size = staging_output.stat().st_size
         min_size = 1024 * 1024  # 1 MB absolute minimum
 
         if output_size < min_size:
-            print(
-                f"[pipeline] VALIDATION FAILED: output is only "
-                f"{output_size:,} bytes (< 1 MB) — likely corrupt stub"
+            log.error(
+                "VALIDATION FAILED: output is only %s bytes (< 1 MB) — likely corrupt stub",
+                f"{output_size:,}",
             )
             # Clean up the bad output
             try:
@@ -1219,10 +1260,10 @@ class PipelineRunner:
         try:
             source_size = source.stat().st_size
             if source_size > 0 and output_size < source_size * 0.01:
-                print(
-                    f"[pipeline] VALIDATION FAILED: output "
-                    f"({output_size / (1024**3):.2f} GB) is < 1% of source "
-                    f"({source_size / (1024**3):.2f} GB) — likely corrupt"
+                log.error(
+                    "VALIDATION FAILED: output (%.2f GB) is < 1%% of source "
+                    "(%.2f GB) — likely corrupt",
+                    output_size / (1024**3), source_size / (1024**3),
                 )
                 try:
                     staging_output.unlink()
@@ -1244,7 +1285,7 @@ class PipelineRunner:
                 capture_output=True, text=True, timeout=30,
             )
             if probe.returncode != 0:
-                print("[pipeline] VALIDATION WARNING: ffprobe failed on output, proceeding cautiously")
+                log.warning("VALIDATION WARNING: ffprobe failed on output, proceeding cautiously")
                 return True  # Don't block on ffprobe failure — size checks passed
 
             data = json.loads(probe.stdout)
@@ -1256,7 +1297,7 @@ class PipelineRunner:
             has_audio = any(s.get("codec_type") == "audio" for s in streams)
 
             if not has_video:
-                print("[pipeline] VALIDATION FAILED: output has no video stream")
+                log.error("VALIDATION FAILED: output has no video stream")
                 try:
                     staging_output.unlink()
                 except OSError:
@@ -1264,7 +1305,7 @@ class PipelineRunner:
                 return False
 
             if not has_audio:
-                print("[pipeline] VALIDATION FAILED: output has no audio stream")
+                log.error("VALIDATION FAILED: output has no audio stream")
                 try:
                     staging_output.unlink()
                 except OSError:
@@ -1272,9 +1313,9 @@ class PipelineRunner:
                 return False
 
             if duration < 60:
-                print(
-                    f"[pipeline] VALIDATION FAILED: output duration is "
-                    f"{duration:.1f}s (< 1 min) — likely menu fragment"
+                log.error(
+                    "VALIDATION FAILED: output duration is %.1fs (< 1 min) — likely menu fragment",
+                    duration,
                 )
                 try:
                     staging_output.unlink()
@@ -1299,23 +1340,22 @@ class PipelineRunner:
                 actual = {l for l in audio_langs if l != "und"}
 
                 if preferred and actual and not preferred.intersection(actual):
-                    print(
-                        f"[pipeline] LANGUAGE WARNING: output audio is "
-                        f"[{', '.join(sorted(actual))}] but preferred languages "
-                        f"are [{', '.join(sorted(preferred))}]. "
-                        f"File may not have usable audio."
+                    log.warning(
+                        "LANGUAGE WARNING: output audio is [%s] but preferred "
+                        "languages are [%s]. File may not have usable audio.",
+                        ", ".join(sorted(actual)), ", ".join(sorted(preferred)),
                     )
 
-            print(
-                f"[pipeline] validation OK: {output_size / (1024**3):.2f} GB, "
-                f"{duration / 60:.1f} min, "
-                f"{'video' if has_video else 'NO VIDEO'} + "
-                f"{sum(1 for s in streams if s.get('codec_type') == 'audio')} audio"
+            log.info(
+                "validation OK: %.2f GB, %.1f min, %s + %d audio",
+                output_size / (1024**3), duration / 60,
+                "video" if has_video else "NO VIDEO",
+                sum(1 for s in streams if s.get("codec_type") == "audio"),
             )
             return True
 
         except Exception as exc:
-            print(f"[pipeline] VALIDATION WARNING: probe error ({exc}), proceeding cautiously")
+            log.warning("VALIDATION WARNING: probe error (%s), proceeding cautiously", exc)
             return True  # Size checks passed, don't block on probe error
 
     # ------------------------------------------------------------------
@@ -1353,9 +1393,9 @@ class PipelineRunner:
             timeout=30,
         )
         if result.returncode == 0:
-            print(
-                f"[pipeline] mounted ISO: {iso_path.name} "
-                f"({iso_size_gb:.1f} GB) -> {mount_dir}"
+            log.info(
+                "mounted ISO: %s (%.1f GB) -> %s",
+                iso_path.name, iso_size_gb, mount_dir,
             )
             return mount_dir
 
@@ -1365,10 +1405,7 @@ class PipelineRunner:
             mount_dir.rmdir()
         except OSError:
             pass
-        print(
-            f"[pipeline] mount failed ({mount_err}), "
-            f"trying 7z extraction..."
-        )
+        log.warning("mount failed (%s), trying 7z extraction...", mount_err)
 
         # --- Strategy 2: 7z extraction (ISO 9660 fallback) ---
         extract_dir = Path(f"/downloads/iso_extract_{torrent_hash}")
@@ -1376,9 +1413,9 @@ class PipelineRunner:
             shutil.rmtree(extract_dir)
         extract_dir.mkdir(parents=True, exist_ok=True)
 
-        print(
-            f"[pipeline] extracting ISO: {iso_path.name} "
-            f"({iso_size_gb:.1f} GB) -> {extract_dir}"
+        log.info(
+            "extracting ISO: %s (%.1f GB) -> %s",
+            iso_path.name, iso_size_gb, extract_dir,
         )
 
         result = subprocess.run(
@@ -1404,7 +1441,7 @@ class PipelineRunner:
                 f"7z failed ({result.stderr.strip() or result.stdout.strip()})"
             )
 
-        print(f"[pipeline] extracted ISO: {iso_path.name} -> {extract_dir}")
+        log.info("extracted ISO: %s -> %s", iso_path.name, extract_dir)
         return extract_dir
 
     def _close_iso(self, iso_dir: Path) -> None:
@@ -1419,14 +1456,14 @@ class PipelineRunner:
             )
             if result.returncode == 0:
                 iso_dir.rmdir()
-                print(f"[pipeline] unmounted ISO: {iso_dir}")
+                log.info("unmounted ISO: %s", iso_dir)
                 return
 
             # Not a mount point — must be an extraction directory
             shutil.rmtree(iso_dir)
-            print(f"[pipeline] cleaned up ISO extract: {iso_dir}")
+            log.info("cleaned up ISO extract: %s", iso_dir)
         except Exception as exc:
-            print(f"[pipeline] warning: failed to clean up {iso_dir}: {exc}")
+            log.warning("failed to clean up %s: %s", iso_dir, exc)
 
     def _cleanup_path(self, path: Path) -> None:
         """Remove a file or directory. Silently ignores missing paths."""
@@ -1438,7 +1475,7 @@ class PipelineRunner:
             elif path.exists():
                 path.unlink()
         except OSError as exc:
-            print(f"[pipeline] cleanup failed for {path}: {exc}")
+            log.warning("cleanup failed for %s: %s", path, exc)
 
     # Directories that must never be removed by cleanup.  These are the
     # structural directories that qBittorrent and the pipeline rely on.
@@ -1465,7 +1502,7 @@ class PipelineRunner:
             try:
                 # rmdir() only succeeds on empty directories
                 parent.rmdir()
-                print(f"[pipeline] removed empty directory: {parent}")
+                log.info("removed empty directory: %s", parent)
                 parent = parent.parent
             except OSError:
                 break  # Not empty or permission error — stop
@@ -1519,15 +1556,15 @@ class PipelineRunner:
                 timeout=httpx.Timeout(10.0, connect=5.0),
             )
             response.raise_for_status()
-            print(
-                f"[pipeline] notified {service_name}: "
-                f"{command}({id_field}=[{media_id}])"
+            log.info(
+                "notified %s: %s(%s=[%s])",
+                service_name, command, id_field, media_id,
             )
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
             # Non-fatal — bulk rescan at end of cycle is the safety net
-            print(
-                f"[pipeline] {service_name} per-item refresh failed "
-                f"(id={media_id}): {exc}"
+            log.warning(
+                "%s per-item refresh failed (id=%s): %s",
+                service_name, media_id, exc,
             )
 
     def _refresh_arr_services(
@@ -1571,7 +1608,7 @@ class PipelineRunner:
         """Send a rescan command to a Sonarr/Radarr service."""
         api_key = service_secrets.get("api_key")
         if not api_key:
-            print(f"[pipeline] no API key for {service_name}, skipping refresh")
+            log.debug("no API key for %s, skipping refresh", service_name)
             return
 
         # Radarr/Sonarr share gluetun's network namespace when VPN is active,
@@ -1590,9 +1627,9 @@ class PipelineRunner:
                 timeout=httpx.Timeout(10.0, connect=5.0),
             )
             response.raise_for_status()
-            print(f"[pipeline] triggered {command_name} on {service_name}")
+            log.info("triggered %s on %s", command_name, service_name)
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
-            print(f"[pipeline] {service_name} refresh failed: {exc}")
+            log.error("%s refresh failed: %s", service_name, exc)
 
 
 def main() -> None:
@@ -1600,7 +1637,7 @@ def main() -> None:
     # Pipeline worker runs with read-only config access
     repo = ConfigRepository(root, read_only=True)
     interval = float(os.getenv("PIPELINE_INTERVAL", "60"))
-    print(f"[pipeline] config root: {root}")
+    log.info("config root: %s", root)
     runner = PipelineRunner(repo)
     runner.run_forever(interval=interval)
 
