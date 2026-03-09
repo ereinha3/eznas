@@ -67,6 +67,22 @@ const AVAILABLE_SERVICES = [
     required: false,
   },
   {
+    id: 'bazarr' as const,
+    name: 'Bazarr',
+    description: 'Automatic subtitle downloads',
+    icon: '💬',
+    defaultPort: 6767,
+    required: false,
+  },
+  {
+    id: 'flaresolverr' as const,
+    name: 'FlareSolverr',
+    description: 'CloudFlare bypass for indexers',
+    icon: '🛡️',
+    defaultPort: 8191,
+    required: false,
+  },
+  {
     id: 'pipeline' as const,
     name: 'Pipeline',
     description: 'Auto-remux & organize downloads',
@@ -110,7 +126,7 @@ export function WizardPage({ onSetupComplete }: WizardPageProps) {
 
   // Service selection state
   const [enabledServices, setEnabledServices] = useState<Set<ServiceId>>(
-    new Set(['qbittorrent', 'radarr', 'sonarr', 'prowlarr', 'jellyfin', 'jellyseerr', 'pipeline'])
+    new Set(['qbittorrent', 'radarr', 'sonarr', 'prowlarr', 'jellyfin', 'jellyseerr', 'bazarr', 'pipeline'])
   );
 
   const [error, setError] = useState<string | null>(null);

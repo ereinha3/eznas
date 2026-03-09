@@ -11,7 +11,10 @@ const SERVICE_METADATA: Record<ServiceKey, { label: string; icon: string }> = {
   prowlarr: { label: 'Prowlarr', icon: 'PR' },
   jellyseerr: { label: 'Jellyseerr', icon: 'JS' },
   jellyfin: { label: 'Jellyfin', icon: 'JF' },
+  bazarr: { label: 'Bazarr', icon: 'BZ' },
+  flaresolverr: { label: 'FlareSolverr', icon: 'FS' },
   pipeline: { label: 'Pipeline', icon: 'PP' },
+  gluetun: { label: 'VPN Gateway', icon: 'VPN' },
 }
 
 const SERVICE_ORDER: ServiceKey[] = [
@@ -21,6 +24,8 @@ const SERVICE_ORDER: ServiceKey[] = [
   'prowlarr',
   'jellyseerr',
   'jellyfin',
+  'bazarr',
+  'flaresolverr',
   'pipeline',
 ]
 

@@ -50,7 +50,13 @@ Thumbs.db
 # Secrets
 *.pem
 *.key
+.env
 .env.local
+
+# Dev test directories (created by default .env paths)
+test_pool/
+test_scratch/
+test_appdata/
 
 # Test artifacts
 /tmp/

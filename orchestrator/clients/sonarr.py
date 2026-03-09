@@ -16,6 +16,8 @@ from .util import (
     arr_password_matches,
     get_service_config_dir,
     read_arr_api_key,
+    resolve_service_host,
+    service_base_url,
     wait_for_arr_config,
 )
 from ..constants import CONTAINER_PATHS
@@ -102,7 +104,7 @@ class SonarrClient(ServiceClient):
         sonarr_cfg = config.services.sonarr
         db_path = config_dir / "sonarr.db"
 
-        base_url = f"http://sonarr:{self.INTERNAL_PORT}/api/v3"
+        base_url = service_base_url("sonarr", config, self.INTERNAL_PORT, "/api/v3")
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -171,14 +173,17 @@ class SonarrClient(ServiceClient):
                     sonarr_state["root_tv_id"] = tv_id
                     state_dirty = True
 
-                # Disable Completed Download Handling - Pipeline handles all imports
+                # Completed Download Handling: disable when the pipeline
+                # worker is enabled (it handles remux + import), enable
+                # otherwise so Sonarr imports directly.
+                pipeline_active = config.services.pipeline.enabled
                 dl_config = api.get_json("/config/downloadclient")
-                if dl_config.get("enableCompletedDownloadHandling"):
-                    dl_config["enableCompletedDownloadHandling"] = False
+                desired_cdh = not pipeline_active
+                if dl_config.get("enableCompletedDownloadHandling") != desired_cdh:
+                    dl_config["enableCompletedDownloadHandling"] = desired_cdh
                     api.put_json("/config/downloadclient", dl_config)
-                    detail_messages.append(
-                        "disabled auto-import (pipeline handles imports)"
-                    )
+                    label = "disabled" if pipeline_active else "enabled"
+                    detail_messages.append(f"{label} completed download handling")
                     changed = True
 
                 qb_username = qb_secrets.get(
@@ -254,11 +259,12 @@ class SonarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         sonarr_cfg = config.services.sonarr
-        base_url = f"http://sonarr:{self.INTERNAL_PORT}/api/v3"
+        base_url = service_base_url("sonarr", config, self.INTERNAL_PORT, "/api/v3")
 
         qb_username = qb_secrets.get("username", config.services.qbittorrent.username)
+        qb_host = resolve_service_host("qbittorrent", config, caller="sonarr")
         desired_fields = {
-            "host": "qbittorrent",
+            "host": qb_host,
             "port": QBittorrentClient.INTERNAL_PORT,
             "useSsl": False,
             "urlBase": "",
@@ -356,7 +362,7 @@ class SonarrClient(ServiceClient):
             client.put("/config/host", json=payload).raise_for_status()
 
         ok, message = wait_for_http_ready(
-            f"http://sonarr:{port}/api/v3/system/status",
+            f"{base_url}/system/status",
             timeout=120.0,
             interval=5.0,
         )
@@ -408,8 +414,9 @@ class SonarrClient(ServiceClient):
         previous_password: Optional[str],
     ) -> Tuple[bool, str, Optional[int]]:
         category = config.download_policy.categories.sonarr
+        qb_host = resolve_service_host("qbittorrent", config, caller="sonarr")
         desired_fields = {
-            "host": "qbittorrent",
+            "host": qb_host,
             "port": QBittorrentClient.INTERNAL_PORT,
             "useSsl": False,
             "urlBase": "",
@@ -424,7 +431,7 @@ class SonarrClient(ServiceClient):
                 continue
             client_id = client.get("id")
             current = {f["name"]: f.get("value") for f in client.get("fields", [])}
-            host_ok = current.get("host") == "qbittorrent"
+            host_ok = current.get("host") == qb_host
             port_ok = str(current.get("port")) == str(QBittorrentClient.INTERNAL_PORT)
             category_ok = current.get("tvCategory") == category
             url_base_ok = (current.get("urlBase") or "") == ""

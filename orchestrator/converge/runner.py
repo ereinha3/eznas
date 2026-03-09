@@ -8,11 +8,12 @@ from copy import deepcopy
 from typing import List, Optional, Tuple
 
 from ..constants import INTERNAL_PORTS, SERVICE_DEPENDENCY_ORDER
-from ..models import StackConfig, StageEvent
+from ..models import StackConfig, StageEvent, VPN_ROUTED_SERVICES
 from ..rendering import ComposeRenderer
 from ..runtime.docker import DockerComposeRunner
 from ..storage import ConfigRepository
-from ..validators import run_validation
+from ..clients.util import running_in_docker
+from ..validators import run_validation, resolve_port_conflicts
 from .diff import ConfigDiff, compute_diff
 from .services import ServiceConfigurator
 from ..proxy import ensure_traefik_assets
@@ -41,6 +42,14 @@ class ApplyRunner:
     def run(self, run_id: str, config: StackConfig) -> Tuple[bool, List[StageEvent]]:
         events: List[StageEvent] = []
         self.repo.start_run(run_id)
+
+        # Auto-resolve port conflicts before anything else.
+        # If port 8081 is taken by filebrowser, bump to 8082 automatically
+        # instead of failing validation.
+        config, port_changes = resolve_port_conflicts(config)
+        if port_changes:
+            detail = "; ".join(port_changes)
+            self._record(run_id, events, "ports.resolve", "ok", detail)
 
         # Compute diff before applying so we can record what changed
         diff = self.preview(config)
@@ -106,6 +115,8 @@ class ApplyRunner:
 
         # Stop conflicting dev compose services before deploying
         enabled_services = []
+        if config.services.gluetun.enabled:
+            enabled_services.append("gluetun")
         if config.services.qbittorrent.enabled:
             enabled_services.append("qbittorrent")
         if config.services.radarr.enabled:
@@ -118,7 +129,13 @@ class ApplyRunner:
             enabled_services.append("jellyseerr")
         if config.services.jellyfin.enabled:
             enabled_services.append("jellyfin")
-        
+        if config.services.bazarr.enabled:
+            enabled_services.append("bazarr")
+        if config.services.flaresolverr.enabled:
+            enabled_services.append("flaresolverr")
+        if config.services.pipeline.enabled:
+            enabled_services.append("pipeline")
+
         if enabled_services:
             self._record(run_id, events, "prepare.conflicts", "started")
             # Use the generated compose path to find project root
@@ -136,7 +153,10 @@ class ApplyRunner:
 
         compose_runner = DockerComposeRunner(result.compose_path)
         self._record(run_id, events, "deploy.compose", "started")
-        compose_ok, compose_detail = compose_runner.up()
+        # Force-recreate when VPN is active so containers sharing gluetun's
+        # network namespace are always re-joined to the current namespace.
+        vpn_active = config.services.gluetun.enabled
+        compose_ok, compose_detail = compose_runner.up(force_recreate=vpn_active)
         self._record(
             run_id,
             events,
@@ -147,6 +167,16 @@ class ApplyRunner:
         if not compose_ok:
             self.repo.finalize_run(run_id, ok=False, summary="Compose up failed")
             return False, events
+
+        # Join the media stack's Docker network so we can resolve service
+        # hostnames (e.g. qbittorrent:8080) via Docker DNS.
+        if running_in_docker():
+            net_ok, net_detail = compose_runner.join_stack_network()
+            self._record(
+                run_id, events, "network.join",
+                "ok" if net_ok else "warning",
+                net_detail,
+            )
 
         if not self._wait_for_services(run_id, events, config):
             self.repo.finalize_run(run_id, ok=False, summary="Service readiness failed")
@@ -266,6 +296,8 @@ class ApplyRunner:
         )
 
     def _wait_for_services(self, run_id: str, events: List[StageEvent], config: StackConfig) -> bool:
+        in_docker = running_in_docker()
+        vpn_active = config.services.gluetun.enabled
         service_configs = {
             "qbittorrent": config.services.qbittorrent,
             "radarr": config.services.radarr,
@@ -273,15 +305,26 @@ class ApplyRunner:
             "prowlarr": config.services.prowlarr,
             "jellyseerr": config.services.jellyseerr,
             "jellyfin": config.services.jellyfin,
+            "bazarr": config.services.bazarr,
+            "flaresolverr": config.services.flaresolverr,
         }
         for name, svc in service_configs.items():
             if not svc.enabled or not svc.port:
                 continue
             stage = f"wait.{name}"
             internal_port = INTERNAL_PORTS.get(name, svc.port)
-            self._record(run_id, events, stage, "started", f"container={name}:{internal_port}")
-            # Use Docker container name for internal networking
-            ok, detail = self._wait_for_port(name, internal_port, timeout=180)
+
+            if in_docker:
+                # VPN-routed services share gluetun's network namespace,
+                # so they're reachable at gluetun:<port> from nas_net.
+                docker_host = "gluetun" if (vpn_active and name in VPN_ROUTED_SERVICES) else name
+                host, port = docker_host, internal_port
+            else:
+                # On the host: use localhost + host-mapped port
+                host, port = "127.0.0.1", svc.port
+
+            self._record(run_id, events, stage, "started", f"{host}:{port}")
+            ok, detail = self._wait_for_port(host, port, timeout=180)
             self._record(run_id, events, stage, "ok" if ok else "failed", detail)
             if not ok:
                 return False

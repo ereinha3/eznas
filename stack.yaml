@@ -1,12 +1,12 @@
 version: 1
 paths:
   pool: /mnt/pool/media
-  scratch: null
-  appdata: /home/ethan/eznas/app-data
+  scratch: /mnt/scratch
+  appdata: /home/ethan/eznas/app
 services:
   qbittorrent:
     enabled: true
-    port: 8080
+    port: 8081
     proxy_url: null
     stop_after_download: true
     username: admin
@@ -32,10 +32,60 @@ services:
     enabled: true
     port: 8096
     proxy_url: null
+  bazarr:
+    enabled: true
+    port: 6767
+    proxy_url: null
+  flaresolverr:
+    enabled: true
+    port: 8191
+    proxy_url: null
   pipeline:
     enabled: true
     port: null
     proxy_url: null
+  gluetun:
+    enabled: true
+    port: null
+    proxy_url: null
+    wireguard_config: '[Interface]
+
+      # Key for ghoul
+
+      # Bouncing = 18
+
+      # NetShield = 2
+
+      # Moderate NAT = off
+
+      # NAT-PMP (Port Forwarding) = off
+
+      # VPN Accelerator = on
+
+      PrivateKey = CNehVcNBy+1RmeNcPgXJNUGxBJO838786GVaoBXaHG4=
+
+      Address = 10.2.0.2/32, 2a07:b944::2:2/128
+
+      DNS = 10.2.0.1, 2a07:b944::2:1
+
+
+      [Peer]
+
+      # CH#696
+
+      PublicKey = 36G8+pInNcPK9F1TpHglWs9Pk5uJOY9o8SCNrCBgvHE=
+
+      AllowedIPs = 0.0.0.0/0, ::/0
+
+      Endpoint = 89.222.96.158:51820
+
+
+      # Uncomment the following line (delete the # symbol) to connect to Proton VPN
+      using IPv6.
+
+      # Endpoint = [2a02:6ea0:d411:6002::10]:51820
+
+      PersistentKeepalive = 25'
 proxy:
   enabled: false
   image: traefik:v3.1

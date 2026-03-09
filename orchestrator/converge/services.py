@@ -5,6 +5,7 @@ import logging
 from typing import Dict, List, Set
 
 from ..clients.base import EnsureOutcome, ServiceClient
+from ..clients.bazarr import BazarrClient
 from ..clients.jellyfin import JellyfinClient
 from ..clients.jellyseerr import JellyseerrClient
 from ..clients.prowlarr import ProwlarrClient
@@ -22,12 +23,15 @@ logger = logging.getLogger(__name__)
 # Read as: "service X depends on these services being configured first"
 # ---------------------------------------------------------------------------
 SERVICE_DEPENDENCIES: Dict[str, List[str]] = {
+    "gluetun": [],
     "qbittorrent": [],
     "radarr": ["qbittorrent"],
     "sonarr": ["qbittorrent"],
     "prowlarr": ["radarr", "sonarr"],
     "jellyfin": [],
     "jellyseerr": ["jellyfin", "radarr", "sonarr"],
+    "bazarr": ["radarr", "sonarr"],
+    "flaresolverr": [],
     "pipeline": [],
 }
 
@@ -48,6 +52,7 @@ class ServiceConfigurator:
             "prowlarr": ProwlarrClient(repo=repo),
             "jellyseerr": JellyseerrClient(repo=repo),
             "jellyfin": JellyfinClient(repo=repo),
+            "bazarr": BazarrClient(repo=repo),
         }
 
     def ensure(self, config: StackConfig) -> List[StageEvent]:
@@ -83,10 +88,10 @@ class ServiceConfigurator:
                 logger.warning(f"Skipping {name}: blocked by failed dependencies {blocked_by}")
                 continue
 
-            # Pipeline has no client — it's a compose-only service
+            # Pipeline and gluetun have no client — they're compose-only services
             client = self.clients.get(name)
             if client is None:
-                if name == "pipeline":
+                if name in ("pipeline", "gluetun", "flaresolverr"):
                     events.append(
                         StageEvent(
                             stage=stage_name, status="ok", detail="skipped (no ensure required)"

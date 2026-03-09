@@ -6,6 +6,7 @@ import type {
   ServiceKey,
   QbittorrentConfig,
   ProwlarrConfig,
+  GluetunConfig,
 } from './types'
 import { StatusDot } from './common/StatusDot'
 import { QuickLinkButton } from './common/QuickLinkButton'
@@ -20,7 +21,10 @@ const SERVICE_METADATA: Record<
   prowlarr: { label: 'Prowlarr', role: 'Indexers', icon: 'PR', showPort: true, showProxy: true },
   jellyseerr: { label: 'Jellyseerr', role: 'Requests', icon: 'JS', showPort: true, showProxy: true },
   jellyfin: { label: 'Jellyfin', role: 'Media server', icon: 'JF', showPort: true, showProxy: true },
+  bazarr: { label: 'Bazarr', role: 'Subtitles', icon: 'BZ', showPort: true, showProxy: true },
+  flaresolverr: { label: 'FlareSolverr', role: 'CloudFlare bypass', icon: 'FS', showPort: true, showProxy: false },
   pipeline: { label: 'Pipeline worker', role: 'Post-processing', icon: 'PP', showPort: false, showProxy: false },
+  gluetun: { label: 'VPN Gateway', role: 'Gluetun (WireGuard)', icon: 'VPN', showPort: false, showProxy: false },
 }
 
 const SERVICE_LABELS: Record<string, string> = {
@@ -30,7 +34,10 @@ const SERVICE_LABELS: Record<string, string> = {
   prowlarr: 'Prowlarr',
   jellyseerr: 'Jellyseerr',
   jellyfin: 'Jellyfin',
+  bazarr: 'Bazarr',
+  flaresolverr: 'FlareSolverr',
   pipeline: 'Pipeline',
+  gluetun: 'VPN Gateway',
   ui: 'Orchestrator UI',
   'proxy-http': 'Proxy HTTP',
   'proxy-https': 'Proxy HTTPS',
@@ -173,6 +180,29 @@ export function ServiceCard({
               />
               <span>Filter indexers by language</span>
             </label>
+          )}
+
+          {/* Gluetun VPN-specific options */}
+          {serviceKey === 'gluetun' && (
+            <>
+              <label htmlFor="gluetun-wg-config">
+                WireGuard Configuration
+                <textarea
+                  id="gluetun-wg-config"
+                  rows={10}
+                  style={{ fontFamily: 'monospace', fontSize: '0.85em', resize: 'vertical' }}
+                  placeholder="Paste your WireGuard config from ProtonVPN here..."
+                  value={(service as GluetunConfig).wireguard_config}
+                  onChange={(e) =>
+                    onUpdate({ wireguard_config: e.target.value } as Partial<typeof service>)
+                  }
+                />
+              </label>
+              <p className="field-hint" style={{ fontSize: '0.8em', opacity: 0.7, marginTop: '4px' }}>
+                Routes qBittorrent, Radarr, Sonarr, Prowlarr, and FlareSolverr through the VPN tunnel.
+                All other services remain on the standard network.
+              </p>
+            </>
           )}
         </div>
       )}

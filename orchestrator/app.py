@@ -7,6 +7,7 @@ import json
 import logging
 import os
 import socket
+import threading
 import traceback
 from pathlib import Path
 from uuid import uuid4
@@ -33,7 +34,6 @@ from .models import (
     InitializeResponse,
     ValidationResult,
     RenderResult,
-    ApplyResponse,
     RunRecord,
     Session,
     User,
@@ -56,6 +56,10 @@ from .models import (
     AvailableIndexersResponse,
     ConfiguredIndexersResponse,
     AddIndexersRequest,
+    SweepActionDetail,
+    SweepScanResponse,
+    SweepStartResponse,
+    SweepStatusResponse,
 )
 from .system import scan_volumes, validate_path
 from .auth import (
@@ -70,9 +74,10 @@ from .clients.prowlarr import ProwlarrClient
 from .clients.jellyfin import JellyfinClient
 from .rendering import ComposeRenderer
 from .storage import ConfigRepository
-from .validators import run_validation
+from .validators import run_validation, resolve_port_conflicts
 from .converge.services import ServiceConfigurator
 from .constants import INTERNAL_PORTS
+from .models import VPN_ROUTED_SERVICES
 from .converge.runner import ApplyRunner
 from .converge.verification_engine import VerificationEngine
 
@@ -430,13 +435,18 @@ def get_health() -> HealthResponse:
             healthy_count += 1
             continue
 
-        # Use container name as host and internal port for container-to-container checks
-        # Fall back to localhost if not in Docker or service unknown
-        # When orchestrator is in a container, try host.docker.internal (Docker Desktop)
-        # or gateway IP (Linux) to reach services on host ports
+        # Use container name as host and internal port for container-to-container checks.
+        # Services behind gluetun (network_mode: service:gluetun) share its
+        # network namespace — their own container hostname doesn't resolve.
+        # Reach them via "gluetun" instead.
         internal_port = _SERVICE_INTERNAL_PORTS.get(name, port)
+        vpn_active = cfg.services.gluetun.enabled
+        if vpn_active and name in VPN_ROUTED_SERVICES:
+            docker_host = "gluetun"
+        else:
+            docker_host = name
         is_healthy = (
-            _check_port(name, internal_port)
+            _check_port(docker_host, internal_port)
             or _check_port("127.0.0.1", port)
             or _check_port("host.docker.internal", port)  # Docker Desktop
         )
@@ -762,14 +772,66 @@ def preview_config_changes(
     return diff.to_dict()
 
 
-@app.post("/api/apply", response_model=ApplyResponse)
+# Track the currently-running apply so we can report it after page refresh.
+_active_run_id: str | None = None
+_active_run_lock = threading.Lock()
+
+
+@app.post("/api/apply")
 def apply_stack(
     config: StackConfig, session: Session = Depends(require_admin)
-) -> ApplyResponse:
-    """Run the converge engine steps for the supplied configuration."""
-    run_id = str(uuid4())
-    ok, events = runner.run(run_id, config)
-    return ApplyResponse(ok=ok, run_id=run_id, events=events)
+) -> dict:
+    """Start an async converge run and return the run_id immediately."""
+    global _active_run_id
+
+    with _active_run_lock:
+        if _active_run_id is not None:
+            # Check if it's genuinely still running (not a stale value)
+            record = repo.get_run(_active_run_id)
+            if record is not None and record.ok is None:
+                return {"run_id": _active_run_id, "already_running": True}
+            # Previous run finished — clear it
+            _active_run_id = None
+
+        run_id = str(uuid4())
+        _active_run_id = run_id
+
+    def _run_apply():
+        global _active_run_id
+        try:
+            runner.run(run_id, config)
+        except Exception:
+            logger.exception("Apply run %s failed with exception", run_id)
+            try:
+                repo.finalize_run(run_id, ok=False, summary="Internal error")
+            except Exception:
+                pass
+        finally:
+            with _active_run_lock:
+                if _active_run_id == run_id:
+                    _active_run_id = None
+
+    thread = threading.Thread(target=_run_apply, daemon=True)
+    thread.start()
+
+    return {"run_id": run_id}
+
+
+@app.get("/api/runs/active")
+def get_active_run() -> dict:
+    """Return the currently in-progress run, if any."""
+    with _active_run_lock:
+        rid = _active_run_id
+
+    if rid is None:
+        return {"active": False, "run_id": None}
+
+    record = repo.get_run(rid)
+    if record is None or record.ok is not None:
+        # Run finished between the check and now
+        return {"active": False, "run_id": None}
+
+    return {"active": True, "run_id": rid}
 
 
 # Auth endpoints
@@ -1158,6 +1220,12 @@ def initialize_system(request: InitializeRequest) -> InitializeResponse:
             users=[],
         )
 
+        # Auto-resolve port conflicts: if a default port (e.g. 8081) is
+        # already taken by another process, bump to the next available one.
+        initial_config, port_changes = resolve_port_conflicts(initial_config)
+        if port_changes:
+            logger.info("Auto-resolved port conflicts: %s", "; ".join(port_changes))
+
         # Ensure directories exist with correct permissions.
         # This will raise PermissionError with the exact fix command if it fails.
         try:
@@ -1189,4 +1257,138 @@ def initialize_system(request: InitializeRequest) -> InitializeResponse:
             success=False,
             message=f"Initialization failed: {str(e)}",
             config_created=False,
+        )
+
+
+# ---------------------------------------------------------------------------
+# Library Sweep endpoints
+# ---------------------------------------------------------------------------
+
+# In-memory state for the single active sweep. Only one sweep at a time.
+_active_sweep: dict = {
+    "status": "idle",       # idle | scanning | running | completed | failed
+    "sweep_id": None,
+    "progress_current": 0,
+    "progress_total": 0,
+    "current_file": None,
+    "succeeded": 0,
+    "failed": 0,
+    "errors": [],
+    "thread": None,
+}
+_sweep_lock = threading.Lock()
+
+
+@app.post("/api/pipeline/sweep/scan", response_model=SweepScanResponse)
+def sweep_scan(session: Session = Depends(require_admin)) -> SweepScanResponse:
+    """Dry-run scan: preview which library files need track stripping."""
+    from .pipeline.sweep import LibrarySweeper
+
+    config = repo.load_stack()
+    sweeper = LibrarySweeper(config, repo)
+    plan = sweeper.scan()
+
+    return SweepScanResponse(
+        total_files_scanned=plan.total_files_scanned,
+        files_already_clean=plan.files_already_clean,
+        files_to_process=plan.files_to_process,
+        total_bytes_to_process=plan.total_bytes_to_process,
+        estimated_time_seconds=plan.estimated_time_seconds,
+        actions=[
+            SweepActionDetail(
+                path=str(a.path),
+                size=a.size,
+                category=a.category,
+                unwanted_audio=a.unwanted_audio,
+                unwanted_subtitles=a.unwanted_subtitles,
+            )
+            for a in plan.actions
+        ],
+    )
+
+
+@app.post("/api/pipeline/sweep/start", response_model=SweepStartResponse)
+def sweep_start(session: Session = Depends(require_admin)) -> SweepStartResponse:
+    """Start a background library sweep. Returns 409 if one is already running."""
+    from .pipeline.sweep import LibrarySweeper
+
+    with _sweep_lock:
+        if _active_sweep["status"] in ("scanning", "running"):
+            raise HTTPException(
+                status_code=409,
+                detail="A sweep is already in progress",
+            )
+
+        sweep_id = str(uuid4())[:12]
+        _active_sweep.update({
+            "status": "scanning",
+            "sweep_id": sweep_id,
+            "progress_current": 0,
+            "progress_total": 0,
+            "current_file": None,
+            "succeeded": 0,
+            "failed": 0,
+            "errors": [],
+        })
+
+    def _run_sweep():
+        try:
+            config = repo.load_stack()
+            sweeper = LibrarySweeper(config, repo)
+
+            # Phase 1: scan
+            plan = sweeper.scan()
+            with _sweep_lock:
+                _active_sweep["status"] = "running"
+                _active_sweep["progress_total"] = plan.files_to_process
+
+            if plan.files_to_process == 0:
+                with _sweep_lock:
+                    _active_sweep["status"] = "completed"
+                return
+
+            # Phase 2: execute with progress callback
+            def _progress(current: int, total: int, path: str):
+                with _sweep_lock:
+                    _active_sweep["progress_current"] = current
+                    _active_sweep["progress_total"] = total
+                    _active_sweep["current_file"] = path
+
+            result = sweeper.execute(plan, progress_callback=_progress)
+
+            with _sweep_lock:
+                _active_sweep["status"] = "completed"
+                _active_sweep["succeeded"] = result.succeeded
+                _active_sweep["failed"] = result.failed
+                _active_sweep["errors"] = result.errors[:50]  # Cap stored errors
+                _active_sweep["progress_current"] = result.total
+
+        except Exception as exc:
+            logger.error(f"Sweep {sweep_id} failed: {exc}")
+            with _sweep_lock:
+                _active_sweep["status"] = "failed"
+                _active_sweep["errors"] = [str(exc)]
+
+    thread = threading.Thread(target=_run_sweep, daemon=True, name=f"sweep-{sweep_id}")
+    with _sweep_lock:
+        _active_sweep["thread"] = thread
+    thread.start()
+
+    # Return the scan total once scanning finishes (or 0 for now)
+    return SweepStartResponse(sweep_id=sweep_id, total_files=0)
+
+
+@app.get("/api/pipeline/sweep/status", response_model=SweepStatusResponse)
+def sweep_status(session: Session = Depends(require_admin)) -> SweepStatusResponse:
+    """Poll the current sweep status."""
+    with _sweep_lock:
+        return SweepStatusResponse(
+            status=_active_sweep["status"],
+            sweep_id=_active_sweep["sweep_id"],
+            progress_current=_active_sweep["progress_current"],
+            progress_total=_active_sweep["progress_total"],
+            current_file=_active_sweep["current_file"],
+            succeeded=_active_sweep["succeeded"],
+            failed=_active_sweep["failed"],
+            errors=list(_active_sweep["errors"]),
         )

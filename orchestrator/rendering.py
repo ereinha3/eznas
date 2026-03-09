@@ -2,14 +2,65 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from jinja2 import Environment, FileSystemLoader, Template
 
 from .models import RenderResult, StackConfig
+
+
+def parse_wireguard_config(raw: str) -> Dict[str, str]:
+    """Parse a raw WireGuard config into gluetun environment variables.
+
+    Returns a dict with keys like ``private_key``, ``addresses``,
+    ``dns``, ``public_key``, ``endpoint_ip``, ``endpoint_port``.
+    """
+    result: Dict[str, str] = {}
+    if not raw.strip():
+        return result
+
+    for line in raw.splitlines():
+        line = line.strip()
+        if line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip()
+
+        if key == "PrivateKey":
+            result["private_key"] = value
+        elif key == "Address":
+            # Strip IPv6 addresses — only keep IPv4
+            addrs = [a.strip() for a in value.split(",")]
+            ipv4 = [a for a in addrs if ":" not in a]
+            result["addresses"] = ", ".join(ipv4) if ipv4 else value
+        elif key == "DNS":
+            dns_entries = [d.strip() for d in value.split(",")]
+            ipv4_dns = [d for d in dns_entries if ":" not in d]
+            parsed_dns = ", ".join(ipv4_dns) if ipv4_dns else value
+            # ProtonVPN's internal DNS (10.2.0.1) sometimes fails to
+            # respond through the tunnel.  Fall back to a privacy-
+            # respecting public DNS — queries are still encrypted by
+            # the WireGuard tunnel so the ISP cannot see them.
+            if parsed_dns.startswith("10.2.0."):
+                parsed_dns = "1.1.1.1"
+            result["dns"] = parsed_dns
+        elif key == "PublicKey":
+            result["public_key"] = value
+        elif key == "Endpoint":
+            # Parse "IP:PORT" or "[IPv6]:PORT"
+            m = re.match(r"^(.+):(\d+)$", value)
+            if m:
+                result["endpoint_ip"] = m.group(1)
+                result["endpoint_port"] = m.group(2)
+        elif key == "AllowedIPs":
+            pass  # Gluetun handles routing internally
+
+    return result
 
 
 @dataclass
@@ -41,12 +92,9 @@ class ComposeRenderer:
         Returns the directory path containing stack.yaml on the host, or None if not in a container.
         """
         try:
-            # Get our own container name/ID from /proc/self/cgroup
-            with open("/proc/1/cpuset", "r") as f:
-                cpuset = f.read().strip()
-                # Format: /docker/<container_id> or /system.slice/docker-<container_id>.scope
-                if not ("/docker/" in cpuset or "docker-" in cpuset):
-                    return None
+            # Quick check: are we in Docker at all?
+            if not Path("/.dockerenv").exists():
+                return None
 
             # Try common orchestrator container names
             for container_name in ["orchestrator-dev", "nas-orchestrator"]:
@@ -103,12 +151,14 @@ class ComposeRenderer:
         secrets: Optional[dict[str, dict[str, str]]],
     ) -> dict:
         config_host_path = self._get_config_host_path()
+        wg_parsed = parse_wireguard_config(config.services.gluetun.wireguard_config)
         return {
             "config": config.model_dump(mode="json"),
             "config_obj": config,
             "config_hash": config.model_dump_json(),
             "secrets": secrets or {},
             "config_host_path": config_host_path,
+            "wg": wg_parsed,
         }
 
     def _write_secrets(

@@ -11,7 +11,7 @@ import httpx
 
 from .arr import wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
-from .util import get_service_config_dir
+from .util import get_service_config_dir, resolve_service_host, service_base_url
 from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
@@ -37,7 +37,7 @@ class JellyseerrClient(ServiceClient):
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
+        base_url = service_base_url("jellyseerr", config, self.INTERNAL_PORT)
         status_url = f"{base_url}/api/v1/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -125,7 +125,7 @@ class JellyseerrClient(ServiceClient):
             return EnsureOutcome(detail="api key missing", changed=False, success=False)
 
         svc_cfg = config.services.jellyseerr
-        base_url = f"http://jellyseerr:{self.INTERNAL_PORT}"
+        base_url = service_base_url("jellyseerr", config, self.INTERNAL_PORT)
         headers = {"Accept": "application/json", "X-Api-Key": api_key}
 
         try:
@@ -146,14 +146,16 @@ class JellyseerrClient(ServiceClient):
                     response = client.get("/api/v1/settings/radarr")
                     response.raise_for_status()
                     radarr_entries = response.json() or []
-                    if not self._matching_app(radarr_entries, "radarr", config.services.radarr.port):
+                    radarr_host = resolve_service_host("radarr", config, caller="jellyseerr")
+                    if not self._matching_app(radarr_entries, radarr_host, config.services.radarr.port):
                         failures.append("radarr")
 
                 if config.services.sonarr.enabled:
                     response = client.get("/api/v1/settings/sonarr")
                     response.raise_for_status()
                     sonarr_entries = response.json() or []
-                    if not self._matching_app(sonarr_entries, "sonarr", config.services.sonarr.port):
+                    sonarr_host = resolve_service_host("sonarr", config, caller="jellyseerr")
+                    if not self._matching_app(sonarr_entries, sonarr_host, config.services.sonarr.port):
                         failures.append("sonarr")
 
                 if failures:
@@ -223,7 +225,7 @@ class JellyseerrClient(ServiceClient):
                 log.debug("Setting up Jellyfin connection for Jellyseerr")
                 jellyfin_cfg = config.services.jellyfin
                 payload = {
-                    "hostname": "jellyfin",
+                    "hostname": resolve_service_host("jellyfin", config, caller="jellyseerr"),
                     "port": 8096,  # JellyfinClient.INTERNAL_PORT (container-to-container)
                     "useSsl": False,
                     "urlBase": "",
@@ -274,7 +276,7 @@ class JellyseerrClient(ServiceClient):
         if not api_key:
             return _EnsureResult(False, "radarr=skipped (no api key)")
 
-        target_host = "radarr"
+        target_host = resolve_service_host("radarr", config, caller="jellyseerr")
         target_port = config.services.radarr.port
 
         response = client.get("/api/v1/settings/radarr")
@@ -338,7 +340,7 @@ class JellyseerrClient(ServiceClient):
         if not api_key:
             return _EnsureResult(False, "sonarr=skipped (no api key)")
 
-        target_host = "sonarr"
+        target_host = resolve_service_host("sonarr", config, caller="jellyseerr")
         target_port = config.services.sonarr.port
 
         response = client.get("/api/v1/settings/sonarr")

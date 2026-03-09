@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import {
@@ -8,6 +8,7 @@ import {
   validateConfig,
   fetchServiceCredentials,
   fetchHealth,
+  fetchActiveRun,
 } from './api'
 import { LeftNavigation, type PageKey } from './components/LeftNavigation'
 import { DashboardPage } from './pages/DashboardPage'
@@ -44,7 +45,10 @@ const DEFAULT_CONFIG: StackConfig = {
     prowlarr: { enabled: true, port: 9696, proxy_url: null, language_filter: false },
     jellyseerr: { enabled: true, port: 5055, proxy_url: null },
     jellyfin: { enabled: true, port: 8096, proxy_url: null },
+    bazarr: { enabled: true, port: 6767, proxy_url: null },
+    flaresolverr: { enabled: false, port: 8191, proxy_url: null },
     pipeline: { enabled: true, port: null, proxy_url: null },
+    gluetun: { enabled: false, port: null, proxy_url: null, wireguard_config: '' },
   },
   download_policy: {
     categories: { radarr: 'movies', sonarr: 'tv' },
@@ -73,6 +77,7 @@ function AuthenticatedApp() {
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
   const [activePage, setActivePage] = useState<PageKey>('dashboard')
   const [health, setHealth] = useState<HealthResponse | null>(null)
+  const activeEventSourceRef = useRef<{ runId: string; es: EventSource } | null>(null)
 
   const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
     setStatus(message)
@@ -160,63 +165,104 @@ function AuthenticatedApp() {
     }
   }
 
-  const handleApply = async (cfg: StackConfig) => {
-    setIsApplying(true)
-    setLogEntries(['Running apply...'])
-    setStatusMessage('Applying stack configuration...', 'info')
-    let eventSource: EventSource | undefined
+  const appendLog = (line: string) => {
+    setLogEntries((prev) => [...prev, line])
+  }
 
+  const connectToRun = (runId: string, isReconnect: boolean = false) => {
+    // Prevent duplicate connections to the same run
+    if (activeEventSourceRef.current?.runId === runId) {
+      return
+    }
+    // Close any existing connection
+    activeEventSourceRef.current?.es.close()
+
+    setIsApplying(true)
+    localStorage.setItem('nas_active_run_id', runId)
+    if (!isReconnect) {
+      setLogEntries(['Running apply...'])
+      setStatusMessage('Applying stack configuration...', 'info')
+    } else {
+      appendLog(`Reconnected to run ${runId}...`)
+      setStatusMessage('Reconnected to in-progress apply...', 'info')
+    }
+
+    const eventSource = new EventSource(`/api/runs/${runId}/events`)
+    activeEventSourceRef.current = { runId, es: eventSource }
+
+    eventSource.addEventListener('stage', (evt) => {
+      try {
+        const data = JSON.parse(evt.data)
+        appendLog(`${data.stage}: ${data.status}${data.detail ? ' - ' + data.detail : ''}`)
+      } catch {
+        appendLog(`stage: ${evt.data}`)
+      }
+    })
+
+    eventSource.addEventListener('status', (evt) => {
+      try {
+        const data = JSON.parse(evt.data)
+        appendLog(
+          `status: ${data.ok ? 'success' : 'failed'}${data.summary ? ' - ' + data.summary : ''}`,
+        )
+        setStatusMessage(
+          data.ok ? 'Apply finished successfully.' : `Apply failed: ${data.summary || 'see log.'}`,
+          data.ok ? 'success' : 'error',
+        )
+      } catch {
+        appendLog(`status: ${evt.data}`)
+        setStatusMessage('Apply finished (status unknown).', 'info')
+      } finally {
+        eventSource.close()
+        activeEventSourceRef.current = null
+        setIsApplying(false)
+        localStorage.removeItem('nas_active_run_id')
+        refreshConfig()
+      }
+    })
+
+    eventSource.addEventListener('error', () => {
+      appendLog('Event stream closed.')
+      setStatusMessage('Apply stream ended unexpectedly.', 'error')
+      eventSource.close()
+      activeEventSourceRef.current = null
+      setIsApplying(false)
+      localStorage.removeItem('nas_active_run_id')
+      loadCredentials()
+    })
+  }
+
+  // On mount, check for an in-progress run (survives page refresh)
+  useEffect(() => {
+    const checkActiveRun = async () => {
+      try {
+        const { active, run_id } = await fetchActiveRun()
+        if (active && run_id) {
+          connectToRun(run_id, true)
+        } else {
+          localStorage.removeItem('nas_active_run_id')
+        }
+      } catch {
+        // API may not be ready yet
+      }
+    }
+    checkActiveRun()
+  }, [])
+
+  const handleApply = async (cfg: StackConfig) => {
     try {
       const response = await applyConfig(cfg)
-      appendLog(`Run ${response.run_id} started.`)
-
-      eventSource = new EventSource(`/api/runs/${response.run_id}/events`)
-      eventSource.addEventListener('stage', (evt) => {
-        try {
-          const data = JSON.parse(evt.data)
-          appendLog(`${data.stage}: ${data.status}${data.detail ? ' - ' + data.detail : ''}`)
-        } catch (err) {
-          appendLog(`stage: ${evt.data}`)
-        }
-      })
-
-      eventSource.addEventListener('status', (evt) => {
-        try {
-          const data = JSON.parse(evt.data)
-          appendLog(
-            `status: ${data.ok ? 'success' : 'failed'}${data.summary ? ' - ' + data.summary : ''}`,
-          )
-          setStatusMessage(
-            data.ok ? 'Apply finished successfully.' : `Apply failed: ${data.summary || 'see log.'}`,
-            data.ok ? 'success' : 'error',
-          )
-        } catch (err) {
-          appendLog(`status: ${evt.data}`)
-          setStatusMessage('Apply finished (status unknown).', 'info')
-        } finally {
-          eventSource?.close()
-          setIsApplying(false)
-          refreshConfig()
-        }
-      })
-
-      eventSource.addEventListener('error', () => {
-        appendLog('event stream closed')
-        setStatusMessage('Apply stream ended unexpectedly.', 'error')
-        eventSource?.close()
-        setIsApplying(false)
-        loadCredentials()
-      })
+      if (response.already_running) {
+        appendLog(`Run ${response.run_id} already in progress, reconnecting...`)
+      } else {
+        appendLog(`Run ${response.run_id} started.`)
+      }
+      connectToRun(response.run_id, !!response.already_running)
     } catch (error: any) {
       appendLog(`Error: ${error.message}`)
       setStatusMessage(error.message || 'Apply failed to start', 'error')
-      eventSource?.close()
       setIsApplying(false)
     }
-  }
-
-  const appendLog = (line: string) => {
-    setLogEntries((prev) => [...prev, line])
   }
 
   const handleLogout = async () => {

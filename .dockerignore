@@ -37,6 +37,7 @@ tests/
 # Documentation
 docs/
 *.md
+!README.md
 !requirements.txt
 
 # Development files

@@ -104,6 +104,36 @@ def _get_host_path(path: str) -> Path:
     return p
 
 
+def _is_host_path(p: Path) -> bool:
+    """Return True if *p* lives under the read-only /host mount."""
+    return p.parts[:2] == ("/", "host")
+
+
+def _check_writable_by_stat(p: Path, uid: int = 1000, gid: int = 1000) -> bool:
+    """Check writability via stat bits instead of os.access().
+
+    This is needed for paths under the /host mount which is :ro — os.access()
+    would always return False, but the actual host permissions may be fine.
+    We check whether *uid*/*gid* (the PUID/PGID the media services run as)
+    would be able to write based on ownership and mode bits.
+    """
+    import stat as stat_mod
+    try:
+        st = p.stat()
+        mode = st.st_mode
+
+        # Owner match
+        if st.st_uid == uid:
+            return bool(mode & stat_mod.S_IWUSR)
+        # Group match
+        if st.st_gid == gid:
+            return bool(mode & stat_mod.S_IWGRP)
+        # Other
+        return bool(mode & stat_mod.S_IWOTH)
+    except OSError:
+        return False
+
+
 def _owner_info(p: Path) -> str:
     """Return 'owner:group (mode)' for a path, for diagnostic messages."""
     import os, pwd, grp
@@ -169,7 +199,14 @@ def validate_path(
     try:
         # Get the actual path to check (handles Docker /host mount)
         p = _get_host_path(path)
+        via_host = _is_host_path(p)
         result["exists"] = p.exists()
+
+        def _writable(target: Path) -> bool:
+            """Check writability — stat-based for /host (ro mount), os.access otherwise."""
+            if via_host:
+                return _check_writable_by_stat(target)
+            return os.access(target, os.W_OK | os.X_OK)
 
         if p.exists():
             # Path exists - check if it's a directory
@@ -177,9 +214,7 @@ def validate_path(
                 result["error"] = f"Path exists but is not a directory: {path}"
                 return result
 
-            # Use os.access() — checks the REAL user's ability to write,
-            # not just the file mode bits.
-            is_writable = os.access(p, os.W_OK | os.X_OK)
+            is_writable = _writable(p)
 
             if require_writable:
                 result["writable"] = is_writable
@@ -188,7 +223,7 @@ def validate_path(
                 if not is_writable:
                     info = _owner_info(p)
                     fix_cmd = _fix_command(path)
-                    if fix_permissions:
+                    if fix_permissions and not via_host:
                         try:
                             p.chmod(0o775)
                             # Re-check after chmod — ownership might still block us
@@ -227,9 +262,9 @@ def validate_path(
             parent = p.parent
 
             if parent.exists() and parent.is_dir():
-                parent_writable = os.access(parent, os.W_OK | os.X_OK)
+                parent_writable = _writable(parent)
 
-                if auto_create:
+                if auto_create and not via_host:
                     if parent_writable:
                         try:
                             p.mkdir(parents=True, exist_ok=True)
@@ -264,9 +299,11 @@ def validate_path(
                             "It will be created automatically."
                         )
                     else:
+                        # Show the original host path in the error, not the /host/ prefixed one
+                        parent_display = str(parent) if not via_host else str(Path(path).parent)
                         fix_cmd = f"sudo mkdir -p {path} && " + _fix_command(path)
                         result["error"] = (
-                            f"Parent directory {parent} is not writable "
+                            f"Parent directory {parent_display} is not writable "
                             f"(owned by {_owner_info(parent)}). "
                             f"Run: {fix_cmd}"
                         )
@@ -274,7 +311,7 @@ def validate_path(
             else:
                 fix_cmd = f"sudo mkdir -p {path} && " + _fix_command(path)
                 result["error"] = (
-                    f"Parent directory {parent} does not exist. "
+                    f"Parent directory {Path(path).parent} does not exist. "
                     f"Run: {fix_cmd}"
                 )
                 result["fix_command"] = fix_cmd

@@ -15,11 +15,77 @@ from xml.etree import ElementTree
 if TYPE_CHECKING:
     from ..models import StackConfig
 
+from ..models import VPN_ROUTED_SERVICES
+
 
 # Container mount points (fixed in docker-compose files)
 CONTAINER_APPDATA = Path("/appdata")
 CONTAINER_DATA = Path("/data")
 CONTAINER_SCRATCH = Path("/scratch")
+
+
+def running_in_docker() -> bool:
+    """Detect whether the orchestrator process is inside a Docker container."""
+    if Path("/.dockerenv").exists():
+        return True
+    try:
+        with open("/proc/1/cgroup", "r") as f:
+            return "docker" in f.read()
+    except (FileNotFoundError, PermissionError):
+        return False
+
+
+def resolve_service_host(
+    target: str,
+    config: "StackConfig",
+    *,
+    caller: str = "",
+) -> str:
+    """Return the Docker hostname for *target*, accounting for VPN routing.
+
+    When gluetun is enabled, VPN-routed services share gluetun's network
+    namespace:
+      - If the *caller* is also VPN-routed → ``localhost`` (same namespace).
+      - Otherwise → ``gluetun`` (reachable via nas_net).
+
+    When gluetun is disabled, returns *target* unchanged.
+    """
+    vpn_active = config.services.gluetun.enabled
+    if not vpn_active:
+        return target
+    target_routed = target in VPN_ROUTED_SERVICES
+    if not target_routed:
+        return target
+    caller_routed = caller in VPN_ROUTED_SERVICES
+    if caller_routed:
+        return "localhost"
+    return "gluetun"
+
+
+def service_base_url(
+    name: str,
+    config: "StackConfig",
+    internal_port: int,
+    api_prefix: str = "",
+) -> str:
+    """Return the correct base URL for the orchestrator to reach a service.
+
+    When running **inside Docker** (same compose network):
+        ``http://<container_name>:<internal_port><api_prefix>``
+    When running **on the host**:
+        ``http://127.0.0.1:<host_mapped_port><api_prefix>``
+
+    *internal_port* is the port the service listens on inside its container
+    (e.g. 8080 for qBittorrent).  *api_prefix* is appended directly
+    (e.g. ``/api/v3`` for Radarr).
+    """
+    if running_in_docker():
+        host = resolve_service_host(name, config)
+        return f"http://{host}:{internal_port}{api_prefix}"
+
+    svc = getattr(config.services, name, None)
+    host_port = svc.port if svc and svc.port else internal_port
+    return f"http://127.0.0.1:{host_port}{api_prefix}"
 
 
 def translate_path_to_container(host_path: Path, config: "StackConfig") -> Path:

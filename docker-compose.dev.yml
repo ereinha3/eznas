@@ -23,17 +23,16 @@ services:
       # Mount source for live reload
       - ./orchestrator:/app/orchestrator:ro
       - ./templates:/app/templates:ro
-      # Config and state persistence
-      - ./stack.yaml:/config/stack.yaml
-      - ./state.json:/config/state.json
+      # Config root — all state files (stack.yaml, auth.json, generated/, etc.)
+      - .:/config
       # Access to host filesystem for path validation (mounted at /host)
       - /:/host:ro
       # Service paths (mapped for runtime)
       - ${POOL_PATH:-./test_pool}:/data
       - ${SCRATCH_PATH:-./test_scratch}:/scratch
       - ${APPDATA_PATH:-./test_appdata}:/appdata
-      # Docker socket for compose operations
-      - /var/run/docker.sock:/var/run/docker.sock:ro
+      # Docker socket for compose operations (needs write access for docker compose up)
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - dev_net
 
@@ -64,14 +63,17 @@ services:
       dockerfile: Dockerfile.dev
     container_name: pipeline-worker-dev
     restart: unless-stopped
+    # Privileged mode required for mounting Blu-ray UDF ISO images
+    # via loop devices inside Docker.
+    privileged: true
     environment:
       - TZ=${TZ:-UTC}
       - ORCH_ROOT=/config
       - PIPELINE_INTERVAL=${PIPELINE_INTERVAL:-60}
     volumes:
       - ./orchestrator:/app/orchestrator:ro
-      - ./stack.yaml:/config/stack.yaml
-      - ./state.json:/config/state.json
+      # Config root — all state files (stack.yaml, auth.json, etc.)
+      - .:/config
       - ${POOL_PATH:-./test_pool}:/data
       # Match qBittorrent's internal save paths (it reports /downloads/... via API).
       - ${SCRATCH_PATH:-./test_scratch}/downloads:/downloads

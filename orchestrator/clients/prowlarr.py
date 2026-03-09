@@ -17,6 +17,8 @@ from .util import (
     read_arr_api_key,
     read_arr_port,
     read_arr_url_base,
+    resolve_service_host,
+    service_base_url,
     wait_for_arr_config,
 )
 from ..models import StackConfig, IndexerSchema, IndexerInfo
@@ -117,7 +119,7 @@ class ProwlarrClient(ServiceClient):
                 success=False,
             )
 
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
         status_url = f"{base_url}/system/status"
         ok, status_detail = wait_for_http_ready(
             status_url,
@@ -232,6 +234,13 @@ class ProwlarrClient(ServiceClient):
                         detail_messages.append(message)
                     changed = changed or changed_flag
 
+                # Configure FlareSolverr proxy if enabled
+                if config.services.flaresolverr.enabled:
+                    fs_changed, fs_msg = self._ensure_flaresolverr(api, config)
+                    if fs_msg:
+                        detail_messages.append(fs_msg)
+                    changed = changed or fs_changed
+
                 # Auto-populate indexers on first setup
                 if not prowlarr_state.get("indexers_populated"):
                     added, skipped, failed = self.auto_populate_indexers(config)
@@ -306,7 +315,7 @@ class ProwlarrClient(ServiceClient):
             return EnsureOutcome(detail="missing api key", changed=False, success=False)
 
         prowlarr_cfg = config.services.prowlarr
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -336,14 +345,14 @@ class ProwlarrClient(ServiceClient):
             prowlarr_config_dir = get_service_config_dir("prowlarr", config)
             prowlarr_url = self._build_service_url(
                 service_name="prowlarr",
-                host="prowlarr",
+                host=resolve_service_host("prowlarr", config, caller="prowlarr"),
                 config_dir=prowlarr_config_dir,
                 default_port=self.INTERNAL_PORT,
             )
             service_config_dir = get_service_config_dir(service_name, config)
             service_url = self._build_service_url(
                 service_name=service_name,
-                host=service_name,
+                host=resolve_service_host(service_name, config, caller="prowlarr"),
                 config_dir=service_config_dir,
                 default_port=self._default_service_port(service_name),
             )
@@ -432,7 +441,7 @@ class ProwlarrClient(ServiceClient):
             client.put("/config/host", json=payload).raise_for_status()
 
         ok, message = wait_for_http_ready(
-            f"http://prowlarr:{port}/api/v1/system/status",
+            f"{base_url}/system/status",
             timeout=120.0,
             interval=5.0,
         )
@@ -453,7 +462,7 @@ class ProwlarrClient(ServiceClient):
         prowlarr_config_dir = get_service_config_dir("prowlarr", config)
         prowlarr_url = self._build_service_url(
             service_name="prowlarr",
-            host="prowlarr",
+            host=resolve_service_host("prowlarr", config, caller="prowlarr"),
             config_dir=prowlarr_config_dir,
             default_port=self.INTERNAL_PORT,
         )
@@ -461,7 +470,7 @@ class ProwlarrClient(ServiceClient):
         service_config_dir = get_service_config_dir(service_name, config)
         service_url = self._build_service_url(
             service_name=service_name,
-            host=service_name,
+            host=resolve_service_host(service_name, config, caller="prowlarr"),
             config_dir=service_config_dir,
             default_port=self._default_service_port(service_name),
         )
@@ -567,6 +576,197 @@ class ProwlarrClient(ServiceClient):
         sanitized = sanitized.rstrip("/")
         return sanitized or None
 
+    # ------------------------------------------------------------------ FlareSolverr proxy
+
+    def _ensure_flaresolverr(
+        self,
+        api: ArrAPI,
+        config: StackConfig,
+    ) -> Tuple[bool, str]:
+        """Register FlareSolverr as an indexer proxy in Prowlarr.
+
+        1. Creates a "FlareSolverr" tag if it doesn't exist.
+        2. Registers FlareSolverr as an indexer proxy with that tag.
+        3. Tests each indexer and auto-tags CloudFlare-blocked ones.
+
+        FlareSolverr shares Gluetun's network namespace when VPN is active,
+        so Prowlarr reaches it at localhost:8191 (same network namespace).
+        When VPN is off, it's at flaresolverr:8191 on the Docker network.
+        """
+        # FlareSolverr URL from Prowlarr's perspective:
+        # Both share gluetun's network when VPN is active → localhost
+        # Otherwise they're separate containers on nas_net → flaresolverr
+        vpn_active = config.services.gluetun.enabled
+        if vpn_active:
+            fs_host = "localhost"
+        else:
+            fs_host = "flaresolverr"
+        fs_url = f"http://{fs_host}:8191"
+
+        changed = False
+        messages: list[str] = []
+
+        # Step 1: Ensure tag exists
+        tag_id = self._ensure_tag(api, "FlareSolverr")
+        if tag_id is None:
+            return False, "flaresolverr=failed (could not create tag)"
+
+        # Step 2: Ensure indexer proxy exists
+        proxy_changed = self._ensure_indexer_proxy(api, fs_url, tag_id)
+        if proxy_changed:
+            changed = True
+            messages.append("flaresolverr proxy registered")
+
+        # Step 3: Test each indexer and tag ones that fail connectivity.
+        # Only indexers that can't be reached get routed through FlareSolverr.
+        tagged_count = self._tag_failing_indexers(api, tag_id)
+        if tagged_count > 0:
+            changed = True
+            messages.append(f"{tagged_count} indexers tagged for flaresolverr")
+
+        detail = "; ".join(messages) if messages else "flaresolverr=ready"
+        return changed, detail
+
+    def _ensure_tag(self, api: ArrAPI, tag_label: str) -> Optional[int]:
+        """Get or create a tag by label. Returns the tag ID."""
+        try:
+            tags = api.get_json("/tag") or []
+            for tag in tags:
+                if tag.get("label", "").lower() == tag_label.lower():
+                    return tag["id"]
+            # Create it
+            result = api.post_json("/tag", {"label": tag_label})
+            return result.get("id")
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            log.warning(f"Failed to ensure tag '{tag_label}': {exc}")
+            return None
+
+    def _ensure_indexer_proxy(
+        self, api: ArrAPI, flaresolverr_url: str, tag_id: int,
+    ) -> bool:
+        """Register FlareSolverr as an indexer proxy if not already configured."""
+        try:
+            existing = api.get_json("/indexerProxy") or []
+            for proxy in existing:
+                impl = (proxy.get("implementation") or "").lower()
+                if impl == "flaresolverr":
+                    # Check if URL matches
+                    fields = {
+                        f["name"]: f.get("value")
+                        for f in proxy.get("fields", [])
+                    }
+                    current_url = fields.get("host", "")
+                    current_tags = proxy.get("tags", [])
+                    if current_url == flaresolverr_url and tag_id in current_tags:
+                        return False  # Already configured correctly
+                    # Update existing proxy
+                    updated = dict(proxy)
+                    updated["tags"] = list(set(current_tags) | {tag_id})
+                    updated["fields"] = set_field_values(
+                        proxy.get("fields", []),
+                        {"host": flaresolverr_url},
+                    )
+                    api.put_json(f"/indexerProxy/{proxy['id']}", updated)
+                    log.info("Updated FlareSolverr proxy URL")
+                    return True
+
+            # Create new proxy — get schema first
+            schemas = api.get_json("/indexerProxy/schema") or []
+            template = next(
+                (s for s in schemas if (s.get("implementation") or "").lower() == "flaresolverr"),
+                None,
+            )
+            if not template:
+                log.warning("FlareSolverr proxy schema not found in Prowlarr")
+                return False
+
+            payload = {
+                "name": "FlareSolverr",
+                "implementation": "FlareSolverr",
+                "implementationName": "FlareSolverr",
+                "configContract": template.get("configContract", "FlareSolverrSettings"),
+                "tags": [tag_id],
+                "fields": set_field_values(
+                    template.get("fields", []),
+                    {"host": flaresolverr_url, "requestTimeout": 60},
+                ),
+            }
+            api.post_json("/indexerProxy", payload)
+            log.info(f"Created FlareSolverr indexer proxy -> {flaresolverr_url}")
+            return True
+
+        except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+            log.warning(f"Failed to configure FlareSolverr proxy: {exc}")
+            return False
+
+    def _tag_failing_indexers(self, api: ArrAPI, tag_id: int) -> int:
+        """Test each indexer and tag those that fail with the FlareSolverr tag.
+
+        Prowlarr's ``/indexer/test`` returns HTTP 200 for both success and
+        failure.  Success = empty ``[]``; failure = array of error objects.
+        Any indexer that fails gets the FlareSolverr tag so Prowlarr routes
+        its requests through the headless browser proxy.
+
+        Also removes the tag from previously-failing indexers that now pass,
+        keeping the tag list accurate over time.
+        """
+        try:
+            indexers = api.get_json("/indexer") or []
+        except (httpx.RequestError, httpx.HTTPStatusError):
+            return 0
+
+        tagged = 0
+        for indexer in indexers:
+            idx_id = indexer.get("id")
+            idx_name = indexer.get("name", "unknown")
+            current_tags = indexer.get("tags", [])
+            has_tag = tag_id in current_tags
+
+            try:
+                result = api._client.post(
+                    "/indexer/test",
+                    json=indexer,
+                    timeout=httpx.Timeout(30.0, connect=5.0),
+                )
+                try:
+                    body = result.json()
+                except ValueError:
+                    body = {}
+
+                test_ok = result.status_code == 200 and (not body or body == [])
+            except (httpx.RequestError, httpx.HTTPStatusError):
+                test_ok = False
+
+            if not test_ok and not has_tag:
+                # Failing and untagged → add FlareSolverr tag
+                log.info(f"Indexer '{idx_name}' failing, adding FlareSolverr tag")
+                updated = dict(indexer)
+                updated["tags"] = list(set(current_tags) | {tag_id})
+                try:
+                    api._client.put(
+                        f"/indexer/{idx_id}",
+                        json=updated,
+                        params={"forceSave": "true"},
+                    ).raise_for_status()
+                    tagged += 1
+                except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                    log.debug(f"Failed to tag indexer '{idx_name}': {exc}")
+            elif test_ok and has_tag:
+                # Now passing but still tagged → remove tag
+                log.info(f"Indexer '{idx_name}' now passing, removing FlareSolverr tag")
+                updated = dict(indexer)
+                updated["tags"] = [t for t in current_tags if t != tag_id]
+                try:
+                    api._client.put(
+                        f"/indexer/{idx_id}",
+                        json=updated,
+                        params={"forceSave": "true"},
+                    ).raise_for_status()
+                except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                    log.debug(f"Failed to untag indexer '{idx_name}': {exc}")
+
+        return tagged
+
     # ------------------------------------------------------------------ indexer management
 
     def get_available_indexers(self, config: StackConfig) -> List[IndexerSchema]:
@@ -581,8 +781,7 @@ class ProwlarrClient(ServiceClient):
             return []
 
         prowlarr_cfg = config.services.prowlarr
-        # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         try:
             with ArrAPI(base_url, api_key, timeout=30.0) as api:
@@ -636,8 +835,7 @@ class ProwlarrClient(ServiceClient):
             return []
 
         prowlarr_cfg = config.services.prowlarr
-        # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -678,8 +876,7 @@ class ProwlarrClient(ServiceClient):
             return [], indexer_names
 
         prowlarr_cfg = config.services.prowlarr
-        # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         added: List[str] = []
         failed: List[str] = []
@@ -780,8 +977,7 @@ class ProwlarrClient(ServiceClient):
             return False
 
         prowlarr_cfg = config.services.prowlarr
-        # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         try:
             with ArrAPI(base_url, api_key) as api:
@@ -850,8 +1046,7 @@ class ProwlarrClient(ServiceClient):
             return [], [], []
 
         prowlarr_cfg = config.services.prowlarr
-        # Use localhost with configured port to work when orchestrator is in a container
-        base_url = f"http://prowlarr:{self.INTERNAL_PORT}/api/v1"
+        base_url = service_base_url("prowlarr", config, self.INTERNAL_PORT, "/api/v1")
 
         # Check if language filtering is enabled
         language_filter = config.services.prowlarr.language_filter
@@ -905,9 +1100,29 @@ class ProwlarrClient(ServiceClient):
                         api.post_json("/indexer", payload)
                         added.append(name)
                         log.info(f"Added indexer: {name}")
-                        # Update existing sets to prevent duplicates in same batch
                         existing_names.add(name_lower)
                     except httpx.HTTPStatusError as exc:
+                        # Prowlarr tests indexers on add — CF-blocked ones get
+                        # 400.  Retry by adding disabled (skips test) then
+                        # enabling with forceSave.
+                        if exc.response.status_code == 400:
+                            try:
+                                payload["enable"] = False
+                                result = api.post_json("/indexer", payload)
+                                idx_id = result.get("id")
+                                if idx_id:
+                                    result["enable"] = True
+                                    api._client.put(
+                                        f"/indexer/{idx_id}",
+                                        json=result,
+                                        params={"forceSave": "true"},
+                                    ).raise_for_status()
+                                    added.append(name)
+                                    log.info(f"Added indexer (force): {name}")
+                                    existing_names.add(name_lower)
+                                    continue
+                            except (httpx.RequestError, httpx.HTTPStatusError):
+                                pass
                         log.warning(
                             f"Failed to add indexer {name}: {exc.response.text}"
                         )

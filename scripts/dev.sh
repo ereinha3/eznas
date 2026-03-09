@@ -14,21 +14,36 @@ if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)
 fi
 
+# Ensure .env exists (copy from .env.example if missing)
+ensure_env() {
+    if [ ! -f .env ]; then
+        if [ -f .env.example ]; then
+            cp .env.example .env
+            echo "Created .env from .env.example (edit as needed)"
+        else
+            echo "Warning: no .env or .env.example found"
+        fi
+    fi
+}
+
 case "${1:-help}" in
     up)
         # Start dev environment (orchestrator + frontend with hot reload)
+        ensure_env
         echo "Starting development environment..."
         docker compose -f docker-compose.dev.yml up --build
         ;;
 
     up-full)
         # Start dev environment with all media services
+        ensure_env
         echo "Starting full development environment with media services..."
         docker compose -f docker-compose.dev.yml --profile full up --build
         ;;
 
     up-pipeline)
         # Start dev environment with pipeline worker
+        ensure_env
         echo "Starting development environment with pipeline worker..."
         docker compose -f docker-compose.dev.yml --profile pipeline up --build
         ;;
@@ -37,6 +52,14 @@ case "${1:-help}" in
         # Stop all dev containers
         echo "Stopping development environment..."
         docker compose -f docker-compose.dev.yml --profile full --profile pipeline down
+        ;;
+
+    clean)
+        # Wipe all state files for a fresh start
+        echo "Cleaning state files..."
+        rm -f auth.json secrets.json services.json runs.json pipeline.json state.json stack.yaml
+        rm -rf generated
+        echo "State wiped. Run './scripts/dev.sh up' for a fresh start."
         ;;
 
     logs)
@@ -102,6 +125,7 @@ case "${1:-help}" in
         echo "  up-full     Start with all media services"
         echo "  up-pipeline Start with pipeline worker"
         echo "  down        Stop all dev containers"
+        echo "  clean       Wipe state files for a fresh start"
         echo "  logs [svc]  Follow container logs"
         echo "  shell       Open shell in orchestrator container"
         echo ""

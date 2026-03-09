@@ -35,9 +35,14 @@ export interface ProwlarrConfig extends ServiceBaseConfig {
   // When false, add all public indexers with Movies/TV categories
   language_filter: boolean
 }
+export interface BazarrConfig extends ServiceBaseConfig {}
 export interface JellyseerrConfig extends ServiceBaseConfig {}
 export interface JellyfinConfig extends ServiceBaseConfig {}
+export interface FlareSolverrConfig extends ServiceBaseConfig {}
 export interface PipelineConfig extends ServiceBaseConfig {}
+export interface GluetunConfig extends ServiceBaseConfig {
+  wireguard_config: string
+}
 
 export interface ServicesConfig {
   qbittorrent: QbittorrentConfig
@@ -46,7 +51,10 @@ export interface ServicesConfig {
   prowlarr: ProwlarrConfig
   jellyseerr: JellyseerrConfig
   jellyfin: JellyfinConfig
+  bazarr: BazarrConfig
+  flaresolverr: FlareSolverrConfig
   pipeline: PipelineConfig
+  gluetun: GluetunConfig
 }
 
 export interface RuntimeConfig {
@@ -211,4 +219,38 @@ export interface AutoPopulateIndexersResponse {
   skipped: string[]
   failed: string[]
   message: string
+}
+
+// Library Sweep types
+export interface SweepActionDetail {
+  path: string
+  size: number
+  category: string
+  unwanted_audio: string[]
+  unwanted_subtitles: string[]
+}
+
+export interface SweepScanResponse {
+  total_files_scanned: number
+  files_already_clean: number
+  files_to_process: number
+  total_bytes_to_process: number
+  estimated_time_seconds: number
+  actions: SweepActionDetail[]
+}
+
+export interface SweepStartResponse {
+  sweep_id: string
+  total_files: number
+}
+
+export interface SweepStatusResponse {
+  status: 'idle' | 'scanning' | 'running' | 'completed' | 'failed'
+  sweep_id: string | null
+  progress_current: number
+  progress_total: number
+  current_file: string | null
+  succeeded: number
+  failed: number
+  errors: string[]
 }

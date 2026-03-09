@@ -10,12 +10,15 @@ import { ActionBar } from '../components/ActionBar'
 import { autoPopulateIndexers } from '../api'
 
 const SERVICE_ORDER: ServiceKey[] = [
+  'gluetun',
   'qbittorrent',
   'radarr',
   'sonarr',
   'prowlarr',
+  'flaresolverr',
   'jellyseerr',
   'jellyfin',
+  'bazarr',
   'pipeline',
 ]
 

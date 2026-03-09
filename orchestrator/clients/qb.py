@@ -21,7 +21,7 @@ from ..constants import CONTAINER_PATHS
 from ..models import StackConfig
 from ..storage import ConfigRepository
 from .base import EnsureOutcome, ServiceClient
-from .util import get_service_config_dir
+from .util import get_service_config_dir, service_base_url
 
 
 class AuthenticationError(Exception):
@@ -47,7 +47,7 @@ class QBittorrentClient(ServiceClient):
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{self.INTERNAL_PORT}"
+        base_url = service_base_url("qbittorrent", config, self.INTERNAL_PORT)
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -175,7 +175,7 @@ class QBittorrentClient(ServiceClient):
 
     def verify(self, config: StackConfig) -> EnsureOutcome:
         qb_cfg = config.services.qbittorrent
-        base_url = f"http://qbittorrent:{self.INTERNAL_PORT}"
+        base_url = service_base_url("qbittorrent", config, self.INTERNAL_PORT)
         internal_host = f"localhost:{self.INTERNAL_PORT}"
         internal_origin = f"http://{internal_host}"
         timeout = httpx.Timeout(10.0, connect=5.0)
@@ -439,7 +439,7 @@ class QBittorrentClient(ServiceClient):
             return False
             return False
 
-        return self._wait_for_ready(f"http://qbittorrent:{self.INTERNAL_PORT}")
+        return self._wait_for_ready(service_base_url("qbittorrent", config, self.INTERNAL_PORT))
 
     def _restart_container(self) -> bool:
         try:

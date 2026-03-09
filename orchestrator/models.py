@@ -83,7 +83,7 @@ class ServiceBaseConfig(BaseModel):
 
 
 class QbittorrentConfig(ServiceBaseConfig):
-    port: int = Field(default=8080, ge=1, le=65535)
+    port: int = Field(default=8081, ge=1, le=65535)
     proxy_url: Optional[str] = None
     stop_after_download: bool = True
     username: str = "admin"
@@ -118,9 +118,34 @@ class JellyfinConfig(ServiceBaseConfig):
     proxy_url: Optional[str] = None
 
 
+class BazarrConfig(ServiceBaseConfig):
+    port: int = Field(default=6767, ge=1, le=65535)
+    proxy_url: Optional[str] = None
+
+
+class FlareSolverrConfig(ServiceBaseConfig):
+    """Headless browser proxy that solves CloudFlare challenges for Prowlarr."""
+    enabled: bool = False
+    port: int = Field(default=8191, ge=1, le=65535)
+    proxy_url: Optional[str] = None
+
+
 class PipelineConfig(ServiceBaseConfig):
     port: Optional[int] = Field(default=None, ge=1, le=65535)
     proxy_url: Optional[str] = None
+
+
+# Services that always route through Gluetun when it is enabled.
+VPN_ROUTED_SERVICES = frozenset({"qbittorrent", "radarr", "sonarr", "prowlarr", "flaresolverr"})
+
+
+class GluetunConfig(ServiceBaseConfig):
+    """VPN gateway container (Gluetun) for routing torrent traffic through WireGuard."""
+
+    enabled: bool = False
+    port: Optional[int] = Field(default=None, ge=1, le=65535)
+    proxy_url: Optional[str] = None
+    wireguard_config: str = ""
 
 
 class TraefikConfig(BaseModel):
@@ -139,7 +164,10 @@ class ServicesConfig(BaseModel):
     prowlarr: ProwlarrConfig = Field(default_factory=ProwlarrConfig)
     jellyseerr: JellyseerrConfig = Field(default_factory=JellyseerrConfig)
     jellyfin: JellyfinConfig = Field(default_factory=JellyfinConfig)
+    bazarr: BazarrConfig = Field(default_factory=BazarrConfig)
+    flaresolverr: FlareSolverrConfig = Field(default_factory=FlareSolverrConfig)
     pipeline: PipelineConfig = Field(default_factory=PipelineConfig)
+    gluetun: GluetunConfig = Field(default_factory=GluetunConfig)
 
 
 class UserEntry(BaseModel):
@@ -417,3 +445,47 @@ class InitializeResponse(BaseModel):
     success: bool
     message: str
     config_created: bool = False
+
+
+# Library Sweep Models
+
+
+class SweepActionDetail(BaseModel):
+    """Detail about a single file that needs sweeping."""
+
+    path: str
+    size: int
+    category: str
+    unwanted_audio: List[str]
+    unwanted_subtitles: List[str]
+
+
+class SweepScanResponse(BaseModel):
+    """Result of a dry-run library sweep scan."""
+
+    total_files_scanned: int
+    files_already_clean: int
+    files_to_process: int
+    total_bytes_to_process: int
+    estimated_time_seconds: float
+    actions: List[SweepActionDetail] = Field(default_factory=list)
+
+
+class SweepStartResponse(BaseModel):
+    """Acknowledgement that a sweep has been started."""
+
+    sweep_id: str
+    total_files: int
+
+
+class SweepStatusResponse(BaseModel):
+    """Current state of the sweep operation."""
+
+    status: str  # "idle", "scanning", "running", "completed", "failed"
+    sweep_id: Optional[str] = None
+    progress_current: int = 0
+    progress_total: int = 0
+    current_file: Optional[str] = None
+    succeeded: int = 0
+    failed: int = 0
+    errors: List[str] = Field(default_factory=list)

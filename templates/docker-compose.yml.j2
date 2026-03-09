@@ -5,6 +5,7 @@
 {% set proxy = config.proxy %}
 {% set traefik_tls_enabled = proxy.https_port is not none %}
 {% set traefik_entrypoint = "websecure" if traefik_tls_enabled else "web" %}
+{% set vpn = services.gluetun.enabled and wg.get("private_key") %}
 services:
 {% if proxy.enabled %}
   traefik:
@@ -38,6 +39,56 @@ services:
     networks:
       - nas_net
 {% endif %}
+{% if vpn %}
+  gluetun:
+    image: qmcgaw/gluetun:latest
+    container_name: gluetun
+    restart: unless-stopped
+    cap_add:
+      - NET_ADMIN
+    devices:
+      - /dev/net/tun:/dev/net/tun
+    environment:
+      - VPN_SERVICE_PROVIDER=custom
+      - VPN_TYPE=wireguard
+      - WIREGUARD_PRIVATE_KEY={{ wg.private_key }}
+      - WIREGUARD_ADDRESSES={{ wg.addresses }}
+      - WIREGUARD_PUBLIC_KEY={{ wg.public_key }}
+      - VPN_ENDPOINT_IP={{ wg.endpoint_ip }}
+      - VPN_ENDPOINT_PORT={{ wg.endpoint_port }}
+      - DNS_ADDRESS={{ wg.dns | default("1.1.1.1") }}
+      - DNS_KEEP_NAMESERVER=off
+      - FIREWALL_VPN_INPUT_PORTS=
+      - FIREWALL_OUTBOUND_SUBNETS=172.16.0.0/12,192.168.0.0/16,10.0.0.0/8
+      - TZ={{ runtime.timezone }}
+    ports:
+{# Ports for VPN-routed services are exposed via gluetun #}
+{% if services.qbittorrent.enabled and services.qbittorrent.port %}
+      - "{{ services.qbittorrent.port }}:8080"
+{% endif %}
+{% if services.radarr.enabled and services.radarr.port %}
+      - "{{ services.radarr.port }}:7878"
+{% endif %}
+{% if services.sonarr.enabled and services.sonarr.port %}
+      - "{{ services.sonarr.port }}:8989"
+{% endif %}
+{% if services.prowlarr.enabled and services.prowlarr.port %}
+      - "{{ services.prowlarr.port }}:9696"
+{% endif %}
+{% if services.flaresolverr.enabled and services.flaresolverr.port %}
+      - "{{ services.flaresolverr.port }}:8191"
+{% endif %}
+    volumes:
+      - {{ paths.appdata }}/gluetun:/gluetun
+    healthcheck:
+      test: ["CMD", "/gluetun-entrypoint", "healthcheck"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - nas_net
+{% endif %}
 {% if services.qbittorrent.enabled %}
   qbittorrent:
     image: {{ config.get("images", {}).get("qbittorrent", "lscr.io/linuxserver/qbittorrent:latest") }}
@@ -51,6 +102,12 @@ services:
       - {{ paths.appdata }}/qbittorrent:/config
       - {{ scratch_host }}:/downloads
       - {{ paths.pool }}:/data
+{% if vpn %}
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+{% else %}
 {% if services.qbittorrent.port %}
     ports:
       - "{{ services.qbittorrent.port }}:8080"
@@ -68,6 +125,7 @@ services:
     networks:
       - nas_net
 {% endif %}
+{% endif %}
 
 {% if services.radarr.enabled %}
   radarr:
@@ -82,6 +140,16 @@ services:
       - {{ paths.appdata }}/radarr:/config
       - {{ paths.pool }}:/data
       - {{ scratch_host }}:/downloads
+{% if vpn %}
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+{% if services.qbittorrent.enabled %}
+      qbittorrent:
+        condition: service_started
+{% endif %}
+{% else %}
 {% if services.radarr.port %}
     ports:
       - "{{ services.radarr.port }}:7878"
@@ -103,6 +171,7 @@ services:
     networks:
       - nas_net
 {% endif %}
+{% endif %}
 
 {% if services.sonarr.enabled %}
   sonarr:
@@ -117,6 +186,16 @@ services:
       - {{ paths.appdata }}/sonarr:/config
       - {{ paths.pool }}:/data
       - {{ scratch_host }}:/downloads
+{% if vpn %}
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+{% if services.qbittorrent.enabled %}
+      qbittorrent:
+        condition: service_started
+{% endif %}
+{% else %}
 {% if services.sonarr.port %}
     ports:
       - "{{ services.sonarr.port }}:8989"
@@ -138,6 +217,7 @@ services:
     networks:
       - nas_net
 {% endif %}
+{% endif %}
 
 {% if services.prowlarr.enabled %}
   prowlarr:
@@ -150,6 +230,12 @@ services:
       - TZ={{ runtime.timezone }}
     volumes:
       - {{ paths.appdata }}/prowlarr:/config
+{% if vpn %}
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+{% else %}
 {% if services.prowlarr.port %}
     ports:
       - "{{ services.prowlarr.port }}:9696"
@@ -166,6 +252,30 @@ services:
 {% endif %}
     networks:
       - nas_net
+{% endif %}
+{% endif %}
+
+{% if services.flaresolverr.enabled %}
+  flaresolverr:
+    image: {{ config.get("images", {}).get("flaresolverr", "ghcr.io/flaresolverr/flaresolverr:latest") }}
+    container_name: flaresolverr
+    restart: unless-stopped
+    environment:
+      - TZ={{ runtime.timezone }}
+      - LOG_LEVEL=info
+{% if vpn %}
+    network_mode: "service:gluetun"
+    depends_on:
+      gluetun:
+        condition: service_healthy
+{% else %}
+{% if services.flaresolverr.port %}
+    ports:
+      - "{{ services.flaresolverr.port }}:8191"
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
 {% endif %}
 
 {% if services.jellyseerr.enabled %}
@@ -193,14 +303,60 @@ services:
       - "traefik.http.services.jellyseerr.loadbalancer.server.port=5055"
 {% endif %}
     depends_on:
+{% if vpn and (services.radarr.enabled or services.sonarr.enabled) %}
+      gluetun:
+        condition: service_healthy
+{% endif %}
 {% if services.radarr.enabled %}
-      - radarr
+      radarr:
+        condition: service_started
 {% endif %}
 {% if services.sonarr.enabled %}
-      - sonarr
+      sonarr:
+        condition: service_started
 {% endif %}
 {% if services.jellyfin.enabled %}
-      - jellyfin
+      jellyfin:
+        condition: service_started
+{% endif %}
+    networks:
+      - nas_net
+{% endif %}
+
+{% if services.bazarr.enabled %}
+  bazarr:
+    image: {{ config.get("images", {}).get("bazarr", "lscr.io/linuxserver/bazarr:latest") }}
+    container_name: bazarr
+    restart: unless-stopped
+    environment:
+      - PUID={{ runtime.user_id }}
+      - PGID={{ runtime.group_id }}
+      - TZ={{ runtime.timezone }}
+    volumes:
+      - {{ paths.appdata }}/bazarr:/config
+      - {{ paths.pool }}:/data
+{% if services.bazarr.port %}
+    ports:
+      - "{{ services.bazarr.port }}:6767"
+{% endif %}
+{% if services.bazarr.proxy_url %}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.bazarr.rule=Host(`{{ services.bazarr.proxy_url }}`)"
+      - "traefik.http.routers.bazarr.entrypoints={{ traefik_entrypoint }}"
+{% if traefik_tls_enabled %}
+      - "traefik.http.routers.bazarr.tls=true"
+{% endif %}
+      - "traefik.http.services.bazarr.loadbalancer.server.port=6767"
+{% endif %}
+    depends_on:
+{% if services.radarr.enabled %}
+      radarr:
+        condition: service_started
+{% endif %}
+{% if services.sonarr.enabled %}
+      sonarr:
+        condition: service_started
 {% endif %}
     networks:
       - nas_net
@@ -242,6 +398,9 @@ services:
     image: nas_orchestrator-orchestrator:latest
     container_name: pipeline-worker
     restart: unless-stopped
+    # Privileged mode required for mounting Blu-ray UDF ISO images
+    # via loop devices inside Docker.
+    privileged: true
     environment:
       - TZ={{ runtime.timezone }}
       - ORCH_ROOT=/config
@@ -252,9 +411,9 @@ services:
       # Match qBittorrent's internal save paths (it reports /downloads/... via API).
       - {{ scratch_host }}:/downloads
 {% if config_host_path %}
-      # Dev mode: bind mount to host config directory
-      - {{ config_host_path }}/stack.yaml:/config/stack.yaml:ro
-      - {{ config_host_path }}/state.json:/config/state.json
+      # Dev mode: bind mount to host config and source directories
+      - {{ config_host_path }}:/config
+      - {{ config_host_path }}/orchestrator:/app/orchestrator:ro
 {% else %}
       # Production mode: use shared volume (needs write access for state.json)
       - orchestrator_config:/config

@@ -364,12 +364,15 @@ class ConfigRepository:
 
         # Per-service appdata
         service_dirs = {
+            "gluetun": appdata / "gluetun",
             "qbittorrent": appdata / "qbittorrent",
             "radarr": appdata / "radarr",
             "sonarr": appdata / "sonarr",
             "prowlarr": appdata / "prowlarr",
             "jellyseerr": appdata / "jellyseerr",
             "jellyfin": appdata / "jellyfin",
+            "bazarr": appdata / "bazarr",
+            "flaresolverr": appdata / "flaresolverr",
             "pipeline": appdata / "pipeline",
         }
         for name, settings in config.services.model_dump(mode="python").items():
@@ -386,9 +389,10 @@ class ConfigRepository:
             _ensure(traefik_dir / "certs")
 
         # Download & processing directories
-        download_root = (
-            scratch_root / "downloads" if scratch_config is not None else scratch_root
-        )
+        # When scratch is configured (e.g. /mnt/scratch), Docker maps it
+        # directly to /downloads in the container, so complete/incomplete
+        # live at /mnt/scratch/complete, not /mnt/scratch/downloads/complete.
+        download_root = scratch_root
         for directory in (
             scratch_root,
             download_root,

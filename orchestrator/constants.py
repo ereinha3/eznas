@@ -17,6 +17,8 @@ INTERNAL_PORTS: dict[str, int] = {
     "prowlarr": 9696,
     "jellyseerr": 5055,
     "jellyfin": 8096,
+    "bazarr": 6767,
+    "flaresolverr": 8191,
 }
 
 # ---------------------------------------------------------------------------
@@ -25,12 +27,14 @@ INTERNAL_PORTS: dict[str, int] = {
 # because users can change host ports while internal ports stay fixed.
 # ---------------------------------------------------------------------------
 DEFAULT_HOST_PORTS: dict[str, int] = {
-    "qbittorrent": 8080,
+    "qbittorrent": 8081,
     "radarr": 7878,
     "sonarr": 8989,
     "prowlarr": 9696,
     "jellyseerr": 5055,
     "jellyfin": 8096,
+    "bazarr": 6767,
+    "flaresolverr": 8191,
     "ui": 8443,
 }
 
@@ -60,12 +64,15 @@ CONTAINER_PATHS = {
 # dependents later in the list should be skipped.
 # ---------------------------------------------------------------------------
 SERVICE_DEPENDENCY_ORDER: list[str] = [
+    "gluetun",
     "qbittorrent",
     "radarr",
     "sonarr",
     "prowlarr",
     "jellyfin",
     "jellyseerr",
+    "bazarr",
+    "flaresolverr",
     "pipeline",
 ]
 
@@ -74,12 +81,15 @@ SERVICE_DEPENDENCY_ORDER: list[str] = [
 # These match the service names in docker-compose.yml.j2
 # ---------------------------------------------------------------------------
 CONTAINER_NAMES: dict[str, str] = {
+    "gluetun": "gluetun",
     "qbittorrent": "qbittorrent",
     "radarr": "radarr",
     "sonarr": "sonarr",
     "prowlarr": "prowlarr",
     "jellyseerr": "jellyseerr",
     "jellyfin": "jellyfin",
+    "bazarr": "bazarr",
+    "flaresolverr": "flaresolverr",
 }
 
 # ---------------------------------------------------------------------------
@@ -91,4 +101,5 @@ API_PREFIXES: dict[str, str] = {
     "prowlarr": "/api/v1",
     "jellyfin": "",
     "jellyseerr": "/api/v1",
+    "bazarr": "/api",
 }

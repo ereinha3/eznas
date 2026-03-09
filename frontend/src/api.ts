@@ -1,6 +1,5 @@
 import type {
   AddIndexersResponse,
-  ApplyResponse,
   AutoPopulateIndexersResponse,
   AvailableIndexersResponse,
   ConfiguredIndexersResponse,
@@ -13,6 +12,9 @@ import type {
   ServiceCredential,
   CredentialUser,
   HealthResponse,
+  SweepScanResponse,
+  SweepStartResponse,
+  SweepStatusResponse,
 } from './components/types'
 
 // Get auth token from localStorage
@@ -73,11 +75,18 @@ export async function renderConfig(config: StackConfig): Promise<RenderResult> {
   return handleResponse(response)
 }
 
-export async function applyConfig(config: StackConfig): Promise<ApplyResponse> {
+export async function applyConfig(config: StackConfig): Promise<{ run_id: string; already_running?: boolean }> {
   const response = await fetch('/api/apply', {
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(config),
+  })
+  return handleResponse(response)
+}
+
+export async function fetchActiveRun(): Promise<{ active: boolean; run_id: string | null }> {
+  const response = await fetch('/api/runs/active', {
+    headers: buildHeaders(false),
   })
   return handleResponse(response)
 }
@@ -392,6 +401,31 @@ export async function initializeSystem(request: InitializeRequest): Promise<Init
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(request),
+  })
+  return handleResponse(response)
+}
+
+// Library Sweep API
+
+export async function sweepScan(): Promise<SweepScanResponse> {
+  const response = await fetch('/api/pipeline/sweep/scan', {
+    method: 'POST',
+    headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+export async function sweepStart(): Promise<SweepStartResponse> {
+  const response = await fetch('/api/pipeline/sweep/start', {
+    method: 'POST',
+    headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+export async function sweepStatus(): Promise<SweepStatusResponse> {
+  const response = await fetch('/api/pipeline/sweep/status', {
+    headers: buildHeaders(false),
   })
   return handleResponse(response)
 }
