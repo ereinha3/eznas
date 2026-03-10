@@ -267,7 +267,7 @@ def main() -> None:
                 print(f"     rm -rf \"{scratch_path}\"")
         print("  3. Trigger a Radarr rescan:")
         print("     curl -X POST http://localhost:7878/api/v3/command \\")
-        print("       -H 'X-Api-Key: ef0bc91c3cc340d3af26e91aa43b1ba8' \\")
+        print("       -H 'X-Api-Key: $RADARR_API_KEY' \\")
         print("       -H 'Content-Type: application/json' \\")
         print("       -d '{\"name\": \"RescanMovie\"}'")
 

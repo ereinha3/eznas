@@ -32,7 +32,7 @@ from typing import Optional
 
 LIBRARY = Path("/mnt/pool/media/movies")
 RADARR_URL = "http://localhost:7878"
-RADARR_API_KEY = "ef0bc91c3cc340d3af26e91aa43b1ba8"
+RADARR_API_KEY = os.environ.get("RADARR_API_KEY", "")
 # Container path prefix → host path prefix mapping
 CONTAINER_ROOT = "/data/movies"
 HOST_ROOT = str(LIBRARY)

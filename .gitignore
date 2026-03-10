@@ -53,6 +53,12 @@ Thumbs.db
 .env
 .env.local
 
+# Backups (may contain secrets/state snapshots)
+backups/
+
+# Lock files
+*.lock
+
 # Dev test directories (created by default .env paths)
 test_pool/
 test_scratch/
