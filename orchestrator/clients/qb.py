@@ -433,10 +433,8 @@ class QBittorrentClient(ServiceClient):
                 capture_output=True,
                 timeout=30,
             )
-            return True
         except Exception as exc:
             log.warning("Failed to start qbittorrent after config repair: %s", exc)
-            return False
             return False
 
         return self._wait_for_ready(service_base_url("qbittorrent", config, self.INTERNAL_PORT))

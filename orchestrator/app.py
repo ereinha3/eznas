@@ -8,6 +8,7 @@ import logging
 import os
 import socket
 import threading
+import time
 import traceback
 from pathlib import Path
 from uuid import uuid4
@@ -129,6 +130,11 @@ async def startup_event():
     """Initialize auth state and create default admin if needed."""
     state = repo.load_state()
     auth_manager = AuthManager(state)
+
+    removed = auth_manager.cleanup_expired_sessions()
+    if removed:
+        repo.save_state(state)
+        logger.info("Cleaned up %d expired session(s) on startup.", removed)
 
     if not auth_manager.has_users():
         logger.info("No users found. Setup wizard will handle admin creation.")
@@ -330,7 +336,7 @@ def serve_vite_icon() -> FileResponse:
 
 
 @app.get("/api/config", response_model=StackConfig)
-def get_config():
+def get_config(session: Session = Depends(require_auth)):
     try:
         return repo.load_stack()
     except ValidationError:
@@ -500,7 +506,7 @@ def get_health() -> HealthResponse:
 
 
 @app.get("/api/secrets", response_model=ServiceCredentialsResponse)
-def get_service_credentials() -> ServiceCredentialsResponse:
+def get_service_credentials(session: Session = Depends(require_admin)) -> ServiceCredentialsResponse:
     config = repo.load_stack()
     state = repo.load_state()
     return _build_service_credentials(config, state)
@@ -772,6 +778,32 @@ def preview_config_changes(
     return diff.to_dict()
 
 
+# Login rate limiting — per-IP tracking of failed attempts
+_login_attempts: dict[str, list[float]] = {}
+_login_lock = threading.Lock()
+_LOGIN_MAX_ATTEMPTS = 5
+_LOGIN_WINDOW = 300  # 5 minutes
+
+
+def _check_login_rate(ip: str) -> bool:
+    """Return True if the IP is within rate limits, False if blocked."""
+    now = time.time()
+    with _login_lock:
+        attempts = _login_attempts.get(ip, [])
+        # Prune attempts outside the window
+        attempts = [t for t in attempts if now - t < _LOGIN_WINDOW]
+        _login_attempts[ip] = attempts
+        return len(attempts) < _LOGIN_MAX_ATTEMPTS
+
+
+def _record_failed_login(ip: str) -> None:
+    """Record a failed login attempt for rate limiting."""
+    now = time.time()
+    with _login_lock:
+        attempts = _login_attempts.setdefault(ip, [])
+        attempts.append(now)
+
+
 # Track the currently-running apply so we can report it after page refresh.
 _active_run_id: str | None = None
 _active_run_lock = threading.Lock()
@@ -846,22 +878,27 @@ def get_setup_status() -> dict:
         "has_config": repo.stack_path.exists(),
     }
 
-    # Check if default admin was auto-created and show credentials
-    default_password = state.get("auth", {}).get("_setup", {}).get("default_password")
-    if default_password:
-        response["default_password"] = default_password
-
     return response
 
 
 @app.post("/api/auth/login", response_model=LoginResponse)
 def login(
-    request: LoginRequest,
+    request: Request,
+    login_req: LoginRequest,
     auth_manager: AuthManager = Depends(get_auth_manager),
 ) -> LoginResponse:
     """Authenticate user and create session."""
-    session = auth_manager.authenticate(request.username, request.password)
+    client_ip = request.client.host if request.client else "unknown"
+    if not _check_login_rate(client_ip):
+        raise HTTPException(
+            status_code=429,
+            detail="Too many login attempts. Try again in 5 minutes.",
+        )
+
+    auth_manager.cleanup_expired_sessions()
+    session = auth_manager.authenticate(login_req.username, login_req.password)
     if not session:
+        _record_failed_login(client_ip)
         return LoginResponse(success=False, message="Invalid credentials")
 
     # Persist the session to state
@@ -980,7 +1017,7 @@ def list_runs(limit: int = 10) -> dict:
 
 
 @app.get("/api/runs/{run_id}/events")
-async def stream_run_events(run_id: str) -> EventSourceResponse:
+async def stream_run_events(run_id: str, session: Session = Depends(require_auth)) -> EventSourceResponse:
     """Stream converge events for a given run identifier."""
 
     async def event_generator():
@@ -1025,7 +1062,7 @@ def get_volumes() -> VolumesResponse:
 
 
 @app.post("/api/system/validate-path")
-def validate_storage_path(request: dict) -> dict:
+def validate_storage_path(request: dict, session: Session = Depends(require_admin)) -> dict:
     """Validate a storage path with auto-creation and permission fixing."""
     path = request.get("path", "")
     require_writable = request.get("require_writable", True)
@@ -1036,7 +1073,7 @@ def validate_storage_path(request: dict) -> dict:
 
 
 @app.get("/api/system/browse-path")
-def browse_path(path: str = "/") -> dict:
+def browse_path(path: str = "/", session: Session = Depends(require_admin)) -> dict:
     """Browse directories for path autocomplete.
 
     Returns a list of directories within the given path.

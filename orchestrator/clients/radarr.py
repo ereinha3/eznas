@@ -454,7 +454,8 @@ class RadarrClient(ServiceClient):
             url_base_ok = (current.get("urlBase") or "") == ""
             username_ok = current.get("username") == username
             password_ok = (
-                previous_password is not None and previous_password == password
+                previous_password == password if previous_password is not None
+                else client_id is not None
             )
 
             if (

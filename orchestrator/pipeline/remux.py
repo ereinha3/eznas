@@ -184,7 +184,8 @@ def _select_best_audio(
     - If original language is English (or unknown): keep best English track
     - If original language is non-English: keep best original-language track
       + best English track (for dub)
-    - "und" tracks are treated as original language when original_language is known
+    - "und" tracks are treated as original language only when no other track
+      explicitly matches the original language
     - Max 2 tracks total
 
     Returns tracks in their original stream order.
@@ -209,11 +210,20 @@ def _select_best_audio(
     orig = _normalize_lang(original_language) if original_language else "eng"
     is_english_original = orig == "eng"
 
+    # Check if any track explicitly matches the original language
+    has_explicit_original = any(
+        t.lang == orig for t in eligible if t.lang != "und"
+    )
+
     # Group by language, picking the best in each group
     best_by_lang: Dict[str, _AudioTrack] = {}
     for track in eligible:
-        # Treat "und" as original language for selection purposes
-        effective_lang = orig if track.lang == "und" else track.lang
+        # Treat "und" as original language only if no track explicitly matches it;
+        # otherwise a mislabeled dub could override the real original audio.
+        if track.lang == "und" and not has_explicit_original:
+            effective_lang = orig
+        else:
+            effective_lang = track.lang
         if effective_lang not in best_by_lang or track.score > best_by_lang[effective_lang].score:
             best_by_lang[effective_lang] = track
 
@@ -405,6 +415,7 @@ def build_ffmpeg_command(
         # --- Audio filtering ---
         audio_maps: List[str] = []
         total_audio = 0
+        codec_filtered_indices: set = set()
 
         # Parse all audio tracks with metadata
         all_audio_tracks: List[_AudioTrack] = []
@@ -426,6 +437,7 @@ def build_ffmpeg_command(
                     f"[remux] skipping stream {idx}: codec '{codec_name}' "
                     f"is not supported in MKV containers"
                 )
+                codec_filtered_indices.add(idx)
                 continue
             all_audio_tracks.append(track)
 
@@ -452,15 +464,17 @@ def build_ffmpeg_command(
                 )
 
         # SAFETY GUARD: if filtering would remove ALL audio, keep everything
+        # that wasn't rejected for codec incompatibility
         if total_audio > 0 and not audio_maps:
             print(
                 f"[remux] WARNING: all {total_audio} audio tracks would be "
-                f"removed — keeping all audio to avoid silent output"
+                f"removed — keeping language-filtered audio to avoid silent output"
             )
             for stream in streams:
                 if stream.get("codec_type") == "audio":
-                    idx = stream.get("index", "")
-                    audio_maps.append(f"0:{idx}")
+                    idx = str(stream.get("index", ""))
+                    if idx not in codec_filtered_indices:
+                        audio_maps.append(f"0:{idx}")
 
         for mapping in audio_maps:
             args.extend(["-map", mapping])

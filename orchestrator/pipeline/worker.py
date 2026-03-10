@@ -17,6 +17,16 @@ from .remux import TrackSelection, build_ffmpeg_command
 from ..models import StackConfig
 
 
+_UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
+
+
+def _sanitize_filename(name: str) -> str:
+    """Remove characters that are illegal in filenames across platforms."""
+    name = _UNSAFE_CHARS.sub("", name)
+    name = name.strip(". ")
+    return name or "Unknown"
+
+
 VIDEO_EXTENSIONS = {".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts"}
 
 
@@ -592,11 +602,11 @@ class PipelineWorker:
             if not year:
                 title, year = parse_movie_name(torrent.name)
             if year:
-                folder_name = f"{title} ({year})"
-                file_name = f"{title} ({year}).mkv"
+                folder_name = _sanitize_filename(f"{title} ({year})")
+                file_name = f"{folder_name}.mkv"
             else:
-                folder_name = title
-                file_name = f"{title}.mkv"
+                folder_name = _sanitize_filename(title)
+                file_name = f"{folder_name}.mkv"
             return base_dir / folder_name / file_name
 
         elif normalized_category == categories.sonarr:
@@ -611,7 +621,7 @@ class PipelineWorker:
                 _, season, episode = episode_info
                 # Use the canonical show name from Sonarr when available
                 # e.g. library_path = /data/tv/The Legend of Korra
-                show_name = library_path.name if library_path else episode_info[0]
+                show_name = library_path.name if library_path else _sanitize_filename(episode_info[0])
                 season_dir = base_dir / show_name / f"Season {season}"
                 file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
                 return season_dir / file_name
@@ -621,7 +631,7 @@ class PipelineWorker:
             season_info = parse_tv_season(torrent.name)
             if season_info:
                 parsed_show_name, season = season_info
-                show_name = library_path.name if library_path else parsed_show_name
+                show_name = library_path.name if library_path else _sanitize_filename(parsed_show_name)
                 season_dir = base_dir / show_name / f"Season {season}"
                 return season_dir / f"{source.stem}.mkv"
 

@@ -236,19 +236,17 @@ class PipelineRunner:
         """Persist last_tick timestamp and optional error to pipeline state."""
         from datetime import datetime, timezone
 
-        state = self.repo.load_state()
-        pipeline = state.setdefault("pipeline", {})
-        pipeline["last_tick"] = datetime.now(timezone.utc).isoformat()
-        if error is not None:
-            pipeline["last_error"] = error
-        else:
-            pipeline.pop("last_error", None)
-        self.repo.save_state(state)
+        self.repo.update_pipeline_health(
+            last_tick=datetime.now(timezone.utc).isoformat(),
+            error=error,
+        )
 
     def _tick(self) -> None:
         config = self.repo.load_stack()
         if not config.services.pipeline.enabled:
             return
+
+        self._cleanup_stale_staging(config)
 
         state = self.repo.load_state()
         qb_secrets = state.get("secrets", {}).get("qbittorrent", {})
@@ -375,19 +373,17 @@ class PipelineRunner:
         # Expire old orphan hashes (7 days)
         ORPHAN_EXPIRY = 7 * 86400
         now = time.time()
-        _state = self.repo.load_state()
-        _pipeline = _state.get("pipeline", {})
-        _processed = _pipeline.get("processed", {})
+        pipeline = self.repo.load_pipeline_state()
+        processed = pipeline.get("processed", {})
         expired = [
-            h for h, entry in _processed.items()
+            h for h, entry in processed.items()
             if h.startswith("orphan_")
             and isinstance(entry, dict)
             and now - entry.get("timestamp", now) > ORPHAN_EXPIRY
         ]
+        for h in expired:
+            self.repo.delete_pipeline_entry(h)
         if expired:
-            for h in expired:
-                del _processed[h]
-            self.repo.save_state(_state)
             log.info("expired %d orphan hash(es)", len(expired))
 
         try:
@@ -426,6 +422,18 @@ class PipelineRunner:
     # to process.  Prevents grabbing files mid-copy or mid-download.
     _ORPHAN_STABLE_AGE = 300  # 5 minutes
 
+    def _resolve_complete_dir(self, config: StackConfig) -> Path | None:
+        """Find the downloads/complete directory, trying Docker paths first."""
+        candidates = [
+            Path("/downloads/complete"),
+            Path(config.paths.scratch) / "complete" if config.paths.scratch else None,
+            Path("/mnt/scratch/complete"),
+        ]
+        for candidate in candidates:
+            if candidate is not None and candidate.is_dir():
+                return candidate
+        return None
+
     def _scan_orphans(
         self, config: StackConfig, qbt_names: Set[str],
     ) -> dict[str, bool]:
@@ -439,18 +447,10 @@ class PipelineRunner:
         Returns a dict of categories that had successful processing,
         suitable for passing to ``_refresh_arr_services()``.
         """
-        # Resolve the downloads/complete path (inside the container)
-        complete_dir = Path(config.paths.scratch) / "complete"
-        if not complete_dir.exists():
-            # Try the Docker-mapped path
-            for candidate in (Path("/downloads/complete"), Path("/mnt/scratch/complete")):
-                if candidate.exists():
-                    complete_dir = candidate
-                    break
-            else:
-                return {}
-
-        if not complete_dir.is_dir():
+        # Resolve the downloads/complete path (inside the container).
+        # In Docker, /downloads is the standard mount point; try it first.
+        complete_dir = self._resolve_complete_dir(config)
+        if complete_dir is None:
             return {}
 
         now = time.time()
@@ -529,6 +529,23 @@ class PipelineRunner:
 
             size = sum(f.stat().st_size for f in files)
             size_gb = size / (1024 ** 3)
+
+            # Skip directories with no meaningful content — files exist but
+            # are all 0 bytes, meaning they're still being written/allocated.
+            # Also require at least one video file to avoid wasting a retry
+            # on directories that only contain .nfo/.txt/.jpg extras.
+            has_video = any(
+                f.suffix.lower() in {".mkv", ".mp4", ".avi", ".mov", ".ts", ".m2ts", ".iso"}
+                for f in files
+            )
+            if item.is_dir() and (size == 0 or not has_video):
+                log.debug(
+                    "skipping orphan %s — no video content yet "
+                    "(size=%.1f GB, videos=%s)",
+                    name[:60], size_gb, has_video,
+                )
+                continue
+
             log.info(
                 "orphan detected: %s (%.1f GB, category=%s)",
                 name, size_gb, category,
@@ -634,8 +651,8 @@ class PipelineRunner:
             )
         except ValueError as exc:
             log.error("orphan plan failed for %s: %s", torrent.name, exc)
-            self._cleanup_path(torrent.content_path)
-            self._cleanup_empty_parent(torrent.content_path)
+            # NEVER delete orphan source on plan failure — there is no way to
+            # re-download.  Mark as failed; retry logic will re-attempt later.
             self._mark_processed(torrent.hash, "plan_failed", str(exc))
             return False
 
@@ -740,6 +757,38 @@ class PipelineRunner:
             )
             return False
 
+    def _cleanup_stale_staging(self, config: StackConfig) -> None:
+        """Remove stale .tmp_ staging files left by crashed remux operations."""
+        max_age = 2 * 3600  # 2 hours
+        now = time.time()
+
+        # Same resolution as PipelineWorker._resolve_pool_root
+        pool_root: Path | None = None
+        for candidate in (Path("/data"), Path(config.paths.pool)):
+            if candidate.exists():
+                pool_root = candidate
+                break
+        if pool_root is None:
+            return
+
+        for media_dir in (pool_root / "movies", pool_root / "tv"):
+            if not media_dir.is_dir():
+                continue
+            for tmp_file in media_dir.rglob(".tmp_*"):
+                if not tmp_file.is_file():
+                    continue
+                try:
+                    age = now - tmp_file.stat().st_mtime
+                    if age > max_age:
+                        size_gb = tmp_file.stat().st_size / (1024**3)
+                        tmp_file.unlink()
+                        log.info(
+                            "cleaned stale staging file: %s (%.1f GB, %.0fh old)",
+                            tmp_file.name, size_gb, age / 3600,
+                        )
+                except OSError:
+                    pass
+
     def _get_dest_free(self, config: StackConfig) -> int:
         """Return free bytes on the destination (pool) filesystem.
 
@@ -759,11 +808,41 @@ class PipelineRunner:
                 return category[: -len(suffix)]
         return category
 
+    # Statuses that represent permanent outcomes — the item is done.
+    _TERMINAL_STATUSES = frozenset({"ok", "partial", "skipped_no_files"})
+    # Failed statuses eligible for retry after a cooldown.
+    _RETRYABLE_STATUSES = frozenset({"plan_failed", "ffmpeg_failed"})
+    # How long before a failed orphan is retried (30 minutes).
+    _ORPHAN_RETRY_DELAY = 30 * 60
+    # Maximum retry attempts before giving up permanently.
+    _ORPHAN_MAX_RETRIES = 5
+
     def _is_processed(self, torrent_hash: str) -> bool:
-        state = self.repo.load_state()
-        pipeline = state.get("pipeline", {})
+        pipeline = self.repo.load_pipeline_state()
         processed = pipeline.get("processed", {})
-        return torrent_hash in processed
+        entry = processed.get(torrent_hash)
+        if entry is None:
+            return False
+        if not isinstance(entry, dict):
+            return True  # legacy format — treat as processed
+        status = entry.get("status", "ok")
+        if status in self._TERMINAL_STATUSES:
+            return True
+        if status in self._RETRYABLE_STATUSES:
+            # Orphan failures get retried after a cooldown, up to max retries
+            if torrent_hash.startswith("orphan_"):
+                retries = entry.get("retries", 0)
+                if retries >= self._ORPHAN_MAX_RETRIES:
+                    return True  # exhausted retries
+                elapsed = time.time() - entry.get("timestamp", 0)
+                # Exponential backoff: 30m, 60m, 120m, 240m, 480m
+                delay = self._ORPHAN_RETRY_DELAY * (2 ** retries)
+                if elapsed < delay:
+                    return True  # not yet time to retry
+                return False  # eligible for retry
+            # Non-orphan failures: handled by the stale cleanup in Phase 1
+            return True
+        return True
 
     def _processed_status(self, torrent_hash: str) -> Optional[str]:
         """Return the pipeline status string for a torrent, or None."""
@@ -774,8 +853,7 @@ class PipelineRunner:
 
     def _processed_entry(self, torrent_hash: str) -> Optional[dict]:
         """Return the full pipeline entry dict for a torrent, or None."""
-        state = self.repo.load_state()
-        pipeline = state.get("pipeline", {})
+        pipeline = self.repo.load_pipeline_state()
         processed = pipeline.get("processed", {})
         entry = processed.get(torrent_hash)
         return entry if isinstance(entry, dict) else None
@@ -783,23 +861,21 @@ class PipelineRunner:
     def _mark_processed(
         self, torrent_hash: str, status: str, detail: str = ""
     ) -> None:
-        state = self.repo.load_state()
-        pipeline = state.setdefault("pipeline", {})
-        processed = pipeline.setdefault("processed", {})
         entry: dict = {"status": status, "timestamp": int(time.time())}
         if detail:
             entry["detail"] = detail
-        processed[torrent_hash] = entry
-        self.repo.save_state(state)
+        # Track retry count for failed orphans so we can enforce max retries
+        if status in self._RETRYABLE_STATUSES and torrent_hash.startswith("orphan_"):
+            prev = self._processed_entry(torrent_hash)
+            if prev and prev.get("status") in self._RETRYABLE_STATUSES:
+                entry["retries"] = prev.get("retries", 0) + 1
+            else:
+                entry["retries"] = 0
+        self.repo.update_pipeline_entry(torrent_hash, entry)
 
     def _clear_processed(self, torrent_hash: str) -> None:
         """Remove a torrent from the processed set so it can be reprocessed."""
-        state = self.repo.load_state()
-        pipeline = state.get("pipeline", {})
-        processed = pipeline.get("processed", {})
-        if torrent_hash in processed:
-            del processed[torrent_hash]
-            self.repo.save_state(state)
+        self.repo.delete_pipeline_entry(torrent_hash)
 
     def _lookup_arr_metadata(
         self, config: StackConfig, torrent: TorrentRecord
@@ -1202,22 +1278,25 @@ class PipelineRunner:
         timeout = self._compute_ffmpeg_timeout(source) if source else 3600
         timeout_hours = timeout / 3600
         try:
-            result = subprocess.run(
-                command, check=False, capture_output=True, text=True,
-                timeout=timeout,
+            proc = subprocess.Popen(
+                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
             )
-        except subprocess.TimeoutExpired:
-            log.error("ffmpeg timed out after %.1f hours", timeout_hours)
-            return False
         except OSError as exc:
             log.error("ffmpeg failed to start: %s", exc)
             return False
-        if result.returncode != 0:
-            stderr = result.stderr.strip()
+        try:
+            stdout, stderr = proc.communicate(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            log.error("ffmpeg timed out after %.1f hours — sending SIGKILL", timeout_hours)
+            proc.kill()
+            proc.communicate()  # Reap zombie process
+            return False
+        if proc.returncode != 0:
+            stderr_stripped = stderr.strip()
             # Only log last few lines of stderr to avoid flooding
-            lines = stderr.split("\n")
-            tail = "\n".join(lines[-5:]) if len(lines) > 5 else stderr
-            log.error("ffmpeg error (exit %d): %s", result.returncode, tail)
+            lines = stderr_stripped.split("\n")
+            tail = "\n".join(lines[-5:]) if len(lines) > 5 else stderr_stripped
+            log.error("ffmpeg error (exit %d): %s", proc.returncode, tail)
             return False
         return True
 
@@ -1285,8 +1364,8 @@ class PipelineRunner:
                 capture_output=True, text=True, timeout=30,
             )
             if probe.returncode != 0:
-                log.warning("VALIDATION WARNING: ffprobe failed on output, proceeding cautiously")
-                return True  # Don't block on ffprobe failure — size checks passed
+                log.error("VALIDATION FAILED: ffprobe failed on output — cannot verify file integrity")
+                return False  # If we can't verify the output, reject it
 
             data = json.loads(probe.stdout)
             fmt = data.get("format", {})
@@ -1355,8 +1434,8 @@ class PipelineRunner:
             return True
 
         except Exception as exc:
-            log.warning("VALIDATION WARNING: probe error (%s), proceeding cautiously", exc)
-            return True  # Size checks passed, don't block on probe error
+            log.error("VALIDATION FAILED: probe error (%s) — cannot verify file integrity", exc)
+            return False  # If we can't verify the output, reject it
 
     # ------------------------------------------------------------------
     # ISO handling helpers

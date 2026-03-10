@@ -14,10 +14,12 @@ into a single dict for backward compatibility.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import logging
 import os
 import tempfile
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, Callable, Optional
 
@@ -67,6 +69,20 @@ class ConfigRepository:
                 self.generated_dir.mkdir(parents=True, exist_ok=True)
             except OSError:
                 pass
+
+    # ------------------------------------------------------------------ Advisory locking
+
+    @contextmanager
+    def _section_lock(self, section: str):
+        """Advisory file lock for a state section to prevent read-modify-write races."""
+        lock_path = self._section_paths[section].with_suffix(".lock")
+        fd = os.open(str(lock_path), os.O_CREAT | os.O_RDWR)
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            os.close(fd)
 
     # ------------------------------------------------------------------ Migration
 
@@ -156,13 +172,15 @@ class ConfigRepository:
 
         This is the backward-compatible entry point. Each section is
         written atomically to its own file, so a crash while writing
-        one section cannot corrupt another.
+        one section cannot corrupt another. An advisory lock is held
+        per-section during the write.
         """
         self._ensure_migrated()
         for section in _STATE_SECTIONS:
             section_data = state.get(section)
             if section_data is not None:
-                self._save_section(section, section_data)
+                with self._section_lock(section):
+                    self._save_section(section, section_data)
 
     # ------------------------------------------------------------------ Section-level I/O
 
@@ -235,6 +253,36 @@ class ConfigRepository:
         self._ensure_migrated()
         self._save_section("pipeline", pipeline_state)
 
+    def update_pipeline_entry(self, key: str, entry: dict) -> None:
+        """Locked read-modify-write of a single pipeline processed entry."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            processed = data.setdefault("processed", {})
+            processed[key] = entry
+            self._save_section(section="pipeline", data=data)
+
+    def delete_pipeline_entry(self, key: str) -> bool:
+        """Locked removal of a pipeline processed entry. Returns True if found."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            processed = data.get("processed", {})
+            if key in processed:
+                del processed[key]
+                self._save_section(section="pipeline", data=data)
+                return True
+            return False
+
+    def update_pipeline_health(self, last_tick: str, error: str | None = None) -> None:
+        """Locked update of pipeline health fields."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["last_tick"] = last_tick
+            if error is not None:
+                data["last_error"] = error
+            else:
+                data.pop("last_error", None)
+            self._save_section(section="pipeline", data=data)
+
     def has_users(self) -> bool:
         """Check if any users exist in auth state."""
         auth = self.get_auth_state()
@@ -263,21 +311,26 @@ class ConfigRepository:
             raise
 
     def _try_recover_json(self, content: str) -> dict[str, Any] | None:
-        """Try to extract valid JSON from potentially corrupted content."""
-        depth = 0
-        end_pos = 0
-        for i, char in enumerate(content):
-            if char == "{":
-                depth += 1
-            elif char == "}":
-                depth -= 1
-                if depth == 0:
-                    end_pos = i + 1
-                    break
+        """Try to extract valid JSON from potentially corrupted content.
 
-        if end_pos > 0:
+        Works by finding the last '}' and iteratively truncating backwards
+        until json.loads succeeds. This handles cases where corruption
+        appended garbage after a valid JSON object.
+        """
+        # First, try the full content
+        try:
+            return json.loads(content)
+        except json.JSONDecodeError:
+            pass
+
+        # Find each '}' from the end and try truncating there
+        pos = len(content)
+        while pos > 0:
+            pos = content.rfind("}", 0, pos)
+            if pos < 0:
+                break
             try:
-                return json.loads(content[:end_pos])
+                return json.loads(content[: pos + 1])
             except json.JSONDecodeError:
                 pass
         return None
