@@ -1,5 +1,5 @@
 # Python
-__pycache__/
+**/__pycache__/
 *.py[cod]
 *$py.class
 *.so
@@ -56,8 +56,12 @@ Thumbs.db
 # Backups (may contain secrets/state snapshots)
 backups/
 
-# Lock files
-*.lock
+# Runtime lock files (NOT uv.lock / package-lock.json)
+auth.lock
+secrets.lock
+services.lock
+runs.lock
+pipeline.lock
 
 # Dev test directories (created by default .env paths)
 test_pool/
@@ -72,3 +76,8 @@ tests/e2e/test-results/
 
 # Screenshots and binary artifacts
 *.png
+
+# Legacy / one-off artifacts
+convert_ui.py
+ui/
+tmp/
