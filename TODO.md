@@ -2,28 +2,18 @@
 
 ## In Progress / Current Work
 
-### Prowlarr Authentication & Provisioning (Recently Fixed)
-- ✅ **Fixed**: API key sync from config.xml on every ensure run
-- ✅ **Fixed**: Dual authentication configuration (before and inside ArrAPI context)
-- ✅ **Fixed**: Retry logic for stale API keys (401/403 errors trigger refresh)
-- ✅ **Fixed**: Network connectivity when orchestrator runs in container (use `127.0.0.1:{port}`)
-- ✅ **Fixed**: Health check fallback for containerized orchestrator
-- 🔄 **Testing**: Verify provisioning works end-to-end after migration
-- 🔄 **Documentation**: Add troubleshooting guide for Prowlarr setup issues
-
 ### Known Issues to Address
-- **Port conflicts**: Dev compose services conflict with generated stack. Need better
-  isolation or clear documentation on when to use which.
-- **Network isolation**: Health checks may still fail in some Docker network configurations.
-  Consider adding more robust network detection.
+- **Cyrillic/Unicode filenames** fail in ffmpeg subprocess (Russian-titled releases).
+- **Overwrite protection** only compares file size (should consider resolution, subs, audio).
+- **~200 anime files** missing English subtitles (free provider coverage gap).
+- **S00 special episodes** not mapped in absolute numbering.
+- **Audio dedup** (keep best per language, strip commentaries) — design pending.
 
 ## Immediate Essentials (High Priority)
 
-- **Bootstrap compose**: Single `docker compose up` that brings up orchestrator +
-  UI, then allows generating the main stack without manual steps. This is critical
-  for zero-touch deployment.
-- **Frontend dev container**: Vite hot-reload in compose, no local npm required.
-  Makes UI development seamless.
+- ~~**Bootstrap compose**: Single `docker compose up` that brings up orchestrator +
+  UI, then allows generating the main stack without manual steps.~~ (Done: `docker-compose.bootstrap.yml`)
+- ~~**Frontend dev container**: Vite hot-reload in compose, no local npm required.~~ (Done: `docker-compose.dev.yml`)
 - **"Verify only" endpoint and UI action**: Quick re-checks without redeploy.
   Useful for troubleshooting configuration issues.
 
@@ -46,11 +36,11 @@
 
 - **Add retry/backoff to verification**: Reduce flakiness on slow service boot.
   Some services take time to be ready after container start.
-- **Add health endpoint**: `/api/health` for orchestrator container readiness
-  checks.
+- ~~**Add health endpoint**: `/api/health` for orchestrator container readiness
+  checks.~~ (Done)
 - **Persist verification outcomes**: Store verification results in `state.json`
   for history and UI display (currently only logged).
-- **Add structured logging**: JSON logs for external monitoring (e.g., ELK, Loki).
+- ~~**Add structured logging**: JSON logs for external monitoring (e.g., ELK, Loki).~~ (Done)
 - **Validate host paths are writable**: Check all configured paths before compose up
   to fail fast with clear errors.
 - **Better error messages**: More actionable error messages throughout the stack.
@@ -71,14 +61,24 @@
 
 ## Pipeline Enhancements
 
-### Completed ✅
-- ✅ Real pipeline worker service (continuous loop, polling, processing).
-- ✅ Lossless remux path (`-c copy`) with language track stripping.
-- ✅ Container format standardization (MKV/MP4).
-- ✅ User-configurable remux preferences (audio/subtitle language allowlists).
-- ✅ User-configurable quality targets (1080p/2k/4k) and bitrate caps (UI + backend).
-- ✅ Integration into Docker Compose stack.
-- ✅ Test script for simulating downloads.
+### Completed
+- Real pipeline worker service (continuous loop, polling, processing).
+- Lossless remux path (`-c copy`) with language track stripping.
+- Container format standardization (MKV/MP4).
+- User-configurable remux preferences (audio/subtitle language allowlists).
+- User-configurable quality targets (1080p/2k/4k) and bitrate caps (UI + backend).
+- Integration into Docker Compose stack.
+- Test script for simulating downloads.
+- Health/stall detection with exponential backoff and category-aware blocklisting.
+- Orphan scan (untracked files in scratch).
+- Stale staging and orphan source cleanup (3-day TTL).
+- Backfill engine (search for missing content via arr APIs).
+- Prowlarr direct-grab fallback (bypasses arr title matching issues).
+- Nightly automation (indexer discovery + missing content search).
+- 5-layer metadata matching (Prowlarr fallback, hash lookup, word-boundary, arr API, cross-service).
+- Anime absolute episode mapping (absolute numbering to season/episode).
+- Bazarr subtitle provider provisioning (8 providers, AniDB integration).
+- Per-item arr notifications on import.
 
 ### Future Work
 - **Hooks from qBittorrent**: Use qBittorrent's webhook/notification system instead
@@ -86,14 +86,24 @@
 - **Media rename policies**: Automatic renaming based on Radarr/Sonarr conventions.
 - **Optional transcoding**: Add option for lossy transcoding (currently only
   lossless remuxing).
-- **Library refresh on completion**: Trigger Jellyfin library scan after file
-  processing.
 - **Fallback handling for unusual formats**: Better error handling for files that
   can't be remuxed with `-c copy`.
 - **Re-seeding support**: Option to re-upload remuxed media back to the same
   client (currently disabled, original files are deleted).
 - **Pipeline queue**: Queue system for handling multiple downloads simultaneously.
 - **Progress tracking**: Show remux progress in UI or logs.
+
+### Media Enrichment Pipeline (Future Phases)
+- **Phase 1: Subtitle extraction** — Extract and catalog subtitle tracks from library
+  files. Build metadata index of existing audio/subtitle languages per file.
+- **Phase 2: Duration-matched cross-mux** — Search for alternate releases with missing
+  audio languages. 60s duration guard, then mux matching audio tracks into library file.
+- **Phase 3: Active dub searching** — Proactively search indexers (via Prowlarr) for
+  dual-audio or dubbed releases when library file is missing a configured language.
+- **Phase 4: Chromaprint sync** — Full acoustic fingerprint alignment using
+  chromaprint/fpcalc. Cross-correlate fingerprints (70% threshold) to find precise
+  offset for frame-accurate audio sync. Always run chromaprint, no exceptions.
+  Atomic file replacement. ffmpeg already has `--enable-chromaprint`.
 
 ## Quality & Format Preferences
 

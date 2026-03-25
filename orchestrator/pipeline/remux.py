@@ -18,6 +18,10 @@ class TrackSelection:
 # These are Blu-ray specific codecs that need to be skipped or transcoded.
 _MKV_INCOMPATIBLE_AUDIO_CODECS = {"pcm_bluray"}
 
+# Subtitle codecs that cannot be copy-muxed into MKV containers.
+# mov_text is an MP4-native subtitle format (MPEG-4 Part 17).
+_MKV_INCOMPATIBLE_SUBTITLE_CODECS = {"mov_text"}
+
 # ISO 639-2 has 20 languages with two 3-letter codes: a "bibliographic" (B)
 # code derived from the English name and a "terminological" (T) code derived
 # from the native name.  Radarr uses a mix of B and T codes, MKV/ffprobe tags
@@ -366,6 +370,11 @@ def build_ffmpeg_command(
     if source.suffix.lower() in (".m2ts", ".ts"):
         args.extend(["-analyzeduration", "10M", "-probesize", "10M"])
 
+    # AVI containers often have broken timestamps that cause MKV muxing to
+    # fail with "Invalid argument".  Regenerate PTS from DTS to fix this.
+    if source.suffix.lower() == ".avi":
+        args.extend(["-fflags", "+genpts"])
+
     args.extend(["-i", str(source)])
 
     # Always include the main video track
@@ -483,6 +492,11 @@ def build_ffmpeg_command(
         for stream in streams:
             if stream.get("codec_type") != "subtitle":
                 continue
+
+            sub_codec = stream.get("codec_name", "").lower()
+            if sub_codec in _MKV_INCOMPATIBLE_SUBTITLE_CODECS:
+                continue  # e.g. mov_text from MP4 can't go in MKV
+
             idx = str(stream.get("index", ""))
 
             if idx in clpi_map:

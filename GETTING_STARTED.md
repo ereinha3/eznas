@@ -76,13 +76,14 @@ After logging in:
    - **AppData Path:** Where service configs are stored (e.g., `/home/user/appdata`)
 
 2. **Services** - Choose which services to enable:
-   - qBittorrent (torrent client)
+   - qBittorrent (torrent client, routed through Gluetun VPN)
    - Radarr (movie management)
    - Sonarr (TV show management)
-   - Prowlarr (indexer management)
-   - Jellyseerr (request management)
+   - Prowlarr (indexer management, 25+ indexers, FlareSolverr for CloudFlare bypass)
+   - Jellyseerr (request management and approval workflow)
    - Jellyfin (media server)
-   - Pipeline (post-processing)
+   - Bazarr (subtitle management, 8 providers, AniDB integration)
+   - Pipeline (post-processing: remux, language filtering, backfill, health monitoring)
 
 3. **Network** - Configure proxy settings (optional):
    - Enable Traefik for reverse proxy
@@ -190,10 +191,18 @@ After your first login:
 ### Architecture Overview
 
 ```
-User → Web UI (React) → FastAPI Backend → Docker Compose → Services
-                           ↓
-                    Configuration Files
-                    (stack.yaml, state.json)
+User → Jellyseerr (request) → Sonarr/Radarr → Prowlarr (25 indexers)
+                                                    ↓
+                                              qBittorrent (VPN)
+                                                    ↓
+                                            Pipeline Worker (remux)
+                                                    ↓
+                                  Jellyfin ← Library ← Bazarr (subtitles)
+
+Orchestrator UI (React) → FastAPI Backend → Docker Compose → All Services
+                              ↓
+                       Configuration Files
+                       (stack.yaml, state.json)
 ```
 
 ### File Locations

@@ -130,9 +130,39 @@ class FlareSolverrConfig(ServiceBaseConfig):
     proxy_url: Optional[str] = None
 
 
+class BackfillConfig(BaseModel):
+    """Configuration for automatic backfill and download health monitoring."""
+
+    enabled: bool = False
+
+    # --- Backfill timing ---
+    interval_minutes: int = Field(default=360, ge=30)
+    missing_days_threshold: int = Field(default=1, ge=0)
+
+    # --- Stall detection (runs every tick, not on backfill interval) ---
+    stall_detection_enabled: bool = True
+    stall_threshold_minutes: int = Field(default=30, ge=5)
+    stall_check_interval_minutes: int = Field(default=5, ge=1)
+    max_stall_retries: int = Field(default=3, ge=1)
+
+    # --- Scoring ---
+    min_seeders: int = Field(default=3, ge=1)
+    max_grabs_per_cycle: int = Field(default=3, ge=1)
+    max_size_gb: float = Field(default=80.0, ge=1.0)
+
+    # --- Season pack preference for Sonarr re-search ---
+    prefer_season_packs: bool = True
+
+    # --- Prowlarr direct-grab fallback ---
+    prowlarr_fallback_enabled: bool = True
+    prowlarr_fallback_interval_hours: int = Field(default=6, ge=1)
+    prowlarr_fallback_min_age_hours: int = Field(default=6, ge=1)
+
+
 class PipelineConfig(ServiceBaseConfig):
     port: Optional[int] = Field(default=None, ge=1, le=65535)
     proxy_url: Optional[str] = None
+    backfill: BackfillConfig = Field(default_factory=BackfillConfig)
 
 
 # Services that always route through Gluetun when it is enabled.

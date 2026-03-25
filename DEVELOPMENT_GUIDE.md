@@ -33,6 +33,12 @@ This project has two Docker setups for different purposes:
 
 **Container names**: `orchestrator-dev`, `frontend-dev`, `qbittorrent-dev`, etc.
 
+**Pipeline worker**:
+```bash
+# Start with pipeline worker for testing media processing
+./scripts/dev.sh up-pipeline
+```
+
 ---
 
 ### 2. **Production Setup** (`docker-compose.bootstrap.yml` + `Dockerfile`)
@@ -58,6 +64,8 @@ docker compose -f docker-compose.bootstrap.yml up -d
 ```
 
 **Container names**: `nas-orchestrator`, `nas-pipeline`
+
+**Services managed**: qBittorrent, Radarr, Sonarr, Prowlarr, Jellyseerr, Jellyfin, Bazarr, Gluetun (VPN), FlareSolverr, Pipeline Worker
 
 ---
 

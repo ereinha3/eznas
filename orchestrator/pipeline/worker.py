@@ -102,37 +102,133 @@ def parse_movie_name(torrent_name: str) -> Tuple[str, Optional[str]]:
     return (title, year)
 
 
-def parse_tv_episode(name: str) -> Optional[Tuple[str, int, int]]:
+def parse_tv_episode(name: str) -> Optional[Tuple[str, int, int, Optional[int]]]:
     """Extract show name, season, and episode from a torrent or file name.
 
-    Returns: (show_name, season, episode) or None if not a TV episode
+    Returns: (show_name, season, episode, end_episode) or None if not a TV episode.
+    ``end_episode`` is set for multi-episode files (e.g. S04E01E02, S04E01-E02).
     Examples:
-        "The Office US S09E22" -> ("The Office US", 9, 22)
-        "The.Legend.of.Korra.S04E01.After.All.These.Years" -> ("The Legend of Korra", 4, 1)
+        "The Office US S09E22"                        -> ("The Office US", 9, 22, None)
+        "The Office US S04E01E02"                     -> ("The Office US", 4, 1, 2)
+        "The Office US S04E01-E02"                    -> ("The Office US", 4, 1, 2)
+        "Avatar S03E18-E21"                           -> ("Avatar", 3, 18, 21)
+        "The.Legend.of.Korra.S04E01.After.All.These"  -> ("The Legend of Korra", 4, 1, None)
+        "FMA.Brotherhood.S01EP03.1080p"               -> ("FMA Brotherhood", 1, 3, None)
+        "[Eclipse] FMA Brotherhood - 27 (720p)"       -> ("FMA Brotherhood", 1, 27, None)
+        "[Erai-raws] Psycho-Pass 2 - 01 [1080p]"     -> ("Psycho-Pass", 2, 1, None)
+        "[Judas] Psycho-Pass S2 - 01"                 -> ("Psycho-Pass", 2, 1, None)
+        "[Sokudo] Psycho-Pass 01 [1080p BD]"          -> ("Psycho-Pass", 1, 1, None)
+        "Show.53.v2.1080p.BluRay"                     -> ("Show", 1, 53, None)
     """
-    # Common TV episode patterns
-    patterns = [
-        r'^(.+?)\s*[.\-_ ]+S(\d{1,2})E(\d{1,2})',  # S01E01
-        r'^(.+?)\s+(\d{1,2})x(\d{1,2})',   # 1x01
-        r'^(.+?)\s+Season\s*(\d+).*?Episode\s*(\d+)',  # Season 1 Episode 1
+    # Strip leading [Group] tag for all patterns
+    stripped = re.sub(r'^\[[^\]]*\]\s*', '', name)
+
+    # ── Multi-episode patterns (most specific first) ─────────────────
+    # S01E01-E02, S01E01E02, S01E01-E03
+    multi_ep = re.search(
+        r'^(.+?)\s*[.\-_ ]+S(\d{1,2})E(\d{1,3})\s*[-.]?\s*E(\d{1,3})',
+        stripped,
+        re.IGNORECASE,
+    )
+    if multi_ep:
+        show_name = _clean_show_name(multi_ep.group(1).strip())
+        season = int(multi_ep.group(2))
+        ep_start = int(multi_ep.group(3))
+        ep_end = int(multi_ep.group(4))
+        return (show_name, season, ep_start, ep_end)
+
+    # ── Standard patterns (most specific first) ──────────────────────
+    standard_patterns = [
+        r'^(.+?)\s*[.\-_ ]+S(\d{1,2})E(\d{1,3})',    # S01E01, S01E148
+        r'^(.+?)\s*[.\-_ ]+S(\d{1,2})EP(\d{1,3})',    # S01EP03
+        r'^(.+?)\s+(\d{1,2})x(\d{1,3})',               # 1x01, 1x148
+        r'^(.+?)\s+Season\s*(\d+).*?Episode\s*(\d+)',   # Season 1 Episode 1
     ]
 
-    for pattern in patterns:
-        match = re.search(pattern, name, re.IGNORECASE)
+    for pattern in standard_patterns:
+        match = re.search(pattern, stripped, re.IGNORECASE)
         if match:
             show_name = match.group(1).strip()
             season = int(match.group(2))
             episode = int(match.group(3))
+            show_name = _clean_show_name(show_name)
+            return (show_name, season, episode, None)
 
-            # Clean show name: replace dots/underscores with spaces
-            show_name = re.sub(r'[._]', ' ', show_name)
-            show_name = re.sub(r'\s+', ' ', show_name).strip()
-            # Remove trailing dashes
-            show_name = re.sub(r'[\-]+$', '', show_name).strip()
+    # ── Bare S01E01 (no show name prefix) ───────────────────────────
+    # Files named just "S07E01.mkv" without a show name.
+    # Return a placeholder show name; the caller should use the parent
+    # directory or library_path to determine the actual show name.
+    bare_ep = re.search(
+        r'^S(\d{1,2})E(\d{1,3})\b', stripped, re.IGNORECASE,
+    )
+    if bare_ep:
+        season = int(bare_ep.group(1))
+        episode = int(bare_ep.group(2))
+        return ("_bare_episode_", season, episode, None)
 
-            return (show_name, season, episode)
+    # ── Anime with season indicator: "Show Name S2 - 01" ─────────────
+    anime_season = re.search(
+        r'^(.+?)\s+S(\d{1,2})\s*-\s*(\d{1,4})(?:\s|[.\-_\(\[]|$)',
+        stripped,
+    )
+    if anime_season:
+        show_name = anime_season.group(1).strip()
+        season = int(anime_season.group(2))
+        episode = int(anime_season.group(3))
+        if 1 <= episode <= 999 and len(show_name) >= 2:
+            show_name = _clean_show_name(show_name)
+            return (show_name, season, episode, None)
+
+    # ── Anime with numeric season: "Show Name 2 - 01" ────────────────
+    # A small number (1-9) right before " - Episode" is likely a season.
+    anime_num_season = re.search(
+        r'^(.+?)\s+(\d)\s*-\s*(\d{2,4})(?:\s|[.\-_\(\[]|$)',
+        stripped,
+    )
+    if anime_num_season:
+        show_name = anime_num_season.group(1).strip()
+        season = int(anime_num_season.group(2))
+        episode = int(anime_num_season.group(3))
+        if 1 <= episode <= 999 and len(show_name) >= 2:
+            show_name = _clean_show_name(show_name)
+            return (show_name, season, episode, None)
+
+    # ── Anime absolute numbering: "Show Name - 015 (quality)" ────────
+    anime_abs = re.search(
+        r'^(.+?)\s*-\s*(\d{2,4})(?:\s|[.\-_\(\[]|$)',
+        stripped,
+    )
+    if anime_abs:
+        show_name = anime_abs.group(1).strip()
+        episode = int(anime_abs.group(2))
+        if 1 <= episode <= 999 and len(show_name) >= 2:
+            show_name = _clean_show_name(show_name)
+            return (show_name, 1, episode, None)
+
+    # ── Anime no-dash: "[Group] Show Name 01 [quality]" ──────────────
+    # or "Show.Name.53.v2.1080p"
+    anime_nodash = re.search(
+        r'^(.+?)[.\s]+(\d{2,4})(?:\s*(?:v\d)?[.\s\[\(]|$)',
+        stripped,
+    )
+    if anime_nodash:
+        show_name = anime_nodash.group(1).strip()
+        episode = int(anime_nodash.group(2))
+        if 1 <= episode <= 999 and len(show_name) >= 2:
+            show_name = _clean_show_name(show_name)
+            # Don't match things that look like years (1900-2099)
+            if not (1900 <= episode <= 2099):
+                return (show_name, 1, episode, None)
 
     return None
+
+
+def _clean_show_name(name: str) -> str:
+    """Normalize a parsed show name: dots/underscores to spaces, trim junk."""
+    name = re.sub(r'[._]', ' ', name)
+    name = re.sub(r'\s+', ' ', name).strip()
+    name = re.sub(r'[\-]+$', '', name).strip()
+    return name
 
 
 def parse_tv_season(name: str) -> Optional[Tuple[str, int]]:
@@ -220,6 +316,7 @@ class PipelineWorker:
         original_language: Optional[str] = None,
         library_path: Optional[Path] = None,
         iso_mount_dir: Optional[Path] = None,
+        absolute_episode_map: Optional[dict] = None,
     ) -> List[PipelinePlan]:
         """Produce remux + move plans for ALL video files in a torrent.
 
@@ -302,6 +399,7 @@ class PipelineWorker:
             final_output = self._compute_final_path(
                 source, torrent, normalized_category, categories, base_dir,
                 library_path=library_path,
+                absolute_episode_map=absolute_episode_map,
             )
 
             # SAFETY: Skip if this output path is already claimed by another
@@ -443,6 +541,7 @@ class PipelineWorker:
         final_output = self._compute_final_path(
             main_m2ts, torrent, normalized_category, categories, base_dir,
             library_path=library_path,
+            absolute_episode_map=None,  # BDMVs are typically movies, no abs mapping
         )
         final_output.parent.mkdir(parents=True, exist_ok=True)
         # Stage as a temp file next to the final output (same filesystem)
@@ -581,6 +680,7 @@ class PipelineWorker:
         base_dir: Path,
         *,
         library_path: Optional[Path] = None,
+        absolute_episode_map: Optional[dict] = None,
     ) -> Path:
         """Compute the final library path for a single video file.
 
@@ -591,11 +691,13 @@ class PipelineWorker:
         if normalized_category == categories.radarr:
             # Movies: /data/movies/Movie Name (Year)/Movie Name (Year).mkv
             if library_path:
-                # Use the canonical folder name from Radarr
+                # Use the full canonical path from Radarr so we always
+                # land in the exact folder the *arr expects, even when
+                # the root folder differs from the pipeline base_dir.
                 # e.g. library_path = /data/movies/Hereditary (2018)
                 folder_name = library_path.name  # "Hereditary (2018)"
                 file_name = f"{folder_name}.mkv"
-                return base_dir / folder_name / file_name
+                return library_path / file_name
 
             # Fallback: regex-parse from file stem, then torrent name
             title, year = parse_movie_name(source.stem)
@@ -618,12 +720,41 @@ class PipelineWorker:
                 episode_info = parse_tv_episode(torrent.name)
 
             if episode_info:
-                _, season, episode = episode_info
+                _, season, episode, end_episode = episode_info
+
+                # ── Absolute-to-season mapping for anime ───────────────
+                # When the parser returned season=1 with an absolute episode
+                # number (e.g. episode 50), check if Sonarr provided a
+                # mapping from absolute → (season, episode).  This fixes
+                # anime packs that use absolute numbering (e.g. "- 50")
+                # being placed in S01E50 instead of S02E23.
+                if absolute_episode_map and season == 1:
+                    mapped = absolute_episode_map.get(episode)
+                    if mapped:
+                        season = mapped["season"]
+                        episode = mapped["episode"]
+
                 # Use the canonical show name from Sonarr when available
                 # e.g. library_path = /data/tv/The Legend of Korra
-                show_name = library_path.name if library_path else _sanitize_filename(episode_info[0])
-                season_dir = base_dir / show_name / f"Season {season}"
-                file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
+                parsed_name = episode_info[0]
+                # If filename had no show name (bare "S01E01"), try the
+                # torrent name for a show+season match instead.
+                if parsed_name == "_bare_episode_":
+                    torrent_season = parse_tv_season(torrent.name)
+                    if torrent_season:
+                        parsed_name = torrent_season[0]
+                    else:
+                        # Last resort: use the torrent name itself as show name
+                        parsed_name = _clean_show_name(torrent.name.split(".S")[0]
+                                                        if ".S" in torrent.name
+                                                        else torrent.name)
+                show_name = library_path.name if library_path else _sanitize_filename(parsed_name)
+                show_dir = library_path if library_path else base_dir / show_name
+                season_dir = show_dir / f"Season {season}"
+                if end_episode and end_episode > episode:
+                    file_name = f"{show_name} - S{season:02d}E{episode:02d}-E{end_episode:02d}.mkv"
+                else:
+                    file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
                 return season_dir / file_name
 
             # Couldn't parse episode — try season-level info for directory,
@@ -632,12 +763,13 @@ class PipelineWorker:
             if season_info:
                 parsed_show_name, season = season_info
                 show_name = library_path.name if library_path else _sanitize_filename(parsed_show_name)
-                season_dir = base_dir / show_name / f"Season {season}"
+                show_dir = library_path if library_path else base_dir / show_name
+                season_dir = show_dir / f"Season {season}"
                 return season_dir / f"{source.stem}.mkv"
 
             # Total fallback — use API show name if available
             if library_path:
-                return base_dir / library_path.name / f"{source.stem}.mkv"
+                return library_path / f"{source.stem}.mkv"
             return base_dir / f"{source.stem}.mkv"
 
         # Unknown category

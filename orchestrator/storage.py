@@ -283,6 +283,42 @@ class ConfigRepository:
                 data.pop("last_error", None)
             self._save_section(section="pipeline", data=data)
 
+    def load_backfill_state(self) -> dict[str, Any]:
+        """Get the backfill sub-state from pipeline state."""
+        pipeline = self.load_pipeline_state()
+        return pipeline.get("backfill", {})
+
+    def save_backfill_state(self, backfill: dict[str, Any]) -> None:
+        """Atomically update the backfill sub-state within pipeline state."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["backfill"] = backfill
+            self._save_section(section="pipeline", data=data)
+
+    def load_health_state(self) -> dict[str, Any]:
+        """Get the download health monitor sub-state from pipeline state."""
+        pipeline = self.load_pipeline_state()
+        return pipeline.get("health", {})
+
+    def save_health_state(self, health: dict[str, Any]) -> None:
+        """Atomically update the health monitor sub-state within pipeline state."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["health"] = health
+            self._save_section(section="pipeline", data=data)
+
+    def load_fallback_state(self) -> dict[str, Any]:
+        """Get the Prowlarr fallback sub-state from pipeline state."""
+        pipeline = self.load_pipeline_state()
+        return pipeline.get("prowlarr_fallback", {})
+
+    def save_fallback_state(self, fallback: dict[str, Any]) -> None:
+        """Atomically update the Prowlarr fallback sub-state within pipeline state."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["prowlarr_fallback"] = fallback
+            self._save_section(section="pipeline", data=data)
+
     def has_users(self) -> bool:
         """Check if any users exist in auth state."""
         auth = self.get_auth_state()

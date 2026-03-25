@@ -165,12 +165,13 @@ class RadarrClient(ServiceClient):
                     detail_messages.append("ui credentials synced")
                     changed = True
 
-                # Completed Download Handling: disable when the pipeline
-                # worker is enabled (it handles remux + import), enable
-                # otherwise so Radarr imports directly.
+                # Completed Download Handling: disable when the pipeline worker
+                # is active.  CDH and the pipeline both try to import completed
+                # downloads, creating duplicates.  The pipeline handles remux +
+                # import; CDH is only needed when the pipeline is disabled.
                 pipeline_active = config.services.pipeline.enabled
-                dl_config = api.get_json("/config/downloadclient")
                 desired_cdh = not pipeline_active
+                dl_config = api.get_json("/config/downloadclient")
                 if dl_config.get("enableCompletedDownloadHandling") != desired_cdh:
                     dl_config["enableCompletedDownloadHandling"] = desired_cdh
                     api.put_json("/config/downloadclient", dl_config)

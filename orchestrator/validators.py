@@ -37,12 +37,12 @@ def run_validation(config: StackConfig) -> ValidationResult:
     path_mappings = _get_path_mappings()
 
     path_entries = [
-        ("paths.pool", config.paths.pool, False),
-        ("paths.scratch", config.paths.scratch, True),
-        ("paths.appdata", config.paths.appdata, False),
+        ("paths.pool", "pool", config.paths.pool, False),
+        ("paths.scratch", "scratch", config.paths.scratch, True),
+        ("paths.appdata", "appdata", config.paths.appdata, False),
     ]
 
-    for label, path, optional in path_entries:
+    for label, mapping_key, path, optional in path_entries:
         if path is None:
             checks[label] = "not_configured" if optional else "missing"
             if not optional:
@@ -50,7 +50,7 @@ def run_validation(config: StackConfig) -> ValidationResult:
             continue
 
         # Try mapped container path first, then original path
-        check_path = _resolve_path(path, path_mappings)
+        check_path = _resolve_path(path, path_mappings, mapping_key)
 
         if not check_path.exists():
             checks[label] = f"missing (run: sudo mkdir -p {path})"
@@ -439,29 +439,28 @@ def _get_path_mappings() -> Dict[str, str]:
     return mappings
 
 
-def _resolve_path(path, mappings: Dict[str, str]):
-    """Resolve a config path to a checkable path, using mappings if in container."""
+def _resolve_path(path, mappings: Dict[str, str], mapping_key: str = ""):
+    """Resolve a config path to a checkable path, using mappings if in container.
+
+    When ``mapping_key`` is provided (e.g. "pool", "appdata"), the path is
+    resolved directly via the mapping dict — no substring guessing needed.
+    """
     from pathlib import Path
 
     path_str = str(path)
 
-    # Check if any mapping key appears in the path name (e.g., "pool" in "/home/.../test_pool")
-    for key, mapped_path in mappings.items():
-        # Match by path component containing the key
-        if key in path_str.lower() or path_str.endswith(key):
-            return Path(mapped_path)
+    # Direct mapping by key — the caller knows which config entry this is
+    if mapping_key and mapping_key in mappings:
+        return Path(mappings[mapping_key])
 
-    # Also check for exact container paths that might already be set
+    # Fallback: check if the path exists as-is (e.g. running on the host)
     if Path(path_str).exists():
         return Path(path_str)
 
-    # Check if any standard container path exists as fallback
-    for key, mapped_path in mappings.items():
-        mapped = Path(mapped_path)
-        if mapped.exists():
-            # Heuristic: if config path contains 'pool', 'scratch', or 'appdata'
-            if key in path_str.lower():
-                return mapped
+    # Last resort: try /host prefix (container with host fs mounted)
+    host_path = Path("/host") / path_str.lstrip("/")
+    if host_path.exists():
+        return host_path
 
     return path
 

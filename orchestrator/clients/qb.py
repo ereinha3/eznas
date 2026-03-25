@@ -566,10 +566,15 @@ class QBittorrentClient(ServiceClient):
             "save_path": complete_path,
             "temp_path_enabled": True,
             "temp_path": incomplete_path,
-            "max_ratio_enabled": qb_cfg.stop_after_download,
-            "max_ratio": 0,
-            "max_ratio_action": 0,
-            "auto_tmm_enabled": False,
+            # Don't auto-remove completed torrents — the pipeline worker
+            # controls the lifecycle (remux → import → remove).
+            "max_ratio_enabled": False,
+            "max_seeding_time_enabled": False,
+            "max_ratio_action": 0,  # pause, not remove
+            # Enable auto torrent management so torrents are saved to their
+            # category-specific paths (e.g. /downloads/complete/tv/).
+            "auto_tmm_enabled": True,
+            "category_changed_tmm_enabled": True,
             "scan_dirs": {complete_path: 0},
             "web_ui_username": desired_username,
             "web_ui_password": target_password,

@@ -17,8 +17,10 @@ import httpx
 
 from ..models import StackConfig
 from ..storage import ConfigRepository
+from .backfill import BackfillEngine
+from .health import DownloadHealthMonitor
 from .languages import arr_language_to_iso
-from .worker import PipelineWorker, TorrentInfo, parse_movie_name
+from .worker import PipelineWorker, TorrentInfo, parse_movie_name, parse_tv_episode
 
 log = logging.getLogger("pipeline")
 
@@ -52,6 +54,40 @@ class ArrMetadata:
     service_name: Optional[str] = None   # "radarr" or "sonarr"
 
 
+# Common torrent junk patterns to strip before matching
+_TORRENT_JUNK = re.compile(
+    r'\[([^\]]{1,30})\]'       # [GroupName], [1080p], etc.
+    r'|(?<!\w)(?:'
+    r'(?:24|48|96)kHz'
+    r'|(?:480|720|1080|2160)[pi]'
+    r'|(?:x|h)\.?26[45]'
+    r'|(?:10|8)bit'
+    r'|(?:blu-?ray|bdrip|brrip|web-?dl|web-?rip|hdtv|dvdrip|remux)'
+    r'|(?:hevc|avc|atmos|truehd|dts(?:-(?:hd|ma|x))?|aac|flac|opus|ac3|eac3|dd[+p]?5\.?1|pcm)'
+    r'|(?:dual|multi)[\s._-]?(?:audio|subs?)'
+    r'|(?:repack|proper|extended|unrated|directors?\.?cut|theatrical)'
+    r'|(?:complete[\s._-]?series|season[\s._-]?\d+)'
+    r'|(?:s\d{2,}(?:e\d{2,})?)'
+    r')(?!\w)',
+    re.IGNORECASE,
+)
+
+
+def _clean_torrent_name(name: str) -> str:
+    """Strip release group tags, codec/quality markers, and torrent junk.
+
+    Returns a lowercased string with only the meaningful title portion,
+    suitable for matching against arr library entries.
+    """
+    # Replace dots and underscores with spaces
+    cleaned = re.sub(r'[._]', ' ', name)
+    # Strip torrent junk
+    cleaned = _TORRENT_JUNK.sub(' ', cleaned)
+    # Collapse whitespace
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip().lower()
+    return cleaned
+
+
 def _match_torrent_to_arr(torrent_name: str, items: list) -> Optional[dict]:
     """Match a torrent name to a Radarr/Sonarr library entry.
 
@@ -62,8 +98,8 @@ def _match_torrent_to_arr(torrent_name: str, items: list) -> Optional[dict]:
     Short titles (≤4 chars) require a year confirmation to match, preventing
     "Her" from matching "Ot*her*" or "Up" from matching "S*up*erman".
     """
-    # Normalize torrent name: replace . and _ with spaces, lowercase
-    normalized = re.sub(r'[._]', ' ', torrent_name).lower()
+    # Normalize torrent name: strip junk, replace . and _ with spaces, lowercase
+    normalized = _clean_torrent_name(torrent_name)
 
     # Extract year from torrent name
     _, torrent_year = parse_movie_name(torrent_name)
@@ -192,6 +228,14 @@ class QbittorrentAPI:
         items = response.json() or []
         return {item.get("name", "") for item in items if item.get("name")}
 
+    def list_all(self) -> list[dict]:
+        """Return full info for ALL torrents in qBittorrent."""
+        response = self.client.get(
+            f"{self.base_url}/api/v2/torrents/info",
+        )
+        response.raise_for_status()
+        return response.json() or []
+
     def list_files(self, torrent_hash: str) -> List[Path]:
         response = self.client.get(
             f"{self.base_url}/api/v2/torrents/files",
@@ -220,6 +264,10 @@ class QbittorrentAPI:
 class PipelineRunner:
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
+        self._backfill = BackfillEngine(repo)
+        self._health = DownloadHealthMonitor(repo)
+        from .prowlarr_fallback import ProwlarrDirectGrab
+        self._fallback = ProwlarrDirectGrab(repo)
 
     def run_forever(self, interval: float = 60.0) -> None:
         log.info("starting worker loop (interval=%ss)", interval)
@@ -247,6 +295,7 @@ class PipelineRunner:
             return
 
         self._cleanup_stale_staging(config)
+        self._cleanup_stale_orphan_sources(config)
 
         state = self.repo.load_state()
         qb_secrets = state.get("secrets", {}).get("qbittorrent", {})
@@ -368,6 +417,18 @@ class PipelineRunner:
         finally:
             api.close()
 
+        # ── Phase 1.5: Download health / stall detection ─────────────────
+        try:
+            self._health.maybe_check(config)
+        except Exception as exc:
+            log.error("health monitor error: %s", exc)
+
+        # ── Phase 1.9: Clean up source files for already-processed items ──
+        try:
+            self._cleanup_processed_sources(config, qbt_all_names)
+        except Exception as exc:
+            log.error("processed-source cleanup error: %s", exc)
+
         # ── Phase 2: Process orphans on disk not tracked by qBittorrent ──
 
         # Expire old orphan hashes (7 days)
@@ -399,6 +460,268 @@ class PipelineRunner:
         if needs_refresh:
             self._refresh_arr_services(config, needs_refresh)
 
+        # ── Phase 4: Backfill missing episodes via Prowlarr ───────────
+        try:
+            self._backfill.maybe_run(config)
+        except Exception as exc:
+            log.error("backfill error: %s", exc)
+
+        # ── Phase 5: Prowlarr direct-grab fallback for stuck series ───
+        try:
+            self._fallback.maybe_run(config)
+        except Exception as exc:
+            log.error("prowlarr-fallback error: %s", exc)
+
+        # ── Phase 6: Nightly missing content search ──────────────────
+        try:
+            self._nightly_missing_search(config)
+        except Exception as exc:
+            log.error("nightly-search error: %s", exc)
+
+    # ------------------------------------------------------------------
+    # Nightly missing-content search — triggers Sonarr/Radarr to search
+    # all missing monitored content once per day.  RSS sync only catches
+    # new releases; this re-searches the full catalogue.
+    # ------------------------------------------------------------------
+
+    _NIGHTLY_SEARCH_INTERVAL = 24 * 3600  # 24 hours
+
+    def _nightly_missing_search(self, config: StackConfig) -> None:
+        state = self.repo.load_health_state()
+        last_nightly = state.get("last_nightly_search", 0)
+        now = int(time.time())
+
+        if now - last_nightly < self._NIGHTLY_SEARCH_INTERVAL:
+            return
+
+        secrets = self.repo.load_state().get("secrets", {})
+        vpn = config.services.gluetun.enabled
+        timeout = httpx.Timeout(30.0, connect=10.0)
+
+        sonarr_key = secrets.get("sonarr", {}).get("api_key")
+        radarr_key = secrets.get("radarr", {}).get("api_key")
+        prowlarr_key = secrets.get("prowlarr", {}).get("api_key")
+        from ..models import VPN_ROUTED_SERVICES
+        sonarr_host = "gluetun" if vpn and "sonarr" in VPN_ROUTED_SERVICES else "sonarr"
+        radarr_host = "gluetun" if vpn and "radarr" in VPN_ROUTED_SERVICES else "radarr"
+        prowlarr_host = "gluetun" if vpn and "prowlarr" in VPN_ROUTED_SERVICES else "prowlarr"
+
+        # Step 1: Auto-discover new public indexers and sync to Sonarr/Radarr.
+        if prowlarr_key:
+            try:
+                headers_p = {"X-Api-Key": prowlarr_key}
+                long_timeout = httpx.Timeout(120.0, connect=10.0)
+
+                # Fetch available schemas and existing indexers
+                schemas = httpx.get(
+                    f"http://{prowlarr_host}:9696/api/v1/indexer/schema",
+                    headers=headers_p, timeout=long_timeout,
+                ).json()
+                existing = httpx.get(
+                    f"http://{prowlarr_host}:9696/api/v1/indexer",
+                    headers=headers_p, timeout=long_timeout,
+                ).json()
+                existing_names = {idx.get("name", "").lower() for idx in existing}
+
+                added = []
+                for schema in schemas:
+                    name = schema.get("name", "")
+                    if name.lower() in existing_names:
+                        continue
+                    privacy = (schema.get("privacy") or "").lower()
+                    if privacy != "public":
+                        continue
+                    caps = schema.get("capabilities", {})
+                    cat_ids = {c.get("id", 0) for c in caps.get("categories", [])}
+                    has_media = any(2000 <= c < 3000 or 5000 <= c < 6000 for c in cat_ids)
+                    if not has_media:
+                        continue
+
+                    # Build payload
+                    schema["enable"] = True
+                    schema["appProfileId"] = 1
+                    for f in schema.get("fields", []):
+                        if f["name"] == "torrentBaseSettings.appMinimumSeeders":
+                            f["value"] = 5
+                    try:
+                        httpx.post(
+                            f"http://{prowlarr_host}:9696/api/v1/indexer",
+                            json=schema, headers=headers_p, timeout=long_timeout,
+                        ).raise_for_status()
+                        added.append(name)
+                    except httpx.HTTPStatusError:
+                        # CF-blocked or other error — try disabled then force-enable
+                        try:
+                            schema["enable"] = False
+                            resp = httpx.post(
+                                f"http://{prowlarr_host}:9696/api/v1/indexer",
+                                json=schema, headers=headers_p, timeout=long_timeout,
+                            )
+                            resp.raise_for_status()
+                            idx_id = resp.json().get("id")
+                            if idx_id:
+                                full = httpx.get(
+                                    f"http://{prowlarr_host}:9696/api/v1/indexer/{idx_id}",
+                                    headers=headers_p, timeout=timeout,
+                                ).json()
+                                full["enable"] = True
+                                httpx.put(
+                                    f"http://{prowlarr_host}:9696/api/v1/indexer/{idx_id}",
+                                    json=full, headers=headers_p, timeout=timeout,
+                                    params={"forceSave": "true"},
+                                )
+                                added.append(name)
+                        except Exception:
+                            pass
+
+                if added:
+                    log.info("nightly-search: added %d new indexer(s): %s", len(added), ", ".join(added))
+
+                # Sync all indexers to Sonarr/Radarr
+                httpx.post(
+                    f"http://{prowlarr_host}:9696/api/v1/command",
+                    json={"name": "AppIndexerSync"},
+                    headers=headers_p, timeout=timeout,
+                )
+                log.info("nightly-search: triggered Prowlarr AppIndexerSync")
+            except Exception as exc:
+                log.warning("nightly-search: indexer refresh failed: %s", exc)
+
+        # Step 2: Trigger missing content searches
+        if sonarr_key:
+            try:
+                resp = httpx.post(
+                    f"http://{sonarr_host}:8989/api/v3/command",
+                    json={"name": "MissingEpisodeSearch"},
+                    headers={"X-Api-Key": sonarr_key},
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                log.info("nightly-search: triggered Sonarr MissingEpisodeSearch")
+            except Exception as exc:
+                log.warning("nightly-search: Sonarr search failed: %s", exc)
+
+        if radarr_key:
+            try:
+                resp = httpx.post(
+                    f"http://{radarr_host}:7878/api/v3/command",
+                    json={"name": "MissingMoviesSearch"},
+                    headers={"X-Api-Key": radarr_key},
+                    timeout=timeout,
+                )
+                resp.raise_for_status()
+                log.info("nightly-search: triggered Radarr MissingMoviesSearch")
+            except Exception as exc:
+                log.warning("nightly-search: Radarr search failed: %s", exc)
+
+        # Step 3: Sync studio-based Jellyfin collections
+        try:
+            self._sync_jellyfin_studio_collections(secrets)
+        except Exception as exc:
+            log.debug("nightly-search: studio collection sync skipped: %s", exc)
+
+        state["last_nightly_search"] = now
+        self.repo.save_health_state(state)
+
+    # Studio name -> collection display name
+    _STUDIO_COLLECTIONS = {
+        "Marvel Studios": "Marvel Studios",
+        "Pixar": "Pixar",
+        "Studio Ghibli": "Studio Ghibli",
+        "Walt Disney Pictures": "Walt Disney",
+        "Walt Disney Animation Studios": "Walt Disney",
+        "A24": "A24",
+        "DreamWorks Animation": "DreamWorks Animation",
+    }
+
+    def _sync_jellyfin_studio_collections(self, secrets: dict) -> None:
+        """Create/update studio-based collections in Jellyfin."""
+        jf = secrets.get("jellyfin", {})
+        password = jf.get("admin_password") or jf.get("password", "")
+        username = jf.get("admin_username") or jf.get("username", "admin")
+        if not password:
+            return
+
+        base = "http://jellyfin:8096"
+        auth_header = (
+            'MediaBrowser Client="pipeline", Device="cli", '
+            'DeviceId="pipeline-nightly", Version="1.0"'
+        )
+
+        # Authenticate
+        resp = httpx.post(
+            f"{base}/Users/AuthenticateByName",
+            json={"Username": username, "Pw": password},
+            headers={"X-Emby-Authorization": auth_header},
+            timeout=15.0,
+        )
+        resp.raise_for_status()
+        token = resp.json()["AccessToken"]
+        headers = {"X-Emby-Token": token}
+
+        # Get all movies with studio metadata
+        movies = httpx.get(
+            f"{base}/Items",
+            params={"IncludeItemTypes": "Movie", "Recursive": "true",
+                    "Fields": "Studios", "Limit": "2000"},
+            headers=headers, timeout=30.0,
+        ).json().get("Items", [])
+
+        # Group by studio
+        desired: dict[str, set] = {}
+        for movie in movies:
+            for studio in movie.get("Studios", []):
+                name = studio.get("Name", "")
+                coll_name = self._STUDIO_COLLECTIONS.get(name)
+                if coll_name:
+                    desired.setdefault(coll_name, set()).add(movie["Id"])
+
+        # Get existing collections
+        existing = {}
+        for coll in httpx.get(
+            f"{base}/Items",
+            params={"IncludeItemTypes": "BoxSet", "Recursive": "true"},
+            headers=headers, timeout=15.0,
+        ).json().get("Items", []):
+            children = httpx.get(
+                f"{base}/Items",
+                params={"ParentId": coll["Id"], "Recursive": "true"},
+                headers=headers, timeout=15.0,
+            ).json().get("Items", [])
+            existing[coll["Name"]] = {
+                "id": coll["Id"],
+                "child_ids": {c["Id"] for c in children},
+            }
+
+        # Sync
+        for coll_name, movie_ids in desired.items():
+            if len(movie_ids) < 2:
+                continue
+            if coll_name in existing:
+                current = existing[coll_name]["child_ids"]
+                to_add = [mid for mid in movie_ids if mid not in current]
+                if to_add:
+                    httpx.post(
+                        f"{base}/Collections/{existing[coll_name]['id']}/Items",
+                        params={"Ids": ",".join(to_add)},
+                        headers=headers, timeout=15.0,
+                    )
+                    log.info(
+                        "studio-collections: added %d movies to %s",
+                        len(to_add), coll_name,
+                    )
+            else:
+                ids_str = ",".join(movie_ids)
+                httpx.post(
+                    f"{base}/Collections",
+                    params={"Name": coll_name, "Ids": ids_str},
+                    headers=headers, timeout=15.0,
+                )
+                log.info(
+                    "studio-collections: created %s (%d movies)",
+                    coll_name, len(movie_ids),
+                )
+
     def _should_process(self, config: StackConfig, category: str) -> bool:
         """Check if a torrent category should be processed.
 
@@ -413,6 +736,117 @@ class PipelineRunner:
 
         categories = config.download_policy.categories
         return normalized in {categories.radarr, categories.sonarr}
+
+    # ------------------------------------------------------------------
+    # Processed-source cleanup — delete source files that were already
+    # successfully processed but left on disk (qBT removed torrent entry
+    # after Phase 1 processed it, or orphan cleanup was skipped).
+    # ------------------------------------------------------------------
+
+    # How old a "partial" or "ffmpeg_failed" entry must be before we give
+    # up and delete the source to reclaim disk space.
+    _FAILED_SOURCE_MAX_AGE = 3 * 86400  # 3 days
+    # Minimum age for "ok" items before cleanup — gives arr services time
+    # to scan and detect any mismatches before we delete the source.
+    _OK_SOURCE_MIN_AGE = 4 * 3600  # 4 hours
+
+    def _cleanup_processed_sources(
+        self, config: StackConfig, qbt_names: Set[str]
+    ) -> None:
+        """Remove source files/dirs in complete/ that are already processed.
+
+        For "ok" items we also verify the arr service actually has the files
+        on disk before deleting the source — this catches cases where the
+        remux succeeded but put the output in the wrong library location.
+        """
+        complete_dir = self._resolve_complete_dir(config)
+        if complete_dir is None:
+            return
+
+        pipeline = self.repo.load_pipeline_state()
+        processed = pipeline.get("processed", {})
+        now = time.time()
+        cleaned = 0
+
+        # Scan all items (including inside category sub-dirs)
+        categories = config.download_policy.categories
+        category_dirs = {categories.radarr, categories.sonarr}
+
+        scan_items: list[tuple[Path, str | None]] = []
+        for item in sorted(complete_dir.iterdir()):
+            if item.name.startswith("."):
+                continue
+            if item.is_dir() and item.name in category_dirs:
+                for child in sorted(item.iterdir()):
+                    if not child.name.startswith("."):
+                        scan_items.append((child, item.name))
+            elif item.name not in category_dirs:
+                scan_items.append((item, None))
+
+        for item, forced_category in scan_items:
+            name = item.name
+            # Skip items still tracked by qBittorrent — Phase 1 handles these
+            if name in qbt_names:
+                continue
+
+            # Check both orphan hash and any qBT hash that matches
+            orphan_hash = "orphan_" + hashlib.sha256(
+                name.encode()
+            ).hexdigest()[:16]
+            entry = processed.get(orphan_hash)
+
+            # Also check regular (non-orphan) hashes — Phase 1 may have
+            # processed this when it was still in qBT, then qBT removed it
+            if not entry:
+                for h, e in processed.items():
+                    if (
+                        not h.startswith("orphan_")
+                        and isinstance(e, dict)
+                        and e.get("status") in ("ok", "partial", "ffmpeg_failed")
+                    ):
+                        # We can't easily match qBT hash to disk name here,
+                        # so only handle orphan hashes.
+                        pass
+                # No processed entry found for this item
+                if not entry:
+                    continue
+
+            if not isinstance(entry, dict):
+                continue
+
+            status = entry.get("status")
+            age = now - entry.get("timestamp", now)
+
+            should_clean = False
+            if status == "ok" and age > self._OK_SOURCE_MIN_AGE:
+                should_clean = True
+            elif status in ("partial", "ffmpeg_failed") and age > self._FAILED_SOURCE_MAX_AGE:
+                should_clean = True
+
+            if not should_clean:
+                continue
+
+            size_gb = 0.0
+            try:
+                if item.is_dir():
+                    size_gb = sum(
+                        f.stat().st_size for f in item.rglob("*") if f.is_file()
+                    ) / (1024**3)
+                elif item.is_file():
+                    size_gb = item.stat().st_size / (1024**3)
+            except OSError:
+                pass
+
+            log.info(
+                "source cleanup (%s, %.0fh old): %s (%.1f GB)",
+                status, age / 3600, name[:60], size_gb,
+            )
+            self._cleanup_path(item)
+            self._cleanup_empty_parent(item)
+            cleaned += 1
+
+        if cleaned:
+            log.info("source cleanup: removed %d item(s)", cleaned)
 
     # ------------------------------------------------------------------
     # Orphan scanner — process items on disk not tracked by qBittorrent
@@ -581,13 +1015,68 @@ class PipelineRunner:
     def _detect_orphan_category(
         self, name: str, config: StackConfig
     ) -> str:
-        """Guess category (movies/tv) from an orphan's directory name."""
+        """Detect category (movies/tv) for an orphan item.
+
+        Uses multiple signals in priority order:
+        1. Standard SxxExx / season patterns
+        2. Anime-style absolute episode numbering (e.g. "Show - 015")
+        3. Arr API lookup — if Sonarr recognizes it, it's TV
+        4. Default to movies
+        """
+        categories = config.download_policy.categories
+
+        # 1. Standard TV patterns
         name_lower = name.lower()
-        tv_patterns = [".s0", ".s1", ".s2", ".s3", " s0", " s1", " s2",
-                       " s3", "season", "complete series"]
+        tv_patterns = [
+            ".s0", ".s1", ".s2", ".s3", ".s4", ".s5", ".s6", ".s7", ".s8", ".s9",
+            " s0", " s1", " s2", " s3", " s4", " s5", " s6", " s7", " s8", " s9",
+            "season", "complete series",
+        ]
         if any(p in name_lower for p in tv_patterns):
-            return config.download_policy.categories.sonarr
-        return config.download_policy.categories.radarr
+            return categories.sonarr
+
+        # 2. Anime-style: "[Group] Show Name - 015" or "Show.Name.-.027"
+        if parse_tv_episode(name) is not None:
+            return categories.sonarr
+
+        # 3. Arr lookup — ask Sonarr if it recognizes this title.
+        #    This catches anything the filename patterns miss.
+        if self._sonarr_recognizes(name, config):
+            return categories.sonarr
+
+        return categories.radarr
+
+    def _sonarr_recognizes(self, name: str, config: StackConfig) -> bool:
+        """Check if Sonarr has a local series matching this name."""
+        state = self.repo.load_state()
+        api_key = state.get("secrets", {}).get("sonarr", {}).get("api_key")
+        if not api_key:
+            return False
+
+        host = "sonarr"
+        if config.services.gluetun.enabled:
+            from ..models import VPN_ROUTED_SERVICES
+            if "sonarr" in VPN_ROUTED_SERVICES:
+                host = "gluetun"
+
+        headers = {"X-Api-Key": api_key}
+        timeout = httpx.Timeout(10.0, connect=5.0)
+
+        try:
+            # Fetch all series and try name matching
+            resp = httpx.get(
+                f"http://{host}:8989/api/v3/series",
+                headers=headers,
+                timeout=timeout,
+            )
+            resp.raise_for_status()
+            items = resp.json()
+            if _match_torrent_to_arr(name, items):
+                return True
+        except (httpx.RequestError, httpx.HTTPStatusError):
+            pass
+
+        return False
 
     def _process_orphan(
         self,
@@ -641,6 +1130,10 @@ class PipelineRunner:
         metadata = self._lookup_arr_metadata(config, torrent)
         keep_audio_langs = set(config.media_policy.movies.keep_audio)
 
+        abs_map = None
+        if metadata and metadata.service_name == "sonarr" and metadata.media_id:
+            abs_map = self._build_absolute_episode_map(config, metadata.media_id)
+
         worker = PipelineWorker(config)
         try:
             plans = worker.build_plans(
@@ -648,6 +1141,7 @@ class PipelineRunner:
                 original_language=metadata.original_language if metadata else None,
                 library_path=metadata.library_path if metadata else None,
                 iso_mount_dir=iso_mount_dir,
+                absolute_episode_map=abs_map,
             )
         except ValueError as exc:
             log.error("orphan plan failed for %s: %s", torrent.name, exc)
@@ -711,6 +1205,25 @@ class PipelineRunner:
                     continue
 
             shutil.move(str(plan.staging_output), str(plan.final_output))
+            # Verify the file actually landed
+            if not plan.final_output.exists():
+                log.error(
+                    "  [%d/%d] move LOST file: %s not found after move",
+                    i, total, plan.final_output,
+                )
+                failed += 1
+                continue
+
+            # Fix ownership so non-root services (Bazarr, Jellyfin) can
+            # read/write subtitle files alongside the media.
+            try:
+                uid = config.runtime.user_id
+                gid = config.runtime.group_id
+                os.chown(str(plan.final_output), uid, gid)
+                os.chown(str(plan.final_output.parent), uid, gid)
+            except OSError:
+                pass  # best-effort; non-fatal
+
             log.info("  [%d/%d] moved to %s", i, total, plan.final_output)
             succeeded += 1
 
@@ -735,6 +1248,8 @@ class PipelineRunner:
                 "orphan completed: %s (%d/%d files, freed %.1f GB)",
                 torrent.name, succeeded, total, size_gb,
             )
+            if metadata and metadata.media_id and metadata.service_name:
+                self._refresh_arr_item(config, metadata)
             return True
         elif succeeded > 0:
             self._mark_processed(
@@ -745,6 +1260,8 @@ class PipelineRunner:
                 "orphan partial: %s (%d/%d ok, %d/%d failed)",
                 torrent.name, succeeded, total, failed, total,
             )
+            if metadata and metadata.media_id and metadata.service_name:
+                self._refresh_arr_item(config, metadata)
             return True
         else:
             self._mark_processed(
@@ -788,6 +1305,88 @@ class PipelineRunner:
                         )
                 except OSError:
                     pass
+
+    # ------------------------------------------------------------------
+    # Scratch cleanup — remove stale source dirs from failed processing
+    # ------------------------------------------------------------------
+
+    _ORPHAN_SOURCE_MAX_AGE = 3 * 86400  # 3 days
+
+    def _cleanup_stale_orphan_sources(self, config: StackConfig) -> None:
+        """Remove source directories in scratch/complete that were already
+        processed (partial or failed) and are older than 3 days.
+
+        Without this, failed/partial orphan processing leaves source dirs
+        forever because the orphan scanner skips already-processed hashes.
+        """
+        complete_dir = self._resolve_complete_dir(config)
+        if complete_dir is None:
+            return
+
+        now = time.time()
+        categories = config.download_policy.categories
+        category_dirs = {categories.radarr, categories.sonarr}
+
+        # Collect all items (top-level + inside category subdirs)
+        items: list[Path] = []
+        for item in sorted(complete_dir.iterdir()):
+            if item.name.startswith("."):
+                continue
+            if item.is_dir() and item.name in category_dirs:
+                for child in sorted(item.iterdir()):
+                    if not child.name.startswith("."):
+                        items.append(child)
+            else:
+                items.append(item)
+
+        cleaned = 0
+        for item in items:
+            if not item.is_dir():
+                continue
+
+            # Check if this was already processed
+            orphan_hash = "orphan_" + hashlib.sha256(
+                item.name.encode()
+            ).hexdigest()[:16]
+            processed = self.repo.load_pipeline_state().get("processed", {})
+            entry = processed.get(orphan_hash)
+            if not entry:
+                continue  # Not yet processed — leave it for the orphan scanner
+
+            status = entry.get("status", "")
+            if status == "ok":
+                # Fully successful — source should have been cleaned already,
+                # but clean up if it's still here.
+                pass
+            elif status not in ("partial", "ffmpeg_failed"):
+                continue
+
+            # Check age of the directory
+            try:
+                mtime = item.stat().st_mtime
+                age = now - mtime
+                if age < self._ORPHAN_SOURCE_MAX_AGE:
+                    continue
+            except OSError:
+                continue
+
+            size_gb = sum(
+                f.stat().st_size for f in item.rglob("*") if f.is_file()
+            ) / (1024 ** 3)
+
+            try:
+                shutil.rmtree(item)
+                log.info(
+                    "scratch cleanup: removed stale source %s "
+                    "(%.1f GB, status=%s, %.0f days old)",
+                    item.name[:60], size_gb, status, age / 86400,
+                )
+                cleaned += 1
+            except OSError as exc:
+                log.warning("scratch cleanup: failed to remove %s: %s", item.name[:40], exc)
+
+        if cleaned:
+            log.info("scratch cleanup: removed %d stale source dir(s)", cleaned)
 
     def _get_dest_free(self, config: StackConfig) -> int:
         """Return free bytes on the destination (pool) filesystem.
@@ -899,6 +1498,13 @@ class PipelineRunner:
         or ``None`` if the lookup failed entirely (no API key, wrong
         category, network error).
         """
+        # --- Priority 0: Check Prowlarr fallback grab metadata ---
+        # When the Prowlarr fallback grabs a torrent, it records the
+        # exact service + media_id so we don't need hash/name guessing.
+        fallback_meta = self._check_fallback_grab_metadata(config, torrent)
+        if fallback_meta is not None:
+            return fallback_meta
+
         state = self.repo.load_state()
         secrets_state = state.get("secrets", {})
         cat_config = config.download_policy.categories
@@ -991,14 +1597,94 @@ class PipelineRunner:
                     best_match, service_name=service_name,
                 )
             else:
+                # ── Third chance: arr /lookup endpoint ─────────────────
+                # The lookup endpoint searches against TMDb/TVDB and
+                # local entries.  Strip torrent junk for a cleaner query.
+                clean_name = _clean_torrent_name(torrent.name)
+                # Also try extracting just the title portion (before year)
+                parsed_title, _ = parse_movie_name(torrent.name)
+                search_terms = {clean_name}
+                if parsed_title and parsed_title.lower() != clean_name:
+                    search_terms.add(parsed_title.lower())
+
+                lookup_endpoint = (
+                    "/api/v3/series/lookup" if service_name == "sonarr"
+                    else "/api/v3/movie/lookup"
+                )
+
+                for term in search_terms:
+                    if len(term) < 3:
+                        continue
+                    try:
+                        lookup_resp = httpx.get(
+                            f"{base}{lookup_endpoint}",
+                            params={"term": term},
+                            headers=headers,
+                            timeout=timeout,
+                        )
+                        lookup_resp.raise_for_status()
+                        lookup_results = lookup_resp.json()
+                    except (httpx.RequestError, httpx.HTTPStatusError) as exc:
+                        log.debug("lookup search failed for '%s': %s", term, exc)
+                        continue
+
+                    # Find a result that's already in the local library
+                    for result in lookup_results:
+                        if result.get("id") and result.get("path"):
+                            log.info(
+                                "lookup match: '%s' -> '%s' (id=%s)",
+                                term, result.get("title"), result.get("id"),
+                            )
+                            return self._extract_arr_metadata(
+                                result, service_name=service_name,
+                            )
+
                 log.warning(
-                    "could not match torrent '%s' to any %s entry",
+                    "could not match torrent '%s' to any %s entry "
+                    "(tried hash, name, and lookup)",
                     torrent.name, service_name,
                 )
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
             log.error("%s metadata lookup failed: %s", service_name, exc)
         except Exception as exc:
             log.error("unexpected error in metadata lookup: %s", exc)
+
+        # ── Fix 2: Cross-service fallback ──────────────────────────────
+        # If all 3 levels failed in the primary service, try the OTHER
+        # service.  This catches misrouted content (e.g. a movie in the
+        # "tv" category or vice versa).
+        from ..models import VPN_ROUTED_SERVICES as _VPN_ROUTED
+        alt_service = "sonarr" if service_name == "radarr" else "radarr"
+        alt_key = secrets_state.get(alt_service, {}).get("api_key")
+        if alt_key:
+            alt_port = 8989 if alt_service == "sonarr" else 7878
+            alt_endpoint = "/api/v3/series" if alt_service == "sonarr" else "/api/v3/movie"
+            alt_host = alt_service
+            if config.services.gluetun.enabled:
+                if alt_service in _VPN_ROUTED:
+                    alt_host = "gluetun"
+            alt_base = f"http://{alt_host}:{alt_port}"
+            try:
+                alt_resp = httpx.get(
+                    f"{alt_base}{alt_endpoint}",
+                    headers={"X-Api-Key": alt_key},
+                    timeout=timeout,
+                )
+                alt_resp.raise_for_status()
+                alt_items = alt_resp.json()
+                alt_match = _match_torrent_to_arr(torrent.name, alt_items)
+                if alt_match:
+                    log.warning(
+                        "CROSS-SERVICE match: torrent '%s' has category '%s' "
+                        "but matched %s entry '%s' — possible misroute",
+                        torrent.name[:40], torrent.category,
+                        alt_service, alt_match.get("title"),
+                    )
+                    return self._extract_arr_metadata(
+                        alt_match, service_name=alt_service,
+                    )
+            except Exception as exc:
+                log.debug("cross-service %s lookup failed: %s", alt_service, exc)
 
         return None
 
@@ -1039,6 +1725,119 @@ class PipelineRunner:
                 )
 
         return metadata
+
+    def _build_absolute_episode_map(
+        self, config: StackConfig, series_id: int,
+    ) -> Optional[dict]:
+        """Fetch Sonarr's episode list and build a map from absolute episode
+        number to (season, episode) for anime series.
+
+        Returns ``{absolute_ep: {"season": N, "episode": N}}`` or None
+        if the series doesn't use absolute numbering.
+        """
+        state = self.repo.load_state()
+        api_key = state.get("secrets", {}).get("sonarr", {}).get("api_key")
+        if not api_key:
+            return None
+
+        host = "sonarr"
+        if config.services.gluetun.enabled:
+            from ..models import VPN_ROUTED_SERVICES
+            if "sonarr" in VPN_ROUTED_SERVICES:
+                host = "gluetun"
+
+        try:
+            resp = httpx.get(
+                f"http://{host}:8989/api/v3/episode",
+                params={"seriesId": series_id},
+                headers={"X-Api-Key": api_key},
+                timeout=httpx.Timeout(15.0, connect=5.0),
+            )
+            resp.raise_for_status()
+            episodes = resp.json()
+        except Exception as exc:
+            log.debug("failed to fetch episode list for series %s: %s", series_id, exc)
+            return None
+
+        # Build the map: absolute_episode -> {season, episode}
+        abs_map = {}
+        has_absolute = False
+        for ep in episodes:
+            abs_num = ep.get("absoluteEpisodeNumber")
+            season = ep.get("seasonNumber", 0)
+            ep_num = ep.get("episodeNumber", 0)
+            if abs_num is not None and season > 0:
+                has_absolute = True
+                abs_map[abs_num] = {"season": season, "episode": ep_num}
+
+        if not has_absolute:
+            return None
+
+        log.info(
+            "built absolute episode map for series %s: %d entries (S01-S%02d)",
+            series_id, len(abs_map),
+            max(v["season"] for v in abs_map.values()) if abs_map else 0,
+        )
+        return abs_map
+
+    def _check_fallback_grab_metadata(
+        self, config: StackConfig, torrent: TorrentRecord,
+    ) -> Optional[ArrMetadata]:
+        """Check if this torrent was grabbed by the Prowlarr fallback.
+
+        If so, we already know the exact service and media ID — no need for
+        fragile hash or name matching.  Queries the arr service by ID to get
+        the full metadata (library path, original language).
+        """
+        fallback_state = self.repo.load_fallback_state()
+        grab_meta = fallback_state.get("grab_metadata", {})
+
+        entry = grab_meta.get(torrent.name)
+        if not entry:
+            return None
+
+        service_name = entry.get("service")  # "sonarr" or "radarr"
+        media_id = entry.get("media_id")
+        if not service_name or media_id is None:
+            return None
+
+        log.info(
+            "fallback metadata match: %s -> %s id=%s",
+            torrent.name[:50], service_name, media_id,
+        )
+
+        state = self.repo.load_state()
+        api_key = state.get("secrets", {}).get(service_name, {}).get("api_key")
+        if not api_key:
+            return None
+
+        port = 7878 if service_name == "radarr" else 8989
+        endpoint = "/api/v3/movie" if service_name == "radarr" else "/api/v3/series"
+        host = service_name
+        if config.services.gluetun.enabled:
+            from ..models import VPN_ROUTED_SERVICES
+            if service_name in VPN_ROUTED_SERVICES:
+                host = "gluetun"
+
+        try:
+            resp = httpx.get(
+                f"http://{host}:{port}{endpoint}/{media_id}",
+                headers={"X-Api-Key": api_key},
+                timeout=httpx.Timeout(15.0, connect=5.0),
+            )
+            resp.raise_for_status()
+            item = resp.json()
+            return self._extract_arr_metadata(item, service_name=service_name)
+        except Exception as exc:
+            log.warning(
+                "fallback metadata lookup failed for %s id=%s: %s",
+                service_name, media_id, exc,
+            )
+            # Return minimal metadata so at least the service/id are known
+            meta = ArrMetadata()
+            meta.service_name = service_name
+            meta.media_id = media_id
+            return meta
 
     def _process_torrent(
         self,
@@ -1106,6 +1905,13 @@ class PipelineRunner:
         # Extract preferred audio languages for post-remux validation
         keep_audio_langs = set(config.media_policy.movies.keep_audio)
 
+        # Build absolute-to-season episode map for anime series.
+        # Translates absolute episode numbers (e.g. 50) to correct
+        # season/episode (e.g. S02E23) using Sonarr's episode list.
+        abs_map = None
+        if metadata and metadata.service_name == "sonarr" and metadata.media_id:
+            abs_map = self._build_absolute_episode_map(config, metadata.media_id)
+
         worker = PipelineWorker(config)
         try:
             plans = worker.build_plans(
@@ -1113,6 +1919,7 @@ class PipelineRunner:
                 original_language=metadata.original_language if metadata else None,
                 library_path=metadata.library_path if metadata else None,
                 iso_mount_dir=iso_mount_dir,
+                absolute_episode_map=abs_map,
             )
         except ValueError as exc:
             log.error("plan failed for %s: %s", torrent.name, exc)
@@ -1189,6 +1996,25 @@ class PipelineRunner:
                     )
 
             shutil.move(str(plan.staging_output), str(plan.final_output))
+            # Verify the file actually landed
+            if not plan.final_output.exists():
+                log.error(
+                    "  [%d/%d] move LOST file: %s not found after move",
+                    i, total, plan.final_output,
+                )
+                failed += 1
+                continue
+
+            # Fix ownership so non-root services (Bazarr, Jellyfin) can
+            # read/write subtitle files alongside the media.
+            try:
+                uid = config.runtime.user_id
+                gid = config.runtime.group_id
+                os.chown(str(plan.final_output), uid, gid)
+                os.chown(str(plan.final_output.parent), uid, gid)
+            except OSError:
+                pass  # best-effort; non-fatal
+
             log.info("  [%d/%d] moved to %s", i, total, plan.final_output)
             succeeded += 1
             succeeded_plans.append(plan)
@@ -1253,12 +2079,20 @@ class PipelineRunner:
             )
             return True  # still trigger refresh for the files that did succeed
         else:
-            # Total failure
+            # Total failure — clean up source immediately to free scratch space.
+            # The torrent is non-recoverable (ffmpeg can't process it), so
+            # holding onto the source for 24h just wastes disk.
+            log.error(
+                "FAILED: %s (all %d files failed) — cleaning up %.1f GB from scratch",
+                torrent.name, total, torrent.size / (1024**3),
+            )
+            self._cleanup_path(torrent.content_path)
+            self._cleanup_empty_parent(torrent.content_path)
+            api.remove_torrents([torrent.hash])
             self._mark_processed(
                 torrent.hash, "ffmpeg_failed",
                 f"all {total} files failed"
             )
-            log.error("FAILED: %s (all %d files failed)", torrent.name, total)
             return False
 
     def _compute_ffmpeg_timeout(self, source: Path) -> int:
@@ -1274,31 +2108,68 @@ class PipelineRunner:
         timeout_secs = int(7200 + (size_gb / 25) * 3600)
         return min(timeout_secs, 8 * 3600)
 
+    @staticmethod
+    def _needs_ascii_symlink(path_str: str) -> bool:
+        """Check if a path contains non-ASCII characters that may break
+        ffmpeg subprocess execution."""
+        return any(ord(c) > 127 for c in path_str)
+
     def _run_ffmpeg(self, command: List[str], *, source: Optional[Path] = None) -> bool:
         timeout = self._compute_ffmpeg_timeout(source) if source else 3600
         timeout_hours = timeout / 3600
+
+        # Non-ASCII filenames (Cyrillic, CJK, Arabic, etc.) can cause
+        # "Error opening input file" in ffmpeg subprocess.  Work around
+        # this by creating a temporary ASCII-safe symlink and rewriting
+        # the -i argument in the command to point to it.
+        symlink_path: Optional[Path] = None
         try:
-            proc = subprocess.Popen(
-                command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
-            )
-        except OSError as exc:
-            log.error("ffmpeg failed to start: %s", exc)
-            return False
-        try:
-            stdout, stderr = proc.communicate(timeout=timeout)
-        except subprocess.TimeoutExpired:
-            log.error("ffmpeg timed out after %.1f hours — sending SIGKILL", timeout_hours)
-            proc.kill()
-            proc.communicate()  # Reap zombie process
-            return False
-        if proc.returncode != 0:
-            stderr_stripped = stderr.strip()
-            # Only log last few lines of stderr to avoid flooding
-            lines = stderr_stripped.split("\n")
-            tail = "\n".join(lines[-5:]) if len(lines) > 5 else stderr_stripped
-            log.error("ffmpeg error (exit %d): %s", proc.returncode, tail)
-            return False
-        return True
+            for i, arg in enumerate(command):
+                if self._needs_ascii_symlink(arg) and Path(arg).exists():
+                    # Create a symlink in /tmp with a safe hash-based name
+                    safe_name = hashlib.sha256(arg.encode()).hexdigest()[:16]
+                    suffix = Path(arg).suffix
+                    symlink_path = Path(f"/tmp/_ffmpeg_safe_{safe_name}{suffix}")
+                    if symlink_path.exists():
+                        symlink_path.unlink()
+                    symlink_path.symlink_to(arg)
+                    command = list(command)  # don't mutate the original
+                    command[i] = str(symlink_path)
+                    log.debug(
+                        "created ASCII-safe symlink for non-ASCII path: %s -> %s",
+                        symlink_path.name, Path(arg).name[:40],
+                    )
+                    break  # typically only one -i input
+
+            try:
+                proc = subprocess.Popen(
+                    command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                )
+            except OSError as exc:
+                log.error("ffmpeg failed to start: %s", exc)
+                return False
+            try:
+                stdout, stderr = proc.communicate(timeout=timeout)
+            except subprocess.TimeoutExpired:
+                log.error("ffmpeg timed out after %.1f hours — sending SIGKILL", timeout_hours)
+                proc.kill()
+                proc.communicate()  # Reap zombie process
+                return False
+            if proc.returncode != 0:
+                stderr_stripped = stderr.strip()
+                # Only log last few lines of stderr to avoid flooding
+                lines = stderr_stripped.split("\n")
+                tail = "\n".join(lines[-5:]) if len(lines) > 5 else stderr_stripped
+                log.error("ffmpeg error (exit %d): %s", proc.returncode, tail)
+                return False
+            return True
+        finally:
+            # Always clean up the symlink
+            if symlink_path and symlink_path.is_symlink():
+                try:
+                    symlink_path.unlink()
+                except OSError:
+                    pass
 
     def _validate_output(
         self, staging_output: Path, source: Path,
@@ -1627,17 +2498,36 @@ class PipelineRunner:
             if service_name in VPN_ROUTED_SERVICES:
                 host = "gluetun"
 
+        headers = {"X-Api-Key": api_key}
+        base = f"http://{host}:{port}/api/v3/command"
+        timeout = httpx.Timeout(10.0, connect=5.0)
+
         try:
+            # Step 1: Refresh metadata (links file in arr database)
             response = httpx.post(
-                f"http://{host}:{port}/api/v3/command",
+                base,
                 json={"name": command, id_field: [media_id]},
-                headers={"X-Api-Key": api_key},
-                timeout=httpx.Timeout(10.0, connect=5.0),
+                headers=headers,
+                timeout=timeout,
             )
             response.raise_for_status()
             log.info(
                 "notified %s: %s(%s=[%s])",
                 service_name, command, id_field, media_id,
+            )
+
+            # Step 2: Rescan disk (ensures new files on disk are discovered)
+            # RefreshMovie/RefreshSeries updates metadata from TVDB/TMDB
+            # but may not trigger a full disk scan.  RescanSeries/RescanMovie
+            # forces a scan of the item's folder on disk.
+            rescan_command = (
+                "RescanMovie" if service_name == "radarr" else "RescanSeries"
+            )
+            httpx.post(
+                base,
+                json={"name": rescan_command, id_field: [media_id]},
+                headers=headers,
+                timeout=timeout,
             )
         except (httpx.RequestError, httpx.HTTPStatusError) as exc:
             # Non-fatal — bulk rescan at end of cycle is the safety net
