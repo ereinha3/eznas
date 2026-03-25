@@ -92,9 +92,44 @@ When the pipeline processes a torrent, it determines the correct service + media
 - `frontend/src/` — React UI (TypeScript)
 - `templates/` — Jinja2 templates (docker-compose.yml.j2, env.j2, secrets/)
 - `generated/` — Rendered output (docker-compose.yml, .env, .secrets/)
-- `scripts/` — Production scripts (dev.sh)
+- `scripts/` — Production scripts and automation:
+  - `dev.sh` — Docker dev environment launcher
+  - `jellyfin_setup.py` — Scripted Jellyfin plugin configuration (idempotent)
+  - `jellyfin_studio_collections.py` — Auto-sync studio-based collections
+  - `targeted_sub_search.py` — Slow-drip subtitle fetcher for critical missing subs
 - `scripts/archived/` — One-off remediation scripts (historical)
 - `docs/archive/` — Completed session notes and incident reports
+
+### Service Topology
+```
+Users ──→ Jellyfin (16 plugins, ElegantFin theme)
+            ├── Jellyseerr (embedded via Jellyfin Enhanced + iframe tab)
+            │     ├── Radarr ──→ Prowlarr (25 indexers) ──→ qBittorrent ──→ Gluetun (VPN)
+            │     └── Sonarr ──→ Prowlarr                ──→ qBittorrent ──→ Gluetun
+            └── Bazarr (8 subtitle providers, AniDB)
+
+Pipeline Worker (runs every 60s):
+  qBittorrent completed ──→ 5-layer metadata match ──→ ffmpeg remux ──→ /mnt/pool/media/
+  Health monitor ──→ stall detection ──→ blocklist + re-search
+  Nightly ──→ indexer discovery + missing search + studio collection sync
+
+EZNAS Admin UI (React + FastAPI):
+  Configure all services ──→ render Docker Compose ──→ deploy ──→ verify
+```
+
+### Jellyfin Plugins (16 active)
+- **Jellyfin Enhanced** — quality/language/rating/genre tags on posters, Jellyseerr request integration (embedded modal), Elsewhere streaming links, ArrLinks (admin), calendar, downloads page, bookmarks, pause screen
+- **Home Screen Sections** — Netflix-style modular home connected to Jellyseerr (Discover, Trending, My Requests), Sonarr (Upcoming), Radarr (Upcoming), plus Genre, Because You Watched, Watch Again
+- **TMDb Box Sets** — auto-creates 35+ franchise collections (MCU, Star Wars, etc.)
+- **Fanart** — ClearLogo, ClearArt, landscape thumbnails from fanart.tv
+- **Custom Tabs** — "Requests" tab embedding Jellyseerr iframe
+- **Intro Skipper** — auto-detect + skip intros, credits, recaps, previews, commercials
+- **Subtitle Extract** — extracts embedded subs to external .srt (reduces transcoding)
+- **Playback Reporting** — tracks watch history per user
+- **Skin Manager**, **TMDb**, **OMDb**, **MusicBrainz**, **AudioDB**, **Studio Images**, **File Transformation**
+
+Plugin configuration is scripted: `python3 scripts/jellyfin_setup.py --execute`
+Studio collections auto-sync nightly via pipeline + standalone: `python3 scripts/jellyfin_studio_collections.py --execute`
 
 ### Key Files
 - `stack.yaml` — Main configuration (user-editable via UI)
@@ -161,7 +196,16 @@ Disabled. Was causing false "not found" results due to provider rate limits, whi
 
 ## Future: Media Enrichment Pipeline
 
-A planned audio cross-mux system that finds and merges missing-language audio tracks from alternate releases into existing library files. Uses chromaprint-based audio fingerprinting for frame-accurate alignment.
+### Goal
+Every media item in the library should have the **highest-quality video** combined with **all user-preferred audio languages** and **complete subtitle coverage**. Currently, many anime and foreign films have only the original language audio. The enrichment pipeline automatically finds alternate releases with missing audio tracks (e.g., English dub for a Japanese-only 4K anime), extracts the audio, aligns it using acoustic fingerprinting, and merges it into the existing high-quality file — producing a single file with the best video AND dual/multi audio.
+
+### Why This Matters
+- ~200 anime files currently have Japanese-only audio with no English dub
+- Users must choose between highest quality (4K Japanese) or English audio (1080p dub) — they can't have both
+- External subtitle files help but dubbed audio is strongly preferred for casual viewing
+- Manual cross-muxing is tedious and error-prone; automation makes it seamless
+
+### Approach: Chromaprint Audio Sync
 
 ### Approach: Chromaprint Audio Sync
 
