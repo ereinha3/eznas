@@ -604,6 +604,7 @@ class QBittorrentClient(ServiceClient):
         mapping = {
             categories.radarr: f'{CONTAINER_PATHS["downloads_complete"]}/movies',
             categories.sonarr: f'{CONTAINER_PATHS["downloads_complete"]}/tv',
+            "enrichment": f'{CONTAINER_PATHS["downloads_complete"]}/enrichment',
         }
         changed = False
         for name, path in mapping.items():

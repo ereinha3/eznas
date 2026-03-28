@@ -11,7 +11,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends docker.io docker-cli openssl ca-certificates ffmpeg curl \
+    && apt-get install -y --no-install-recommends \
+        docker.io docker-cli openssl ca-certificates ffmpeg \
+        libchromaprint-tools curl gcc libc6-dev \
     && mkdir -p /usr/libexec/docker/cli-plugins \
     && curl -SL https://github.com/docker/compose/releases/download/v2.24.6/docker-compose-linux-x86_64 -o /usr/libexec/docker/cli-plugins/docker-compose \
     && chmod +x /usr/libexec/docker/cli-plugins/docker-compose \
@@ -21,7 +23,6 @@ COPY pyproject.toml uv.lock README.md ./
 COPY orchestrator/ ./orchestrator/
 COPY templates/ ./templates/
 COPY ui/ ./ui/
-COPY stack.yaml state.json ./
 COPY frontend/dist ./frontend/dist
 
 RUN pip install --no-cache-dir .

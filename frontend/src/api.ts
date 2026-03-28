@@ -44,7 +44,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 }
 
 export async function loadConfig(): Promise<StackConfig> {
-  const response = await fetch('/api/config')
+  const response = await fetch('/api/config', {
+    headers: buildHeaders(false),
+  })
   return handleResponse(response)
 }
 

@@ -319,6 +319,18 @@ class ConfigRepository:
             data["prowlarr_fallback"] = fallback
             self._save_section(section="pipeline", data=data)
 
+    def load_enrichment_state(self) -> dict[str, Any]:
+        """Get the enrichment pipeline sub-state from pipeline state."""
+        pipeline = self.load_pipeline_state()
+        return pipeline.get("enrichment", {})
+
+    def save_enrichment_state(self, enrichment: dict[str, Any]) -> None:
+        """Atomically update the enrichment sub-state within pipeline state."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["enrichment"] = enrichment
+            self._save_section(section="pipeline", data=data)
+
     def has_users(self) -> bool:
         """Check if any users exist in auth state."""
         auth = self.get_auth_state()
@@ -495,7 +507,7 @@ class ConfigRepository:
         # Category sub-dirs
         categories = config.download_policy.categories
         complete = download_root / "complete"
-        for suffix in (categories.radarr, categories.sonarr):
+        for suffix in (categories.radarr, categories.sonarr, "enrichment"):
             _ensure(complete / suffix)
 
         # Media library

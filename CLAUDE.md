@@ -66,12 +66,12 @@ python test_pipeline.py --source /path/to/file.mkv --category movies --direct
 8. Sonarr/Radarr notified → Bazarr downloads subtitles → Jellyfin picks up file
 
 ### Pipeline Processing Phases (per tick, every 60s)
-1. **Phase 1** — Process completed qBittorrent torrents (remux + import)
-2. **Phase 1.5** — Health/stall detection (kill dead torrents, exponential backoff)
-3. **Phase 1.9** — Cleanup processed sources
-4. **Phase 2** — Scan orphans (untracked files in scratch)
-5. **Phase 3** — Stale staging file cleanup
-6. **Phase 3.5** — Stale orphan source cleanup (3-day TTL)
+1. **Pre-tick cleanup** — Stale staging files + stale orphan sources (7-day TTL)
+2. **Phase 1** — Process completed qBittorrent torrents (remux + import)
+3. **Phase 1.5** — Health/stall detection (kill dead torrents, exponential backoff)
+4. **Phase 1.9** — Cleanup processed sources
+5. **Phase 2** — Scan orphans (untracked files in scratch, 7-day expiry)
+6. **Phase 3** — Library refresh (trigger arr rescans)
 7. **Phase 4** — Backfill engine (search for missing content)
 8. **Phase 5** — Prowlarr direct-grab fallback (bypasses arr title matching)
 9. **Phase 6** — Nightly automation (indexer discovery + missing content search)
@@ -88,7 +88,7 @@ When the pipeline processes a torrent, it determines the correct service + media
 - `orchestrator/` — Python backend (FastAPI, Pydantic models, service clients)
 - `orchestrator/clients/` — API clients (qb.py, radarr.py, sonarr.py, prowlarr.py, etc.)
 - `orchestrator/converge/` — Orchestration pipeline (runner.py, services.py)
-- `orchestrator/pipeline/` — Media processing (runner.py, worker.py, remux.py, health.py, prowlarr_fallback.py)
+- `orchestrator/pipeline/` — Media processing (runner.py, worker.py, remux.py, health.py, prowlarr_fallback.py, sweep.py, backfill.py, bdmv.py, languages.py)
 - `frontend/src/` — React UI (TypeScript)
 - `templates/` — Jinja2 templates (docker-compose.yml.j2, env.j2, secrets/)
 - `generated/` — Rendered output (docker-compose.yml, .env, .secrets/)
@@ -133,33 +133,45 @@ Studio collections auto-sync nightly via pipeline + standalone: `python3 scripts
 
 ### Key Files
 - `stack.yaml` — Main configuration (user-editable via UI)
-- `orchestrator/app.py` — FastAPI entrypoint + API routes
-- `orchestrator/models.py` — Pydantic config/state models (StackConfig, BackfillConfig)
+- `orchestrator/app.py` — FastAPI entrypoint + API routes (includes sweep endpoints)
+- `orchestrator/models.py` — Pydantic config/state models (StackConfig, BackfillConfig, MediaPolicy, Sweep models)
+- `orchestrator/storage.py` — ConfigRepository and state persistence
+- `orchestrator/auth.py` — Authentication (Bearer + query-param token for SSE)
 - `orchestrator/validators.py` — Path validation with container-aware mapping
 - `orchestrator/converge/runner.py` — Main apply/converge logic
+- `orchestrator/converge/verification_engine.py` — Service verification orchestration
 - `orchestrator/pipeline/runner.py` — Pipeline worker loop + metadata matching + nightly automation
 - `orchestrator/pipeline/worker.py` — Remux plan builder, episode parsing, output path computation
-- `orchestrator/pipeline/remux.py` — FFmpeg command builder with language/codec filtering
+- `orchestrator/pipeline/remux.py` — FFmpeg command builder with language/codec filtering + audio track selection
+- `orchestrator/pipeline/sweep.py` — Library sweep engine (scan + in-place remux for policy compliance)
 - `orchestrator/pipeline/health.py` — Stall detection, exponential backoff, category-aware blocklisting
+- `orchestrator/pipeline/backfill.py` — Backfill engine for missing content via arr APIs
 - `orchestrator/pipeline/prowlarr_fallback.py` — Direct Prowlarr search + grab metadata tracking
+- `orchestrator/pipeline/bdmv.py` — BDMV/Blu-ray detection and language extraction
+- `orchestrator/pipeline/languages.py` — Language name to ISO 639 code mapping
+- `orchestrator/clients/arr.py` — Common *arr API wrapper (ArrAPI base class, used by radarr/sonarr)
 - `orchestrator/clients/qb.py` — qBittorrent provisioning (auto_tmm, seeding policy)
-- `orchestrator/clients/bazarr.py` — Bazarr subtitle provider provisioning
+- `orchestrator/clients/bazarr.py` — Bazarr subtitle provider provisioning (8 providers, language profiles)
 
 ### Service Client Pattern
 Each service has a dedicated client in `orchestrator/clients/`:
+- `arr.py` — Common *arr API base class (shared by radarr/sonarr, includes GET/POST/DELETE + retry)
 - `qb.py` — qBittorrent (auth, categories, preferences, auto_tmm)
 - `radarr.py` / `sonarr.py` — Arr services (CDH management, download clients, root folders)
 - `prowlarr.py` — Indexer management, FlareSolverr tagging, app linking, auto-populate
 - `jellyseerr.py` — Request aggregator, language profiles, provider connections
 - `jellyfin.py` — Media server wizard, users, libraries
 - `bazarr.py` — Subtitle providers, language profiles, Radarr/Sonarr integration
+- `base.py` — Common client base class
+- `retry.py` — Retry/backoff logic for HTTP requests
+- `util.py` — Shared client utilities
 
 All clients use httpx and follow a consistent ensure/verify pattern.
 
 ## Important Design Decisions
 
 ### CDH (Completed Download Handling)
-Disabled when pipeline is active to prevent duplicate imports. The pipeline is the sole importer. CDH auto-enables when pipeline is disabled as fallback. Code: `sonarr.py` + `radarr.py` lines ~176.
+Disabled when pipeline is active to prevent duplicate imports. The pipeline is the sole importer. CDH auto-enables when pipeline is disabled as fallback. Code: `sonarr.py` + `radarr.py` CDH management methods.
 
 ### qBittorrent Seeding Policy
 `max_ratio_enabled: false`, `max_seeding_time_enabled: false` — the pipeline controls torrent lifecycle (remove after successful import). `auto_tmm_enabled: true` — files go to category-specific save paths. Code: `qb.py` `_configure_preferences()`.
@@ -168,7 +180,7 @@ Disabled when pipeline is active to prevent duplicate imports. The pipeline is t
 When Sonarr metadata is available for a TV series, the pipeline queries `/api/v3/episode` to build an absolute→season map. Anime packs using absolute numbering (e.g., "Show - 50") get correctly mapped to season episodes (e.g., S02E23). Code: `runner.py` `_build_absolute_episode_map()`.
 
 ### Bazarr Adaptive Searching
-Disabled. Was causing false "not found" results due to provider rate limits, which locked items out for weeks. With 8 providers and rate limit management, items are retried every 6 hours. Code: `config.yaml` `adaptive_searching: false`.
+Disabled. Was causing false "not found" results due to provider rate limits, which locked items out for weeks. With 8 providers and rate limit management, items are retried every 6 hours. Configured via Bazarr's internal settings (provisioned by `bazarr.py`).
 
 ## Environment Variables
 - `ORCH_ROOT` — Override config root directory (default: project root)
@@ -186,42 +198,84 @@ Disabled. Was causing false "not found" results due to provider rate limits, whi
 - **Indexing**: Prowlarr (25 indexers), FlareSolverr (CloudFlare bypass)
 
 ## Known Issues / Outstanding Work
-- Cyrillic/Unicode filenames fail in ffmpeg subprocess (Russian-titled releases)
-- Overwrite protection only compares file size (should consider resolution, subs, audio)
+- Overwrite protection only compares file size (should also consider resolution, subtitle count, audio tracks)
 - ~200 anime files missing English subtitles (free provider coverage gap)
 - S00 special episodes not mapped in absolute numbering
-- Audio dedup (keep best per language, strip commentaries) — design pending
-- Cross-mux English audio from dual-audio releases — future enrichment pipeline
 - EZNAS UI needs redesign for better per-service settings
 
-## Future: Media Enrichment Pipeline
+### Resolved Issues (for reference)
+- ~~Cyrillic/Unicode filenames fail in ffmpeg~~ — Fixed via ASCII symlink approach in `_run_ffmpeg()`
+- ~~Audio dedup / commentary stripping~~ — Implemented in `remux.py` audio track selection (commentary/descriptive filtering, best-per-language selection)
+- ~~Audio language stripping~~ — Implemented in `remux.py` + `sweep.py` (keeps only preferred languages per MediaPolicy)
+
+## Media Enrichment Pipeline
 
 ### Goal
-Every media item in the library should have the **highest-quality video** combined with **all user-preferred audio languages** and **complete subtitle coverage**. Currently, many anime and foreign films have only the original language audio. The enrichment pipeline automatically finds alternate releases with missing audio tracks (e.g., English dub for a Japanese-only 4K anime), extracts the audio, aligns it using acoustic fingerprinting, and merges it into the existing high-quality file — producing a single file with the best video AND dual/multi audio.
+Every media item in the library should have the **highest-quality video** combined with **all user-preferred audio languages** and **complete subtitle coverage**.
 
-### Why This Matters
-- ~200 anime files currently have Japanese-only audio with no English dub
-- Users must choose between highest quality (4K Japanese) or English audio (1080p dub) — they can't have both
-- External subtitle files help but dubbed audio is strongly preferred for casual viewing
-- Manual cross-muxing is tedious and error-prone; automation makes it seamless
+### Current Status — Phases 1-4 Complete ✅
 
-### Approach: Chromaprint Audio Sync
+**Phase 1: Track Management**
 
-### Approach: Chromaprint Audio Sync
+| Component | Status | Code |
+|-----------|--------|------|
+| Audio track selection (codec ranking, best-per-language) | ✅ Done | `remux.py` `_select_best_audio()` |
+| Commentary/descriptive track filtering | ✅ Done | `remux.py` (disposition + keyword detection) |
+| Audio language stripping to user preferences | ✅ Done | `remux.py` + `MediaPolicyEntry.keep_audio` |
+| Subtitle language filtering (mov_text compat) | ✅ Done | `remux.py` subtitle mapping |
+| Library sweep (scan + in-place remux) | ✅ Done | `sweep.py` (scan/execute + atomic replace) |
+| Sweep API endpoints | ✅ Done | `app.py` POST /api/pipeline/sweep/{scan,start}, GET status |
+| Bazarr subtitle gathering (8 providers) | ✅ Done | `bazarr.py` (7 free + optional premium) |
+| Language validation on pipeline output | ✅ Done | `runner.py` `_validate_output()` (warning-level) |
+| Non-ASCII filename handling | ✅ Done | `runner.py` ASCII symlink in `_run_ffmpeg()` |
+| Original language lookup via arr APIs | ✅ Done | `sweep.py` + `runner.py` (avoids heuristic guessing) |
+| BDMV/Blu-ray language override (CLPI) | ✅ Done | `bdmv.py` + `remux.py` |
+| MediaPolicy configuration (keep_audio, keep_subs) | ✅ Done | `models.py` MediaPolicyEntry |
 
-The enrichment pipeline uses acoustic fingerprinting (chromaprint/fpcalc) to align audio tracks between different releases of the same content. This handles cases where releases have different cuts, intros, or slight timing offsets. FFmpeg is already compiled with `--enable-chromaprint` and `libchromaprint1` is installed in the pipeline container.
+**Phases 2-4: Enrichment Pipeline**
 
-### 4-Phase Implementation Plan
+| Component | Status | Code |
+|-----------|--------|------|
+| Chromaprint integration (fpcalc, two-pass correlation) | ✅ Done | `chromaprint.py` (fingerprint, validate_and_align, correlate) |
+| Audio cross-mux (build_crossmux_command) | ✅ Done | `remux.py:877` |
+| Video quality upgrades (build_video_upgrade_command) | ✅ Done | `remux.py:972` |
+| Video quality probing (probe_video_quality) | ✅ Done | `remux.py:308` |
+| Gap scanner (scan_library_gaps) | ✅ Done | `enrichment.py:360` |
+| Duration guard (60s tolerance) | ✅ Done | `enrichment.py:727` |
+| Failed entry retry (7-day cooldown) | ✅ Done | `enrichment.py:407-419` |
+| State compaction (5000-entry cap) | ✅ Done | `enrichment.py:192` |
+| Arr rescan after enrichment | ✅ Done | `enrichment.py:1426` (_refresh_arr_item) |
+| EnrichmentConfig model | ✅ Done | `models.py:162` |
+| libchromaprint-tools in Docker | ✅ Done | `Dockerfile:14`, `Dockerfile.dev:17` |
+| qBittorrent enrichment category | ✅ Done | `qb.py:607` |
 
-**Phase 1: Subtitle extraction** — Extract and catalog subtitle tracks from existing library files. Build a metadata index of what each file already contains (audio languages, subtitle languages, codecs). Low risk, read-only operations.
+### Activation Required
 
-**Phase 2: Duration-matched cross-mux** — Search for alternate releases that have the desired audio language (e.g., English dub for anime). Apply a 60-second duration guard: if the candidate's duration differs by more than 60s from the library file, reject it. Mux matching audio tracks into the library file using `ffmpeg -c copy`.
+The enrichment pipeline is fully implemented but needs activation:
 
-**Phase 3: Active dub searching** — Proactively search indexers (via Prowlarr) for dual-audio or specifically-dubbed releases when the library file is missing a configured language. Download candidates, extract the needed audio, mux it in, then clean up the source.
+1. **Rebuild Docker image** — picks up `libchromaprint-tools` (fpcalc binary)
+2. **Apply Stack** — creates `enrichment` qBT category
+3. **Restart pipeline worker** — picks up `enrichment.enabled: true` from stack.yaml
+4. Verify `fpcalc -version` works inside the container
 
-**Phase 4: Chromaprint sync** — Full acoustic fingerprint alignment for cases where duration-matching is insufficient. Generate chromaprint fingerprints for both the library file and the candidate, correlate them to find the precise offset, then use that offset when muxing to produce frame-accurate audio sync.
+Current stack.yaml enrichment config:
+```yaml
+enrichment:
+  enabled: true
+  search_interval_hours: 24
+  max_grabs_per_cycle: 2
+  search_queries: [dual audio, english dub, multi]
+  min_seeders: 3
+  correlation_threshold: 0.7
+  fingerprint_duration_seconds: 120
+  target_languages: [eng, original]
+  upgrade_video: true
+  target_resolution: 1080p
+  prefer_hdr: true
+  prefer_hevc: true
+```
 
-### 10-Step Pipeline Flow
+### Enrichment Pipeline Flow (Phases 2-4)
 
 1. **SEARCH** — Query Prowlarr for alternate releases with the missing audio language
 2. **DOWNLOAD** — Grab the best candidate via qBittorrent

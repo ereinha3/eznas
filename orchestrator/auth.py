@@ -300,18 +300,29 @@ async def get_auth_manager(request: Request) -> AuthManager:
 
 
 async def require_auth(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     auth_manager: AuthManager = Depends(get_auth_manager),
 ) -> Session:
-    """Dependency to require authentication."""
-    if not credentials:
+    """Dependency to require authentication.
+
+    Accepts a Bearer token via the Authorization header, or via a ``token``
+    query parameter (needed for SSE endpoints where EventSource cannot send
+    custom headers).
+    """
+    token: Optional[str] = None
+    if credentials:
+        token = credentials.credentials
+    else:
+        token = request.query_params.get("token")
+
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Authentication required",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = credentials.credentials
     session = auth_manager.validate_session(token)
 
     if not session:

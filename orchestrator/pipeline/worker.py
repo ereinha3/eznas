@@ -395,6 +395,11 @@ class PipelineWorker:
                 video_files = [m2ts_files[0]]  # already sorted largest-first
 
         plans: List[PipelinePlan] = []
+        # Track which individual episodes are covered by each plan,
+        # so we can detect overlap between combined and individual files.
+        # Key: (season, episode) → plan index
+        episode_coverage: dict[tuple[int, int], int] = {}
+
         for source in video_files:
             final_output = self._compute_final_path(
                 source, torrent, normalized_category, categories, base_dir,
@@ -412,7 +417,67 @@ class PipelineWorker:
                 )
                 continue
 
+            # SAFETY: Skip if this file already exists in the library.
+            # Avoids redundant ffmpeg runs for already-imported episodes.
+            if final_output.exists():
+                print(
+                    f"[pipeline] skipping {source.name}: already exists "
+                    f"in library at {final_output.name}"
+                )
+                continue
+
             final_output.parent.mkdir(parents=True, exist_ok=True)
+
+            # ── Multi-episode overlap detection ────────────────────────
+            # When a season pack has both combined (S01E01-E02.mkv) AND
+            # individual (S01E01.mkv + S01E02.mkv), prefer individual
+            # files and skip the combined one.  Individual files give
+            # cleaner per-episode management in Sonarr/Jellyfin.
+            if normalized_category == categories.sonarr:
+                ep_info = parse_tv_episode(source.stem)
+                if ep_info:
+                    _, season, episode, end_episode = ep_info
+                    if end_episode and end_episode > episode:
+                        # This is a combined multi-episode file.
+                        # Check if ANY of its episodes are already claimed
+                        # by an individual file plan.
+                        covered_eps = set(range(episode, end_episode + 1))
+                        already_individual = any(
+                            (season, ep) in episode_coverage
+                            for ep in covered_eps
+                        )
+                        if already_individual:
+                            print(
+                                f"[pipeline] skipping combined {source.name}: "
+                                f"individual episode files already planned"
+                            )
+                            continue
+                        # Register all episodes as covered by this plan
+                        plan_idx = len(plans)
+                        for ep in covered_eps:
+                            episode_coverage[(season, ep)] = plan_idx
+                    else:
+                        # Single episode file.  Check if a combined file
+                        # already covers this episode.
+                        if (season, episode) in episode_coverage:
+                            # An earlier combined plan covers this ep.
+                            # We PREFER the individual file, so remove
+                            # the combined plan and replace.
+                            old_idx = episode_coverage[(season, episode)]
+                            if old_idx < len(plans) and plans[old_idx] is not None:
+                                old_plan = plans[old_idx]
+                                # Check the old plan is actually a multi-ep
+                                old_ep = parse_tv_episode(old_plan.source.stem)
+                                if old_ep and old_ep[3] and old_ep[3] > old_ep[2]:
+                                    print(
+                                        f"[pipeline] replacing combined "
+                                        f"{old_plan.source.name} with "
+                                        f"individual {source.name}"
+                                    )
+                                    plans[old_idx] = None  # type: ignore[assignment]
+                        # Register this episode
+                        episode_coverage[(season, episode)] = len(plans)
+
             # Stage as a temp file next to the final output (same filesystem)
             # so the final move is an atomic rename, not a cross-device copy.
             staging_output = final_output.parent / f".tmp_{final_output.name}"
@@ -431,7 +496,8 @@ class PipelineWorker:
                 original_language=original_language,
             ))
 
-        return plans
+        # Filter out any plans that were nullified by overlap replacement
+        return [p for p in plans if p is not None]
 
     def _detect_bdmv_in_torrent(self, torrent: TorrentInfo) -> Optional[Path]:
         """Check if any path in the torrent contains a BDMV structure.
@@ -733,6 +799,15 @@ class PipelineWorker:
                     if mapped:
                         season = mapped["season"]
                         episode = mapped["episode"]
+                        # Also map end_episode for multi-episode files
+                        if end_episode:
+                            end_mapped = absolute_episode_map.get(end_episode)
+                            if end_mapped and end_mapped["season"] == season:
+                                end_episode = end_mapped["episode"]
+                            else:
+                                # end_episode maps to a different season —
+                                # drop the multi-ep range to avoid confusion
+                                end_episode = None
 
                 # Use the canonical show name from Sonarr when available
                 # e.g. library_path = /data/tv/The Legend of Korra

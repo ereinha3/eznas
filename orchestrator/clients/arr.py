@@ -56,6 +56,16 @@ class ArrAPI(AbstractContextManager):
                 return response.text
         return None
 
+    def delete(self, path: str, **kwargs: Any) -> Any:
+        response = retry_request(self._client.delete, path, **kwargs)
+        response.raise_for_status()
+        if response.content:
+            try:
+                return response.json()
+            except ValueError:
+                return response.text
+        return None
+
 
 def wait_for_http_ready(
     url: str,

@@ -259,6 +259,126 @@ def _select_best_audio(
 
 
 @dataclass
+class VideoQuality:
+    """Video quality metadata extracted from ffprobe."""
+
+    width: int = 0
+    height: int = 0
+    codec: str = ""  # e.g. "hevc", "h264", "av1"
+    hdr: bool = False
+    bit_rate: int = 0
+    score: int = 0  # Computed quality score for comparison
+
+    @property
+    def resolution_label(self) -> str:
+        if self.height >= 2000:
+            return "2160p"
+        elif self.height >= 1400:
+            return "1440p"
+        elif self.height >= 900:
+            return "1080p"
+        elif self.height >= 600:
+            return "720p"
+        elif self.height >= 400:
+            return "480p"
+        return f"{self.height}p" if self.height > 0 else "unknown"
+
+
+# Resolution scores (higher = better)
+_RESOLUTION_SCORES = {
+    "2160p": 400,
+    "1440p": 300,
+    "1080p": 200,
+    "720p": 100,
+    "480p": 50,
+}
+
+# Video codec scores
+_VIDEO_CODEC_SCORES: Dict[str, int] = {
+    "av1": 40,
+    "hevc": 30,
+    "h265": 30,
+    "vp9": 25,
+    "h264": 20,
+    "mpeg4": 5,
+    "mpeg2video": 5,
+}
+
+
+def probe_video_quality(source: Path) -> Optional[VideoQuality]:
+    """Probe a media file to extract video quality metadata.
+
+    Returns a VideoQuality with a numeric score for comparison.
+    Higher score = better quality.  Scoring factors:
+      - Resolution: 2160p=400, 1080p=200, 720p=100
+      - Codec: AV1=40, HEVC=30, H.264=20
+      - HDR: +50 bonus
+      - Bitrate: up to +30 bonus
+    """
+    streams = probe_raw_streams(source)
+    if not streams:
+        return None
+
+    # Find the REAL video stream — skip embedded thumbnails/cover art.
+    # Thumbnails are typically MJPEG/PNG with small dimensions and the
+    # "attached_pic" disposition flag set.
+    _THUMBNAIL_CODECS = {"mjpeg", "png", "bmp", "gif"}
+    best_vq: Optional[VideoQuality] = None
+
+    for stream in streams:
+        if stream.get("codec_type") != "video":
+            continue
+
+        codec = stream.get("codec_name", "").lower()
+        width = int(stream.get("width", 0))
+        height = int(stream.get("height", 0))
+
+        # Skip attached picture / cover art streams
+        disp = stream.get("disposition", {})
+        if disp.get("attached_pic", 0):
+            continue
+        # Skip known thumbnail codecs with small dimensions
+        if codec in _THUMBNAIL_CODECS and width < 1000 and height < 1000:
+            continue
+
+        bit_rate = int(stream.get("bit_rate", 0) or 0)
+
+        # HDR detection via color transfer characteristics
+        color_transfer = stream.get("color_transfer", "")
+        hdr = color_transfer in ("smpte2084", "arib-std-b67")
+
+        vq = VideoQuality(
+            width=width, height=height, codec=codec,
+            hdr=hdr, bit_rate=bit_rate,
+        )
+
+        # Compute score
+        score = _RESOLUTION_SCORES.get(vq.resolution_label, 0)
+        score += _VIDEO_CODEC_SCORES.get(codec, 10)
+        if hdr:
+            score += 50
+        if bit_rate > 0:
+            score += min(bit_rate // 1_000_000, 30)
+
+        vq.score = score
+
+        # Keep the highest-scoring video stream
+        if best_vq is None or score > best_vq.score:
+            best_vq = vq
+
+    return best_vq
+
+
+# Minimum scores for target resolutions (used for upgrade decisions)
+RESOLUTION_TARGET_SCORES: Dict[str, int] = {
+    "720p": 100,
+    "1080p": 200,
+    "1440p": 300,
+    "2160p": 400,
+}
+
+
+@dataclass
 class StreamInfo:
     """Information about streams in a media file."""
     audio_languages: Set[str]
@@ -597,5 +717,334 @@ def _normalized(languages: Iterable[str]) -> List[str]:
         seen.add(code)
         result.append(code)
     return result
+
+
+# ---------------------------------------------------------------------------
+# Cross-mux: merge an audio track from a candidate file into a library file
+# ---------------------------------------------------------------------------
+
+
+def probe_raw_streams(source: Path) -> Optional[List[dict]]:
+    """Return raw ffprobe stream dicts for a file, or None on failure."""
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "quiet",
+                "-print_format", "json",
+                "-show_streams", "-show_format",
+                str(source),
+            ],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout)
+        return data.get("streams", [])
+    except Exception:
+        return None
+
+
+def find_best_audio_track_for_language(
+    streams: List[dict],
+    target_language: str,
+) -> Optional[_AudioTrack]:
+    """Find the best audio track in a specific language from raw streams.
+
+    Parses all audio streams, filters to those matching target_language,
+    and returns the highest-scored track.  Returns None if no matching
+    track is found.
+    """
+    target_norm = _normalize_lang(target_language.lower())
+    candidates: List[_AudioTrack] = []
+
+    for stream in streams:
+        track = _parse_audio_track(stream)
+        if track is None:
+            continue
+        if track.is_commentary:
+            continue
+        if _normalize_lang(track.lang) != target_norm:
+            continue
+        track.score = _score_audio_track(track)
+        candidates.append(track)
+
+    if not candidates:
+        return None
+
+    return max(candidates, key=lambda t: t.score)
+
+
+def find_all_enrichment_audio_tracks(
+    streams: List[dict],
+    target_languages: set[str],
+    library_audio_languages: set[str],
+) -> List[_AudioTrack]:
+    """Find the best audio track for EACH missing target language.
+
+    For each language in target_languages that is not in
+    library_audio_languages, selects the best candidate audio track.
+    Returns a list of tracks to cross-mux (may be empty).
+    """
+    missing = {_normalize_lang(l) for l in target_languages} - {
+        _normalize_lang(l) for l in library_audio_languages
+    }
+    missing.discard("und")
+
+    if not missing:
+        return []
+
+    # Parse + score all non-commentary audio tracks
+    all_tracks: List[_AudioTrack] = []
+    for stream in streams:
+        track = _parse_audio_track(stream)
+        if track is None or track.is_commentary:
+            continue
+        track.score = _score_audio_track(track)
+        all_tracks.append(track)
+
+    # For each missing language, pick the best track
+    result: List[_AudioTrack] = []
+    for lang in sorted(missing):
+        candidates = [
+            t for t in all_tracks
+            if _normalize_lang(t.lang) == lang
+        ]
+        if candidates:
+            result.append(max(candidates, key=lambda t: t.score))
+
+    return result
+
+
+@dataclass
+class _SubtitleCandidate:
+    """A subtitle stream from a candidate file worth cross-muxing."""
+
+    stream_index: str  # Absolute ffprobe stream index
+    lang: str  # ISO 639 code
+    codec: str
+    forced: bool = False
+    title: str = ""
+
+
+def find_useful_candidate_subtitles(
+    cand_streams: List[dict],
+    library_sub_languages: set[str],
+    target_languages: set[str],
+) -> List[_SubtitleCandidate]:
+    """Find subtitle streams in a candidate that the library doesn't have.
+
+    Returns subtitles in target languages that are absent from the library
+    file.  Filters out MKV-incompatible codecs (e.g., mov_text).
+    """
+    missing = {_normalize_lang(l) for l in target_languages} - {
+        _normalize_lang(l) for l in library_sub_languages
+    }
+    missing.discard("und")
+
+    if not missing:
+        return []
+
+    result: List[_SubtitleCandidate] = []
+    for stream in cand_streams:
+        if stream.get("codec_type") != "subtitle":
+            continue
+
+        codec = stream.get("codec_name", "").lower()
+        if codec in _MKV_INCOMPATIBLE_SUBTITLE_CODECS:
+            continue
+
+        lang = _normalize_lang(
+            stream.get("tags", {}).get("language", "und")
+        )
+        if lang not in missing:
+            continue
+
+        disp = stream.get("disposition", {})
+        forced = bool(disp.get("forced", 0))
+        title = stream.get("tags", {}).get("title", "")
+
+        result.append(_SubtitleCandidate(
+            stream_index=str(stream.get("index", "")),
+            lang=lang,
+            codec=codec,
+            forced=forced,
+            title=title,
+        ))
+
+    return result
+
+
+def build_crossmux_command(
+    library: Path,
+    candidate: Path,
+    audio_tracks: List[_AudioTrack],
+    subtitle_tracks: Optional[List[_SubtitleCandidate]],
+    offset_seconds: float,
+    destination: Path,
+) -> List[str]:
+    """Build an ffmpeg command that merges audio (and optionally subtitle)
+    tracks from a candidate file into an existing library file.
+
+    The library file provides video, all existing audio, and all subtitles.
+    The candidate file provides additional audio tracks and/or subtitles.
+    The ``offset_seconds`` value (from chromaprint correlation) is applied
+    via ``-itsoffset`` to align the candidate streams with the library video.
+
+    Args:
+        library: Path to the existing library file (input 0).
+        candidate: Path to the candidate file (input 1).
+        audio_tracks: Audio tracks to take from the candidate (from
+            ``find_all_enrichment_audio_tracks`` or single-track list).
+        subtitle_tracks: Subtitle tracks to take from the candidate (from
+            ``find_useful_candidate_subtitles``).  May be None or empty.
+        offset_seconds: Time offset from chromaprint alignment.
+        destination: Output path for the cross-muxed file.
+
+    Returns:
+        Full ffmpeg command as a list of strings.
+    """
+    args = ["ffmpeg", "-y", "-hide_banner"]
+
+    # Input 0: library file (video + existing audio + subtitles)
+    args.extend(["-i", str(library)])
+
+    # Input 1: candidate file with offset applied
+    if abs(offset_seconds) > 0.001:
+        args.extend(["-itsoffset", f"{offset_seconds:.3f}"])
+    args.extend(["-i", str(candidate)])
+
+    # Map from library (input 0) — use 0:v:0 to skip thumbnail streams
+    args.extend(["-map", "0:v:0"])  # First real video stream only
+    args.extend(["-map", "0:a"])    # All existing audio streams
+    args.extend(["-map", "0:s?"])   # All subtitle streams (? = optional)
+
+    # Map audio tracks from candidate (input 1)
+    for track in audio_tracks:
+        args.extend(["-map", f"1:{track.stream_index}"])
+
+    # Map subtitle tracks from candidate (input 1)
+    if subtitle_tracks:
+        for sub in subtitle_tracks:
+            args.extend(["-map", f"1:{sub.stream_index}"])
+
+    # Copy all streams — no transcoding
+    args.extend(["-c", "copy"])
+
+    # Count existing library streams to determine metadata indices
+    lib_streams = probe_raw_streams(library)
+    lib_audio_count = 0
+    lib_sub_count = 0
+    if lib_streams:
+        lib_audio_count = sum(
+            1 for s in lib_streams if s.get("codec_type") == "audio"
+        )
+        lib_sub_count = sum(
+            1 for s in lib_streams if s.get("codec_type") == "subtitle"
+        )
+
+    # Set language + title metadata on each new audio track
+    for i, track in enumerate(audio_tracks):
+        idx = lib_audio_count + i
+        lang_norm = _normalize_lang(track.lang)
+        args.extend([
+            f"-metadata:s:a:{idx}", f"language={lang_norm}",
+        ])
+        args.extend([
+            f"-metadata:s:a:{idx}", f"title=Enrichment ({lang_norm.upper()})",
+        ])
+
+    # Set language metadata on each new subtitle track
+    if subtitle_tracks:
+        for i, sub in enumerate(subtitle_tracks):
+            idx = lib_sub_count + i
+            args.extend([
+                f"-metadata:s:s:{idx}", f"language={sub.lang}",
+            ])
+            if sub.forced:
+                args.extend([
+                    f"-disposition:s:s:{idx}", "forced",
+                ])
+
+    args.append(str(destination))
+    return args
+
+
+def build_video_upgrade_command(
+    library: Path,
+    candidate: Path,
+    offset_seconds: float,
+    destination: Path,
+    *,
+    extra_audio: Optional[List[_AudioTrack]] = None,
+    extra_subs: Optional[List[_SubtitleCandidate]] = None,
+) -> List[str]:
+    """Build an ffmpeg command that upgrades video while preserving library audio.
+
+    Takes video from the candidate (higher quality) and ALL audio + subtitles
+    from the library (including previously enriched tracks).  Optionally also
+    grabs additional audio/subtitle tracks from the candidate that the library
+    doesn't have.
+
+    This is the inverse of ``build_crossmux_command``:
+      - crossmux: library video + candidate audio
+      - upgrade:  candidate video + library audio
+
+    Args:
+        library: Existing library file (source of audio + subs).
+        candidate: Higher-quality file (source of video).
+        offset_seconds: Chromaprint alignment offset.
+        destination: Output path.
+        extra_audio: Additional audio tracks from candidate to include
+            (languages the library is missing).
+        extra_subs: Additional subtitle tracks from candidate to include.
+    """
+    args = ["ffmpeg", "-y", "-hide_banner"]
+
+    # Input 0: candidate file (provides video)
+    args.extend(["-i", str(candidate)])
+
+    # Input 1: library file with offset (provides audio + subs)
+    # The offset aligns the library's audio with the candidate's video.
+    if abs(offset_seconds) > 0.001:
+        args.extend(["-itsoffset", f"{-offset_seconds:.3f}"])
+    args.extend(["-i", str(library)])
+
+    # Map video from candidate (input 0) — first real video only
+    args.extend(["-map", "0:v:0"])
+
+    # Map ALL audio from library (input 1) — preserves enriched tracks
+    args.extend(["-map", "1:a"])
+
+    # Map ALL subtitles from library (input 1)
+    args.extend(["-map", "1:s?"])
+
+    # Map extra audio tracks from candidate (input 0) if any
+    if extra_audio:
+        for track in extra_audio:
+            args.extend(["-map", f"0:{track.stream_index}"])
+
+    # Map extra subtitle tracks from candidate (input 0) if any
+    if extra_subs:
+        for sub in extra_subs:
+            args.extend(["-map", f"0:{sub.stream_index}"])
+
+    # Copy all streams — no transcoding
+    args.extend(["-c", "copy"])
+
+    # Set metadata on extra audio tracks from candidate
+    if extra_audio:
+        lib_streams = probe_raw_streams(library)
+        lib_audio_count = 0
+        if lib_streams:
+            lib_audio_count = sum(
+                1 for s in lib_streams if s.get("codec_type") == "audio"
+            )
+        for i, track in enumerate(extra_audio):
+            idx = lib_audio_count + i
+            lang_norm = _normalize_lang(track.lang)
+            args.extend([f"-metadata:s:a:{idx}", f"language={lang_norm}"])
+
+    args.append(str(destination))
+    return args
 
 

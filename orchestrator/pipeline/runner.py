@@ -268,6 +268,8 @@ class PipelineRunner:
         self._health = DownloadHealthMonitor(repo)
         from .prowlarr_fallback import ProwlarrDirectGrab
         self._fallback = ProwlarrDirectGrab(repo)
+        from .enrichment import EnrichmentEngine
+        self._enrichment = EnrichmentEngine(repo)
 
     def run_forever(self, interval: float = 60.0) -> None:
         log.info("starting worker loop (interval=%ss)", interval)
@@ -477,6 +479,15 @@ class PipelineRunner:
             self._nightly_missing_search(config)
         except Exception as exc:
             log.error("nightly-search error: %s", exc)
+
+        # ── Phase 7: Media enrichment (cross-mux missing audio) ──────
+        enrich_cfg = getattr(config.services.pipeline, "enrichment", None)
+        if enrich_cfg and enrich_cfg.enabled:
+            try:
+                self._enrichment.process_completed(config)
+                self._enrichment.maybe_run(config)
+            except Exception as exc:
+                log.error("enrichment error: %s", exc)
 
     # ------------------------------------------------------------------
     # Nightly missing-content search — triggers Sonarr/Radarr to search
@@ -895,10 +906,15 @@ class PipelineRunner:
         # those rather than treating them as orphans themselves.
         categories = config.download_policy.categories
         category_dirs = {categories.radarr, categories.sonarr}  # e.g. {"movies", "tv"}
+        # Skip the enrichment category directory — those downloads belong to
+        # the enrichment engine (Phase 7), not the orphan scanner.
+        skip_dirs = {"enrichment", "postproc", "transcode"}
 
         scan_items: list[tuple[Path, str | None]] = []  # (path, forced_category)
         for item in sorted(complete_dir.iterdir()):
             if item.name.startswith("."):
+                continue
+            if item.is_dir() and item.name in skip_dirs:
                 continue
             if item.is_dir() and item.name in category_dirs:
                 # Descend into category sub-directories
@@ -1458,11 +1474,14 @@ class PipelineRunner:
         return entry if isinstance(entry, dict) else None
 
     def _mark_processed(
-        self, torrent_hash: str, status: str, detail: str = ""
+        self, torrent_hash: str, status: str, detail: str = "",
+        *, torrent_name: str = "",
     ) -> None:
         entry: dict = {"status": status, "timestamp": int(time.time())}
         if detail:
             entry["detail"] = detail
+        if torrent_name:
+            entry["name"] = torrent_name
         # Track retry count for failed orphans so we can enforce max retries
         if status in self._RETRYABLE_STATUSES and torrent_hash.startswith("orphan_"):
             prev = self._processed_entry(torrent_hash)
@@ -1471,6 +1490,21 @@ class PipelineRunner:
             else:
                 entry["retries"] = 0
         self.repo.update_pipeline_entry(torrent_hash, entry)
+
+        # Also write an orphan-keyed alias so the Phase 2 orphan scanner
+        # recognises source files that were already processed by Phase 1.
+        # Without this, orphans reprocess the same files under a different
+        # hash, causing duplicates in the library.
+        if torrent_name and not torrent_hash.startswith("orphan_"):
+            orphan_alias = "orphan_" + hashlib.sha256(
+                torrent_name.encode()
+            ).hexdigest()[:16]
+            alias_entry = {
+                "status": status,
+                "timestamp": int(time.time()),
+                "alias_of": torrent_hash,
+            }
+            self.repo.update_pipeline_entry(orphan_alias, alias_entry)
 
     def _clear_processed(self, torrent_hash: str) -> None:
         """Remove a torrent from the processed set so it can be reprocessed."""
@@ -1853,7 +1887,7 @@ class PipelineRunner:
         files = api.list_files(torrent.hash)
         if not files:
             log.warning("no files for %s, skipping", torrent.name)
-            self._mark_processed(torrent.hash, "skipped_no_files")
+            self._mark_processed(torrent.hash, "skipped_no_files", torrent_name=torrent.name)
             return False
 
         download_path = torrent.save_path
@@ -1874,7 +1908,7 @@ class PipelineRunner:
                 iso_dir = self._open_iso(iso_file, torrent.hash)
             except (RuntimeError, OSError) as exc:
                 log.error("ISO open failed for %s: %s", torrent.name, exc)
-                self._mark_processed(torrent.hash, "plan_failed", f"ISO: {exc}")
+                self._mark_processed(torrent.hash, "plan_failed", f"ISO: {exc}", torrent_name=torrent.name)
                 return False
 
         try:
@@ -1929,7 +1963,7 @@ class PipelineRunner:
             self._cleanup_path(torrent.content_path)
             self._cleanup_empty_parent(torrent.content_path)
             api.remove_torrents([torrent.hash])
-            self._mark_processed(torrent.hash, "plan_failed", str(exc))
+            self._mark_processed(torrent.hash, "plan_failed", str(exc), torrent_name=torrent.name)
             return False
 
         total = len(plans)
@@ -2050,7 +2084,8 @@ class PipelineRunner:
             api.remove_torrents([torrent.hash])
             self._mark_processed(
                 torrent.hash, "ok",
-                f"{succeeded}/{total} files processed"
+                f"{succeeded}/{total} files processed",
+                torrent_name=torrent.name,
             )
             # Notify Radarr/Sonarr about this specific item so it discovers
             # the file immediately instead of waiting for a bulk library scan.
@@ -2071,7 +2106,8 @@ class PipelineRunner:
                 self._refresh_arr_item(config, metadata)
             self._mark_processed(
                 torrent.hash, "partial",
-                f"{succeeded}/{total} succeeded, {failed}/{total} failed"
+                f"{succeeded}/{total} succeeded, {failed}/{total} failed",
+                torrent_name=torrent.name,
             )
             log.warning(
                 "partial: %s (%d/%d ok, %d/%d failed)",
@@ -2091,7 +2127,8 @@ class PipelineRunner:
             api.remove_torrents([torrent.hash])
             self._mark_processed(
                 torrent.hash, "ffmpeg_failed",
-                f"all {total} files failed"
+                f"all {total} files failed",
+                torrent_name=torrent.name,
             )
             return False
 

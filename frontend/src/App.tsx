@@ -187,7 +187,11 @@ function AuthenticatedApp() {
       setStatusMessage('Reconnected to in-progress apply...', 'info')
     }
 
-    const eventSource = new EventSource(`/api/runs/${runId}/events`)
+    const token = localStorage.getItem('nas_orchestrator_token')
+    const eventUrl = token
+      ? `/api/runs/${runId}/events?token=${encodeURIComponent(token)}`
+      : `/api/runs/${runId}/events`
+    const eventSource = new EventSource(eventUrl)
     activeEventSourceRef.current = { runId, es: eventSource }
 
     eventSource.addEventListener('stage', (evt) => {

@@ -159,10 +159,80 @@ class BackfillConfig(BaseModel):
     prowlarr_fallback_min_age_hours: int = Field(default=6, ge=1)
 
 
+class EnrichmentConfig(BaseModel):
+    """Configuration for the media enrichment pipeline (audio cross-mux).
+
+    When enabled, the enrichment engine scans the media library for files
+    missing desired audio languages (e.g., English dub for Japanese anime),
+    searches for alternate releases via Prowlarr, downloads candidates,
+    uses chromaprint acoustic fingerprinting to compute precise audio
+    alignment, and cross-muxes the missing audio track into the library file.
+    """
+
+    enabled: bool = False
+
+    # --- Search ---
+    search_interval_hours: int = Field(
+        default=24, ge=1,
+        description="How often to search for enrichment candidates",
+    )
+    max_grabs_per_cycle: int = Field(
+        default=2, ge=1,
+        description="Maximum enrichment downloads to start per cycle",
+    )
+    search_queries: List[str] = Field(
+        default_factory=lambda: ["dual audio", "english dub", "multi"],
+        description="Search terms appended to title when searching Prowlarr",
+    )
+    min_seeders: int = Field(
+        default=3, ge=1,
+        description="Minimum seeders for enrichment candidate releases",
+    )
+
+    # --- Chromaprint ---
+    correlation_threshold: float = Field(
+        default=0.70, ge=0.1, le=1.0,
+        description="Minimum chromaprint fingerprint correlation score (0-1)",
+    )
+    fingerprint_duration_seconds: int = Field(
+        default=120, ge=30,
+        description="Duration of audio to fingerprint (longer = more accurate, slower)",
+    )
+
+    # --- Target audio ---
+    target_languages: List[str] = Field(
+        default_factory=lambda: ["eng", "original"],
+        description=(
+            "Audio languages every library file should have. Use ISO 639-2 "
+            "codes (e.g. 'eng', 'jpn'). The special value 'original' resolves "
+            "to each media item's original language from Radarr/Sonarr metadata."
+        ),
+    )
+
+    # --- Video quality upgrades ---
+    upgrade_video: bool = Field(
+        default=True,
+        description="Search for higher-quality video when library files are below target",
+    )
+    target_resolution: str = Field(
+        default="1080p",
+        description="Minimum acceptable resolution (720p, 1080p, 1440p, 2160p)",
+    )
+    prefer_hdr: bool = Field(
+        default=True,
+        description="Prefer HDR releases over SDR when upgrading video",
+    )
+    prefer_hevc: bool = Field(
+        default=True,
+        description="Prefer HEVC/H.265 over H.264 when upgrading video",
+    )
+
+
 class PipelineConfig(ServiceBaseConfig):
     port: Optional[int] = Field(default=None, ge=1, le=65535)
     proxy_url: Optional[str] = None
     backfill: BackfillConfig = Field(default_factory=BackfillConfig)
+    enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
 
 
 # Services that always route through Gluetun when it is enabled.
