@@ -3,9 +3,8 @@ import type { StackConfig } from '../components/types'
 import { previewConfigChanges, type ConfigPreview } from '../api'
 import { SetupPage } from './SetupPage'
 import { ProxyPage } from './ProxyPage'
-import { MediaPolicyPage } from './MediaPolicyPage'
 
-type SettingsTab = 'general' | 'proxy' | 'media'
+type SettingsTab = 'general' | 'proxy'
 
 interface TabDef {
   id: SettingsTab
@@ -16,7 +15,6 @@ interface TabDef {
 const TABS: TabDef[] = [
   { id: 'general', label: 'General', icon: '⚙\uFE0F' },
   { id: 'proxy', label: 'Proxy', icon: '🔀' },
-  { id: 'media', label: 'Media', icon: '🎬' },
 ]
 
 /** Deep-equal two JSON-serializable objects. */
@@ -140,17 +138,6 @@ export function SettingsPage({
         )}
         {activeTab === 'proxy' && (
           <ProxyPage
-            config={config}
-            onChange={onChange}
-            onSave={handleSave}
-            onValidate={onValidate}
-            onApply={handleApply}
-            onBuild={onBuild}
-            isApplying={isApplying}
-          />
-        )}
-        {activeTab === 'media' && (
-          <MediaPolicyPage
             config={config}
             onChange={onChange}
             onSave={handleSave}

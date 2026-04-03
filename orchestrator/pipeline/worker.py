@@ -789,25 +789,45 @@ class PipelineWorker:
                 _, season, episode, end_episode = episode_info
 
                 # ── Absolute-to-season mapping for anime ───────────────
-                # When the parser returned season=1 with an absolute episode
-                # number (e.g. episode 50), check if Sonarr provided a
-                # mapping from absolute → (season, episode).  This fixes
-                # anime packs that use absolute numbering (e.g. "- 50")
-                # being placed in S01E50 instead of S02E23.
-                if absolute_episode_map and season == 1:
-                    mapped = absolute_episode_map.get(episode)
-                    if mapped:
-                        season = mapped["season"]
-                        episode = mapped["episode"]
-                        # Also map end_episode for multi-episode files
-                        if end_episode:
-                            end_mapped = absolute_episode_map.get(end_episode)
-                            if end_mapped and end_mapped["season"] == season:
-                                end_episode = end_mapped["episode"]
-                            else:
-                                # end_episode maps to a different season —
-                                # drop the multi-ep range to avoid confusion
-                                end_episode = None
+                # Anime releases use inconsistent numbering schemes:
+                #  1) Absolute numbering ("- 50") → parser returns S01E50
+                #  2) Non-TVDB season schemes ("S03E39") that don't match
+                #     Sonarr's season structure at all
+                #
+                # We try absolute mapping when:
+                #  a) season == 1 (classic absolute numbering), OR
+                #  b) the parsed (season, episode) doesn't exist in Sonarr's
+                #     episode list (wrong numbering scheme)
+                if absolute_episode_map:
+                    should_remap = False
+                    if season == 1:
+                        # Classic case: absolute numbered, default season 1
+                        should_remap = True
+                    else:
+                        # Check if this (season, episode) actually exists
+                        # in Sonarr's episode list — if not, the release
+                        # uses a different season scheme than TVDB
+                        valid_episodes = {
+                            (v["season"], v["episode"])
+                            for v in absolute_episode_map.values()
+                        }
+                        if (season, episode) not in valid_episodes:
+                            should_remap = True
+
+                    if should_remap:
+                        mapped = absolute_episode_map.get(episode)
+                        if mapped:
+                            season = mapped["season"]
+                            episode = mapped["episode"]
+                            # Also map end_episode for multi-episode files
+                            if end_episode:
+                                end_mapped = absolute_episode_map.get(end_episode)
+                                if end_mapped and end_mapped["season"] == season:
+                                    end_episode = end_mapped["episode"]
+                                else:
+                                    # end_episode maps to a different season —
+                                    # drop the multi-ep range to avoid confusion
+                                    end_episode = None
 
                 # Use the canonical show name from Sonarr when available
                 # e.g. library_path = /data/tv/The Legend of Korra

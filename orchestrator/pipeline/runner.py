@@ -598,6 +598,150 @@ class PipelineRunner:
             except Exception as exc:
                 log.warning("nightly-search: indexer refresh failed: %s", exc)
 
+        # Step 1.25: Reset Prowlarr indexer failure states.
+        # Indexers that hit CloudFlare or transient errors get cooldown periods
+        # up to 12+ hours.  Nightly reset clears these so all indexers are
+        # available for the subsequent MissingEpisodeSearch.
+        if prowlarr_key:
+            try:
+                headers_p = {"X-Api-Key": prowlarr_key}
+                resp = httpx.get(
+                    f"http://{prowlarr_host}:9696/api/v1/indexerstatus",
+                    headers=headers_p, timeout=timeout,
+                )
+                failure_ids = [s.get("id") for s in resp.json() if s.get("id")]
+                if failure_ids:
+                    # Prowlarr doesn't support DELETE on indexerstatus, so we
+                    # test each failed indexer to force a fresh state check.
+                    indexers_resp = httpx.get(
+                        f"http://{prowlarr_host}:9696/api/v1/indexer",
+                        headers=headers_p, timeout=timeout,
+                    )
+                    for idx in indexers_resp.json():
+                        if not idx.get("enable"):
+                            continue
+                        try:
+                            httpx.post(
+                                f"http://{prowlarr_host}:9696/api/v1/indexer/test",
+                                json=idx,
+                                headers=headers_p,
+                                timeout=httpx.Timeout(60.0, connect=10.0),
+                            )
+                        except Exception:
+                            pass  # Individual failures are fine
+                    log.info(
+                        "nightly-search: retested %d indexers to clear failure states",
+                        len(failure_ids),
+                    )
+            except Exception as exc:
+                log.warning("nightly-search: indexer retest failed: %s", exc)
+
+        # Step 1.5: Prune old blocklist entries (older than 14 days).
+        # Blocklists are permanent by default — releases blocklisted weeks ago
+        # may now have seeders.  Pruning lets Sonarr/Radarr reconsider them.
+        _BLOCKLIST_MAX_AGE = 14 * 86400  # 14 days
+        _BLOCKLIST_MAX_ENTRIES = 200  # Cap total entries regardless of age
+
+        for svc_name, svc_host, svc_port, svc_key in [
+            ("sonarr", sonarr_host, 8989, sonarr_key),
+            ("radarr", radarr_host, 7878, radarr_key),
+        ]:
+            if not svc_key:
+                continue
+            try:
+                headers = {"X-Api-Key": svc_key}
+                resp = httpx.get(
+                    f"http://{svc_host}:{svc_port}/api/v3/blocklist",
+                    params={"pageSize": 1000, "sortKey": "date", "sortDirection": "ascending"},
+                    headers=headers, timeout=timeout,
+                )
+                resp.raise_for_status()
+                records = resp.json().get("records", [])
+                total = resp.json().get("totalRecords", 0)
+
+                # Remove entries older than 14 days
+                to_remove = []
+                for rec in records:
+                    date_str = rec.get("date", "")
+                    if date_str:
+                        from datetime import datetime, timezone
+                        try:
+                            entry_time = datetime.fromisoformat(
+                                date_str.replace("Z", "+00:00")
+                            ).timestamp()
+                            if now - entry_time > _BLOCKLIST_MAX_AGE:
+                                to_remove.append(rec["id"])
+                        except (ValueError, KeyError):
+                            pass
+
+                # Also enforce cap: if still over limit, remove oldest
+                if total - len(to_remove) > _BLOCKLIST_MAX_ENTRIES:
+                    remaining = [r for r in records if r["id"] not in set(to_remove)]
+                    excess = len(remaining) - _BLOCKLIST_MAX_ENTRIES
+                    if excess > 0:
+                        for rec in remaining[:excess]:
+                            to_remove.append(rec["id"])
+
+                if to_remove:
+                    for rid in to_remove:
+                        try:
+                            httpx.delete(
+                                f"http://{svc_host}:{svc_port}/api/v3/blocklist/{rid}",
+                                headers=headers, timeout=httpx.Timeout(5.0),
+                            )
+                        except Exception:
+                            pass
+                    log.info(
+                        "nightly-search: pruned %d old blocklist entries from %s "
+                        "(%d total were present)",
+                        len(to_remove), svc_name, total,
+                    )
+            except Exception as exc:
+                log.warning(
+                    "nightly-search: %s blocklist prune failed: %s", svc_name, exc,
+                )
+
+        # Step 1.75: Clear stuck delay queue items.
+        # Items in "delay" status with no downloadId are stuck — Sonarr grabbed
+        # the release but never sent it to qBT.  Remove them so Sonarr can
+        # re-search on the next MissingEpisodeSearch.
+        for svc_name, svc_host, svc_port, svc_key in [
+            ("sonarr", sonarr_host, 8989, sonarr_key),
+            ("radarr", radarr_host, 7878, radarr_key),
+        ]:
+            if not svc_key:
+                continue
+            try:
+                headers = {"X-Api-Key": svc_key}
+                resp = httpx.get(
+                    f"http://{svc_host}:{svc_port}/api/v3/queue",
+                    params={"pageSize": 200},
+                    headers=headers, timeout=timeout,
+                )
+                resp.raise_for_status()
+                stuck = [
+                    r for r in resp.json().get("records", [])
+                    if r.get("status") == "delay" and not r.get("downloadId")
+                ]
+                for rec in stuck:
+                    try:
+                        httpx.delete(
+                            f"http://{svc_host}:{svc_port}/api/v3/queue/{rec['id']}",
+                            params={"removeFromClient": "false", "blocklist": "false"},
+                            headers=headers, timeout=httpx.Timeout(5.0),
+                        )
+                    except Exception:
+                        pass
+                if stuck:
+                    log.info(
+                        "nightly-search: cleared %d stuck delay items from %s queue",
+                        len(stuck), svc_name,
+                    )
+            except Exception as exc:
+                log.warning(
+                    "nightly-search: %s delay queue check failed: %s", svc_name, exc,
+                )
+
         # Step 2: Trigger missing content searches
         if sonarr_key:
             try:

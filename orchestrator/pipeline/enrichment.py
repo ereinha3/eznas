@@ -28,6 +28,7 @@ import httpx
 from ..models import EnrichmentConfig, StackConfig, VPN_ROUTED_SERVICES
 from ..storage import ConfigRepository
 from .backfill import ProwlarrResult
+from .subtitle_align import align_and_remux, parse_srt, probe_video_duration
 from .chromaprint import validate_and_align
 from .languages import arr_language_to_iso
 from .remux import (
@@ -332,8 +333,11 @@ class EnrichmentEngine:
             # library files that need enrichment — not just the original
             # target.  This avoids downloading the same pack repeatedly.
             pack_targets = self._find_all_pack_targets(
-                config, enrich_cfg, state,
-                Path(content_path), grab_info,
+                config,
+                enrich_cfg,
+                state,
+                Path(content_path),
+                grab_info,
             )
 
             if not pack_targets:
@@ -345,27 +349,37 @@ class EnrichmentEngine:
             for lib_path, lang, cand_path in pack_targets:
                 log.info(
                     "enrichment: processing %s → target=%s lang=%s%s",
-                    cand_path.name[:60], lib_path.name[:60], lang,
+                    cand_path.name[:60],
+                    lib_path.name[:60],
+                    lang,
                     " [VIDEO UPGRADE]" if is_video_upgrade else "",
                 )
 
                 ok = self._process_candidate(
-                    config, enrich_cfg, state,
-                    lib_path, cand_path, lang, grab_key,
+                    config,
+                    enrich_cfg,
+                    state,
+                    lib_path,
+                    cand_path,
+                    lang,
+                    grab_key,
+                    grab_info,
                 )
 
                 if ok:
                     succeeded += 1
                     log.info(
                         "enrichment: SUCCESS — added %s audio to %s",
-                        lang, lib_path.name,
+                        lang,
+                        lib_path.name,
                     )
                 else:
                     failed_count += 1
 
             log.info(
                 "enrichment: pack complete — %d/%d episodes enriched",
-                succeeded, succeeded + failed_count,
+                succeeded,
+                succeeded + failed_count,
             )
 
             # Clean up torrent after processing ALL episodes
@@ -572,6 +586,7 @@ class EnrichmentEngine:
         # with 'A' are always checked first and files at the end of the
         # alphabet never get enriched.
         import random
+
         random.shuffle(candidates)
 
         for candidate in candidates[: enrich_cfg.max_grabs_per_cycle * 3]:
@@ -714,6 +729,7 @@ class EnrichmentEngine:
         candidate_path: Path,
         target_language: str,
         grab_key: str,
+        grab_info: Optional[dict] = None,
     ) -> bool:
         """Fingerprint, cross-mux, verify, and replace.  Returns True on success.
 
@@ -783,11 +799,17 @@ class EnrichmentEngine:
         )
 
         # 3. Find useful subtitle tracks from candidate
+        # Use media policy keep_subs (subtitle languages), NOT audio target_langs
+        # MediaPolicy only has movies config; use it for both tv and movies
+        sub_target_langs = {
+            _normalize_lang(l) for l in config.media_policy.movies.keep_subs
+        }
+
         lib_sub_langs = {_normalize_lang(l) for l in lib_info.subtitle_languages}
         sub_tracks = find_useful_candidate_subtitles(
             cand_streams,
             lib_sub_langs,
-            target_langs,
+            sub_target_langs,
         )
         if sub_tracks:
             log.info(
@@ -842,7 +864,7 @@ class EnrichmentEngine:
         )
 
         # 5. Determine operation type and build ffmpeg command
-        grab_info = state.get("grabbed", {}).get(grab_key, {})
+        grab_info = state.get("grabbed", {}).get(grab_key) or {}
         is_video_upgrade = grab_info.get("video_upgrade", False)
 
         # For video upgrades: verify candidate actually has better video
@@ -940,6 +962,25 @@ class EnrichmentEngine:
             log.error("enrichment: output file has no video")
             self._cleanup_staging(staging)
             self._mark_failed(state, grab_key, "output has no video")
+            return False
+
+        # 7.5. Scan for orphaned .srt subtitle files and remux valid ones
+        # into the staging file.  Bazarr downloads external .srt files
+        # that sit next to the video but are never embedded.  This step
+        # finds them, validates timing via chromaprint offset, and
+        # remuxes them into the MKV container.
+        staging = self._remux_orphaned_srt_files(
+            library_path,
+            staging,
+            alignment.offset_seconds,
+        )
+
+        # Re-probe after subtitle remux to get updated stream counts
+        out_info = probe_streams(staging)
+        if out_info is None or not out_info.has_video:
+            log.error("enrichment: output file corrupted after subtitle remux")
+            self._cleanup_staging(staging)
+            self._mark_failed(state, grab_key, "subtitle remux corrupted output")
             return False
 
         # Verification depends on operation type
@@ -1610,7 +1651,8 @@ class EnrichmentEngine:
         if results:
             log.info(
                 "enrichment: season pack has %d episodes, matched %d library files for enrichment",
-                len(pack_files), len(results),
+                len(pack_files),
+                len(results),
             )
 
         return results
@@ -1650,6 +1692,136 @@ class EnrichmentEngine:
                 staging.unlink()
         except OSError:
             pass
+
+    def _remux_orphaned_srt_files(
+        self,
+        library_path: Path,
+        staging: Path,
+        offset_seconds: float,
+    ) -> Path:
+        """Scan for external .srt files next to the library file and remux
+        valid ones into the staging MKV.
+
+        Bazarr downloads external .srt files that sit alongside the video
+        (e.g., ``Show - S01E01.en.srt``).  These are never embedded by the
+        pipeline.  This step finds them, validates timing against the video,
+        and remuxes them into the MKV container so Jellyfin can serve them
+        without external file dependencies.
+
+        Args:
+            library_path: Original library file (used to locate sibling .srt).
+            staging: Current staging file to remux subtitles into.
+            offset_seconds: Chromaprint alignment offset from audio correlation.
+
+        Returns:
+            Path to the (possibly new) staging file after remux.
+        """
+        srt_dir = library_path.parent
+        video_base = library_path.stem
+
+        # Find all .srt files that match the video base name
+        # Patterns: Show - S01E01.en.srt, Show - S01E01.en.hi.srt
+        srt_files = list(srt_dir.glob(f"{video_base}*.srt"))
+        if not srt_files:
+            return staging
+
+        # Probe video duration for validation
+        video_duration = probe_video_duration(staging)
+        if video_duration is None:
+            log.warning(
+                "enrichment: cannot probe staging duration for %s — skipping subtitle remux",
+                staging.name,
+            )
+            return staging
+
+        current_output = staging
+        remuxed_count = 0
+
+        for srt_path in sorted(srt_files):
+            if srt_path.stat().st_size == 0:
+                continue
+
+            # Parse and validate the SRT
+            entries = parse_srt(srt_path)
+            if not entries:
+                log.debug("enrichment: skipping empty/unparseable %s", srt_path.name)
+                continue
+
+            # Determine language from filename
+            # Pattern: .en.srt, .en.hi.srt, .ja.srt
+            lang = "und"
+            parts = srt_path.stem.split(".")
+            for part in parts:
+                if len(part) in (2, 3) and part.isalpha():
+                    lang = part
+                    break
+
+            # Validate timing
+            from .subtitle_align import validate_timing
+
+            validation = validate_timing(entries, video_duration)
+            if not validation.is_valid:
+                log.warning(
+                    "enrichment: subtitle %s failed validation: %s",
+                    srt_path.name,
+                    ", ".join(validation.issues),
+                )
+                continue
+
+            # Apply offset before remux if needed
+            offset_ms = int(offset_seconds * 1000)
+            srt_to_remux = srt_path
+            if abs(offset_seconds) > 0.001:
+                from .subtitle_align import apply_offset, write_srt
+
+                offset_entries = apply_offset(entries, offset_ms)
+                offset_srt = srt_path.with_suffix(".offset.tmp.srt")
+                write_srt(offset_srt, offset_entries)
+                srt_to_remux = offset_srt
+
+            # Create a new staging file with the subtitle remuxed
+            new_staging = current_output.with_suffix(
+                f".subremux{remuxed_count}.tmp.mkv"
+            )
+
+            from .subtitle_align import remux_subtitle_into_mkv
+
+            ok = remux_subtitle_into_mkv(
+                video_path=current_output,
+                srt_path=srt_to_remux,
+                output_path=new_staging,
+                language=lang,
+            )
+
+            # Clean up offset temp file
+            if srt_to_remux != srt_path and srt_to_remux.exists():
+                try:
+                    srt_to_remux.unlink()
+                except OSError:
+                    pass
+
+            if ok and new_staging.exists():
+                # Clean up old staging
+                if current_output != staging:
+                    self._cleanup_staging(current_output)
+                current_output = new_staging
+                remuxed_count += 1
+                log.info(
+                    "enrichment: remuxed orphaned subtitle %s (%s) into staging",
+                    srt_path.name,
+                    lang,
+                )
+            else:
+                log.warning("enrichment: failed to remux subtitle %s", srt_path.name)
+                self._cleanup_staging(new_staging)
+
+        if remuxed_count > 0:
+            log.info(
+                "enrichment: remuxed %d orphaned subtitle(s) into staging file",
+                remuxed_count,
+            )
+
+        return current_output
 
     def _mark_failed(self, state: dict, grab_key: str, reason: str) -> None:
         """Record a failed enrichment attempt."""
