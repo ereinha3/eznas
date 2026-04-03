@@ -263,6 +263,126 @@ class JellyfinClient(ServiceClient):
         payload = {"LibraryOptions": {}}
         client.post(query, json=payload).raise_for_status()
 
+    # ------------------------------------------------------------------ read-only queries
+
+    def _build_authenticated_client(
+        self, config: StackConfig
+    ) -> Tuple[httpx.Client, str]:
+        """Create an authenticated httpx client using stored admin credentials."""
+        base_url = service_base_url("jellyfin", config, self.INTERNAL_PORT)
+        state = self.repo.load_state()
+        secrets = state.get("secrets", {})
+        jf = secrets.get("jellyfin", {})
+        admin_username = jf.get("admin_username", "admin")
+        admin_password = jf.get("admin_password", "adminadmin")
+
+        headers = {
+            "Accept": "application/json",
+            "X-Emby-Authorization": (
+                'MediaBrowser Client="nas-orchestrator", '
+                'Device="nas-orchestrator", DeviceId="nas-orchestrator", Version="1.0.0"'
+            ),
+        }
+        client = httpx.Client(
+            base_url=base_url,
+            headers=headers,
+            timeout=httpx.Timeout(30.0, connect=5.0),
+        )
+        token = self._authenticate(client, username=admin_username, password=admin_password)
+        if not token:
+            client.close()
+            raise RuntimeError("Unable to authenticate with Jellyfin admin")
+        client.headers["X-Emby-Token"] = token
+        return client, token
+
+    def get_users(self, config: StackConfig) -> List[Dict]:
+        """Return all Jellyfin users."""
+        client, _ = self._build_authenticated_client(config)
+        try:
+            response = client.get("/Users")
+            response.raise_for_status()
+            return response.json() or []
+        finally:
+            client.close()
+
+    def get_user_watched_items(
+        self,
+        config: StackConfig,
+        user_id: str,
+        item_types: str = "Movie",
+    ) -> List[Dict]:
+        """Return played items for a user with TMDb provider IDs.
+
+        Parameters
+        ----------
+        user_id : Jellyfin user UUID
+        item_types : Comma-separated Jellyfin item types (Movie, Series, Episode)
+        """
+        client, _ = self._build_authenticated_client(config)
+        try:
+            items: List[Dict] = []
+            start_index = 0
+            limit = 200
+            while True:
+                response = client.get(
+                    f"/Users/{user_id}/Items",
+                    params={
+                        "Filters": "IsPlayed",
+                        "IncludeItemTypes": item_types,
+                        "Fields": "ProviderIds,DateLastSaved",
+                        "Recursive": "true",
+                        "SortBy": "DatePlayed",
+                        "SortOrder": "Descending",
+                        "Limit": str(limit),
+                        "StartIndex": str(start_index),
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+                page_items = data.get("Items", [])
+                items.extend(page_items)
+                total = data.get("TotalRecordCount", 0)
+                start_index += limit
+                if start_index >= total or not page_items:
+                    break
+            return items
+        finally:
+            client.close()
+
+    def get_library_items_with_providers(
+        self,
+        config: StackConfig,
+        item_types: str = "Movie",
+    ) -> List[Dict]:
+        """Return all library items with ProviderIds (TMDb, TVDB, IMDb)."""
+        client, _ = self._build_authenticated_client(config)
+        try:
+            items: List[Dict] = []
+            start_index = 0
+            limit = 200
+            while True:
+                response = client.get(
+                    "/Items",
+                    params={
+                        "IncludeItemTypes": item_types,
+                        "Fields": "ProviderIds,Overview,CommunityRating,ProductionYear,PremiereDate",
+                        "Recursive": "true",
+                        "Limit": str(limit),
+                        "StartIndex": str(start_index),
+                    },
+                )
+                response.raise_for_status()
+                data = response.json()
+                page_items = data.get("Items", [])
+                items.extend(page_items)
+                total = data.get("TotalRecordCount", 0)
+                start_index += limit
+                if start_index >= total or not page_items:
+                    break
+            return items
+        finally:
+            client.close()
+
     # ------------------------------------------------------------------ mutations
     def create_user(
         self, config: StackConfig, username: str, password: str

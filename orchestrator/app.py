@@ -1460,3 +1460,420 @@ def sweep_status(session: Session = Depends(require_admin)) -> SweepStatusRespon
             failed=_active_sweep["failed"],
             errors=list(_active_sweep["errors"]),
         )
+
+
+# ── Enrichment Pipeline Endpoints ─────────────────────────────────────
+
+@app.get("/api/pipeline/enrichment/status")
+def enrichment_status(session: Session = Depends(require_auth)):
+    """Get enrichment pipeline state: processed, grabbed, last search."""
+    state = repo.load_enrichment_state()
+    processed = state.get("processed", {})
+    grabbed = state.get("grabbed", {})
+
+    ok_count = sum(1 for v in processed.values()
+                   if isinstance(v, dict) and v.get("status") == "ok")
+    failed_count = sum(1 for v in processed.values()
+                       if isinstance(v, dict) and v.get("status") == "failed")
+
+    # Recent successes (last 20)
+    recent = sorted(
+        [(k, v) for k, v in processed.items()
+         if isinstance(v, dict) and v.get("status") == "ok"],
+        key=lambda x: x[1].get("timestamp", 0),
+        reverse=True,
+    )[:20]
+
+    recent_items = []
+    for path, info in recent:
+        recent_items.append({
+            "path": Path(path).name,
+            "operation": info.get("operation", "audio cross-mux"),
+            "languages_added": info.get("languages_added", []),
+            "video_upgraded_to": info.get("video_upgraded_to"),
+            "chromaprint_score": info.get("chromaprint_score"),
+            "offset_seconds": info.get("offset_seconds"),
+            "timestamp": info.get("timestamp"),
+        })
+
+    # Active downloads
+    active = []
+    for key, info in grabbed.items():
+        active.append({
+            "torrent_name": info.get("torrent_name", key)[:80],
+            "target": Path(info.get("target_path", "")).name,
+            "language": info.get("target_language", ""),
+            "video_upgrade": info.get("video_upgrade", False),
+            "timestamp": info.get("timestamp"),
+        })
+
+    return {
+        "enabled": True,
+        "last_search": state.get("last_search", 0),
+        "total_processed": ok_count + failed_count,
+        "succeeded": ok_count,
+        "failed": failed_count,
+        "active_downloads": active,
+        "recent": recent_items,
+    }
+
+
+@app.post("/api/pipeline/enrichment/scan")
+def enrichment_scan(session: Session = Depends(require_admin)):
+    """Dry-run enrichment gap scan. Returns files that need enrichment."""
+    try:
+        config = repo.load_stack()
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to load config: {exc}")
+
+    enrich_cfg = config.services.pipeline.enrichment
+    if not enrich_cfg.enabled:
+        return {"candidates": [], "total": 0, "message": "Enrichment is disabled"}
+
+    from .pipeline.enrichment import EnrichmentEngine
+    engine = EnrichmentEngine(repo)
+    candidates = engine.scan_library_gaps(config, enrich_cfg)
+
+    items = []
+    for c in candidates[:200]:  # Cap response size
+        items.append({
+            "path": str(c.path),
+            "filename": c.path.name,
+            "title": c.title,
+            "year": c.year,
+            "category": c.category,
+            "missing_languages": c.missing_languages,
+            "video_below_target": c.video_below_target,
+            "current_resolution": c.current_resolution,
+            "current_codec": c.current_codec,
+            "current_video_score": c.current_video_score,
+        })
+
+    audio_only = sum(1 for c in candidates if c.missing_languages and not c.video_below_target)
+    video_only = sum(1 for c in candidates if c.video_below_target and not c.missing_languages)
+    both = sum(1 for c in candidates if c.missing_languages and c.video_below_target)
+
+    return {
+        "total": len(candidates),
+        "audio_gaps": audio_only,
+        "video_gaps": video_only,
+        "both_gaps": both,
+        "candidates": items,
+    }
+
+
+# ── Recommender endpoints ────────────────────────────────────────────
+
+
+def _get_recommender_engine():
+    """Lazy-init the recommender engine (import only when needed)."""
+    from .pipeline.recommender import RecommenderEngine
+    appdata = repo.load_stack().paths.appdata
+    data_dir = Path(appdata) / "pipeline" / "recommender"
+    return RecommenderEngine(repo, data_dir)
+
+
+@app.get("/api/pipeline/recommender/status")
+def recommender_status(session: Session = Depends(require_auth)):
+    """Get recommender engine status: index stats, user count, last build."""
+    engine = _get_recommender_engine()
+    return engine.get_status()
+
+
+@app.get("/api/pipeline/recommender/users")
+def recommender_users(session: Session = Depends(require_admin)):
+    """List all Jellyfin users with their recommendation profile stats."""
+    engine = _get_recommender_engine()
+    return {"users": engine.get_user_profiles()}
+
+
+@app.get("/api/pipeline/recommender/for-user/{jellyfin_user_id}")
+def recommender_for_user(
+    jellyfin_user_id: str,
+    session: Session = Depends(require_auth),
+):
+    """Get personalized recommendations for a specific Jellyfin user."""
+    engine = _get_recommender_engine()
+    recs = engine.get_recommendations(jellyfin_user_id)
+    if recs is None:
+        raise HTTPException(404, "No recommendations found for this user")
+    return recs
+
+
+@app.get("/api/pipeline/recommender/similar/{tmdb_id}")
+def recommender_similar(
+    tmdb_id: int,
+    k: int = 10,
+    session: Session = Depends(require_auth),
+):
+    """Find similar items to a given TMDb ID."""
+    engine = _get_recommender_engine()
+    items = engine.get_similar(tmdb_id, k=min(k, 50))
+    return {"tmdb_id": tmdb_id, "similar": items}
+
+
+@app.post("/api/pipeline/recommender/rebuild")
+def recommender_rebuild(session: Session = Depends(require_admin)):
+    """Force rebuild of FAISS index and regenerate all recommendations."""
+    try:
+        config = repo.load_stack()
+    except Exception as exc:
+        raise HTTPException(500, f"Failed to load config: {exc}")
+
+    engine = _get_recommender_engine()
+    try:
+        result = engine.force_rebuild(config)
+        return {"ok": True, **result}
+    except Exception as exc:
+        raise HTTPException(500, f"Rebuild failed: {exc}")
+
+
+# ── Jellyfin-compatible recommendation endpoints ────────────────────
+# These endpoints return recommendations in a format that can be consumed
+# by Jellyfin plugins (Home Screen Sections, custom plugins) or any
+# external integration. No auth required — secured by network isolation
+# (only accessible from the Docker network).
+
+
+@app.get("/api/jellyfin/recommendations/{jellyfin_user_id}")
+def jellyfin_recommendations(
+    jellyfin_user_id: str,
+    type: str = "for_you",
+    limit: int = 20,
+    seed_tmdb_id: int | None = None,
+):
+    """Return recommendations formatted for Jellyfin plugin consumption.
+
+    Query params:
+        type: "for_you" | "because_you_watched"
+        limit: max items to return
+        seed_tmdb_id: required when type=because_you_watched
+
+    Returns Jellyfin-style item list with TMDb poster URLs and metadata.
+    """
+    engine = _get_recommender_engine()
+    recs = engine.get_recommendations(jellyfin_user_id)
+    if recs is None:
+        return {"Items": [], "TotalRecordCount": 0}
+
+    items = []
+    if type == "for_you":
+        for rec in recs.get("for_you", [])[:limit]:
+            items.append(_to_jellyfin_item(rec))
+    elif type == "because_you_watched" and seed_tmdb_id is not None:
+        for section in recs.get("because_you_watched", []):
+            if section.get("seed_tmdb_id") == seed_tmdb_id:
+                for rec in section.get("items", [])[:limit]:
+                    items.append(_to_jellyfin_item(rec))
+                break
+    elif type == "similar" and seed_tmdb_id is not None:
+        for rec in engine.get_similar(seed_tmdb_id, k=limit):
+            items.append(_to_jellyfin_item(rec))
+
+    return {"Items": items, "TotalRecordCount": len(items)}
+
+
+@app.get("/api/jellyfin/recommendations/{jellyfin_user_id}/sections")
+def jellyfin_recommendation_sections(
+    jellyfin_user_id: str,
+    limit: int = 10,
+):
+    """Return all recommendation sections for a user.
+
+    Returns a list of section objects, each with a title and items.
+    Designed for Home Screen Sections plugin integration.
+    """
+    engine = _get_recommender_engine()
+    recs = engine.get_recommendations(jellyfin_user_id)
+    if recs is None:
+        return {"Sections": []}
+
+    sections = []
+
+    # "Recommended for You" section
+    for_you = recs.get("for_you", [])[:limit]
+    if for_you:
+        sections.append({
+            "Name": "Recommended for You",
+            "Type": "recommendations",
+            "Items": [_to_jellyfin_item(r) for r in for_you],
+        })
+
+    # "Because You Watched" sections
+    for section in recs.get("because_you_watched", []):
+        section_items = section.get("items", [])[:limit]
+        if section_items:
+            sections.append({
+                "Name": f"Because You Watched {section.get('seed_title', '')}",
+                "Type": "because_you_watched",
+                "SeedTmdbId": section.get("seed_tmdb_id"),
+                "Items": [_to_jellyfin_item(r) for r in section_items],
+            })
+
+    return {"Sections": sections}
+
+
+def _to_jellyfin_item(rec: dict) -> dict:
+    """Convert a recommendation dict to a Jellyfin-compatible item format."""
+    poster_path = rec.get("poster_path", "")
+    poster_url = f"https://image.tmdb.org/t/p/w300{poster_path}" if poster_path else ""
+    year = ""
+    rd = rec.get("release_date", "")
+    if rd and len(rd) >= 4:
+        year = rd[:4]
+
+    return {
+        "Name": rec.get("title", ""),
+        "Type": "Movie" if rec.get("media_type") == "movie" else "Series",
+        "Year": year,
+        "CommunityRating": rec.get("vote_average", 0),
+        "Genres": rec.get("genres", []),
+        "ImageTags": {},
+        "ProviderIds": {"Tmdb": str(rec.get("tmdb_id", ""))},
+        "PosterUrl": poster_url,
+        "InLibrary": rec.get("in_library", False),
+        "JellyfinId": rec.get("jellyfin_id", ""),
+        "RecommendationScore": rec.get("score", 0),
+        "RecommendationReason": rec.get("reason", ""),
+    }
+
+
+# ── Jellyseerr-compatible recommendation endpoints ───────────────────
+# These return data in EXACTLY the Jellyseerr API response format so the
+# Jellyfin Enhanced plugin can consume them without modification.
+# No auth required — secured by Docker network isolation.
+
+
+def _to_jellyseerr_result(rec: dict) -> dict:
+    """Convert a recommendation dict to Jellyseerr's MovieResult/TvResult format."""
+    media_type = rec.get("media_type", "movie")
+    tmdb_id = rec.get("tmdb_id", 0)
+    poster_path = rec.get("poster_path", "")
+    release_date = rec.get("release_date", "")
+    in_library = rec.get("in_library", False)
+    jellyfin_id = rec.get("jellyfin_id", "")
+
+    result: dict = {
+        "id": tmdb_id,
+        "mediaType": media_type,
+        "overview": rec.get("overview", ""),
+        "popularity": rec.get("score", 0) * 100,
+        "voteAverage": rec.get("vote_average", 0),
+        "voteCount": 0,
+        "genreIds": [],
+        "originalLanguage": "en",
+        "backdropPath": "",
+        "posterPath": poster_path,
+    }
+
+    if media_type == "movie":
+        result["title"] = rec.get("title", "")
+        result["originalTitle"] = rec.get("title", "")
+        result["releaseDate"] = release_date
+        result["adult"] = False
+        result["video"] = False
+    else:
+        result["name"] = rec.get("title", "")
+        result["originalName"] = rec.get("title", "")
+        result["firstAirDate"] = release_date
+        result["originCountry"] = []
+
+    # mediaInfo — present only if the item is in the Jellyfin library
+    if in_library and jellyfin_id:
+        result["mediaInfo"] = {
+            "id": tmdb_id,
+            "mediaType": media_type,
+            "tmdbId": tmdb_id,
+            "status": 5,  # AVAILABLE
+            "status4k": 1,  # UNKNOWN
+            "jellyfinMediaId": jellyfin_id,
+            "downloadStatus": [],
+            "downloadStatus4k": [],
+            "requests": [],
+            "issues": [],
+            "seasons": [],
+        }
+
+    return result
+
+
+def _get_similar_split(
+    tmdb_id: int, k: int = 10, min_score: float = 0.15,
+    media_type_filter: str = "",
+) -> tuple[list[dict], list[dict]]:
+    """Get ALS similar items split into owned (in library) and available (not in library).
+
+    Fetches deep into the ANN list until k owned AND k available are found,
+    or the similarity score drops below min_score.
+
+    Args:
+        media_type_filter: if set ("movie" or "tv"), only return items of that type
+
+    Returns (owned_items, available_items) in Jellyseerr format.
+    """
+    engine = _get_recommender_engine()
+    # Fetch a large batch — we'll filter down
+    all_similar = engine.get_similar(tmdb_id, k=k * 20)
+
+    owned = []
+    available = []
+    for item in all_similar:
+        if item.get("score", 0) < min_score:
+            break
+        # Filter by media type if requested
+        if media_type_filter and item.get("media_type", "") != media_type_filter:
+            continue
+        result = _to_jellyseerr_result(item)
+        if item.get("in_library"):
+            if len(owned) < k:
+                owned.append(result)
+        else:
+            if len(available) < k:
+                available.append(result)
+        if len(owned) >= k and len(available) >= k:
+            break
+
+    return owned, available
+
+
+def _recommend_response(tmdb_id: int, media_type: str, page: int, k: int, filter: str) -> dict:
+    """Shared logic for similar/recommendations endpoints."""
+    owned, available = _get_similar_split(tmdb_id, k=k, media_type_filter=media_type)
+
+    if filter == "owned":
+        results = owned
+    elif filter == "available":
+        results = available
+    else:
+        results = owned + available
+
+    return {
+        "page": page,
+        "totalPages": 1,
+        "totalResults": len(results),
+        "results": results,
+    }
+
+
+@app.get("/api/recommend/movie/{tmdb_id}/similar")
+def recommend_movie_similar(tmdb_id: int, page: int = 1, k: int = 10, filter: str = ""):
+    """ALS-based similar movies."""
+    return _recommend_response(tmdb_id, "movie", page, k, filter)
+
+
+@app.get("/api/recommend/movie/{tmdb_id}/recommendations")
+def recommend_movie_recommendations(tmdb_id: int, page: int = 1, k: int = 10, filter: str = ""):
+    """ALS-based movie recommendations."""
+    return _recommend_response(tmdb_id, "movie", page, k, filter)
+
+
+@app.get("/api/recommend/tv/{tmdb_id}/similar")
+def recommend_tv_similar(tmdb_id: int, page: int = 1, k: int = 10, filter: str = ""):
+    """ALS-based similar TV shows."""
+    return _recommend_response(tmdb_id, "tv", page, k, filter)
+
+
+@app.get("/api/recommend/tv/{tmdb_id}/recommendations")
+def recommend_tv_recommendations(tmdb_id: int, page: int = 1, k: int = 10, filter: str = ""):
+    """ALS-based TV recommendations."""
+    return _recommend_response(tmdb_id, "tv", page, k, filter)
