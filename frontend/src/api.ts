@@ -15,6 +15,11 @@ import type {
   SweepScanResponse,
   SweepStartResponse,
   SweepStatusResponse,
+  EnrichmentStatusResponse,
+  EnrichmentScanResponse,
+  PipelineHealthResponse,
+  RecommenderStatusResponse,
+  UserRecommendationsResponse,
 } from './components/types'
 
 // Get auth token from localStorage
@@ -427,6 +432,56 @@ export async function sweepStart(): Promise<SweepStartResponse> {
 
 export async function sweepStatus(): Promise<SweepStatusResponse> {
   const response = await fetch('/api/pipeline/sweep/status', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+// Enrichment pipeline
+
+export async function enrichmentStatus(): Promise<EnrichmentStatusResponse> {
+  const response = await fetch('/api/pipeline/enrichment/status', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+export async function enrichmentScan(): Promise<EnrichmentScanResponse> {
+  const response = await fetch('/api/pipeline/enrichment/scan', {
+    method: 'POST',
+    headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+// Pipeline health
+
+export async function pipelineHealth(): Promise<PipelineHealthResponse> {
+  const response = await fetch('/api/pipeline/health', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+// Recommender
+
+export async function recommenderStatus(): Promise<RecommenderStatusResponse> {
+  const response = await fetch('/api/pipeline/recommender/status', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+export async function recommenderForUser(userId: string): Promise<UserRecommendationsResponse> {
+  const response = await fetch(`/api/pipeline/recommender/for-user/${userId}`, {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+export async function recommenderRebuild(): Promise<{ ok: boolean }> {
+  const response = await fetch('/api/pipeline/recommender/rebuild', {
+    method: 'POST',
     headers: buildHeaders(false),
   })
   return handleResponse(response)

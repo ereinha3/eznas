@@ -12,7 +12,10 @@ import {
 } from './api'
 import { LeftNavigation, type PageKey } from './components/LeftNavigation'
 import { DashboardPage } from './pages/DashboardPage'
+import { MediaPage } from './pages/MediaPage'
 import { ServicesPage } from './pages/ServicesPage'
+import { PipelinePage } from './pages/PipelinePage'
+import { RecommendationsPage } from './pages/RecommendationsPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { LogsPage } from './pages/LogsPage'
 import { LoginPage } from './pages/LoginPage'
@@ -47,7 +50,7 @@ const DEFAULT_CONFIG: StackConfig = {
     jellyfin: { enabled: true, port: 8096, proxy_url: null },
     bazarr: { enabled: true, port: 6767, proxy_url: null },
     flaresolverr: { enabled: false, port: 8191, proxy_url: null },
-    pipeline: { enabled: true, port: null, proxy_url: null },
+    pipeline: { enabled: true, port: null, proxy_url: null, recommender: { enabled: false, refresh_interval_hours: 24, min_vote_count: 10, use_compressed_index: true, min_watched_for_profile: 3, max_recommendations_per_user: 50, because_you_watched_count: 10, owned_weight: 1.5, collaborative_enabled: false, collaborative_weight: 0.3, auto_request_enabled: false, auto_request_max_per_day: 2 } },
     gluetun: { enabled: false, port: null, proxy_url: null, wireguard_config: '' },
   },
   download_policy: {
@@ -318,6 +321,15 @@ function AuthenticatedApp() {
               health={health}
             />
           )}
+          {activePage === 'media' && (
+            <MediaPage
+              config={config}
+              onChange={setConfig}
+              onSave={handleSave}
+              onApply={handleApply}
+              isApplying={isApplying}
+            />
+          )}
           {activePage === 'services' && (
             <ServicesPage
               config={config}
@@ -330,6 +342,12 @@ function AuthenticatedApp() {
               credentials={credentials}
               health={health}
             />
+          )}
+          {activePage === 'pipeline' && (
+            <PipelinePage config={config} />
+          )}
+          {activePage === 'recommendations' && (
+            <RecommendationsPage />
           )}
           {activePage === 'settings' && (
             <SettingsPage
