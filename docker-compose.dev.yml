@@ -87,6 +87,28 @@ services:
     profiles:
       - pipeline
 
+  # Recommendation engine (independent container)
+  recommender:
+    build:
+      context: .
+      dockerfile: Dockerfile.recommender
+    container_name: recommender-dev
+    restart: unless-stopped
+    environment:
+      - TZ=${TZ:-UTC}
+      - ORCH_ROOT=/config
+      - RECOMMENDER_INTERVAL=${RECOMMENDER_INTERVAL:-3600}
+    volumes:
+      - ./orchestrator:/app/orchestrator:ro
+      - .:/config
+      - ${APPDATA_PATH:-./test_appdata}/pipeline/recommender:/data/recommender
+    depends_on:
+      - orchestrator
+    networks:
+      - dev_net
+    profiles:
+      - recommender
+
   #############################################
   # Media services (optional, use --profile full)
   #############################################

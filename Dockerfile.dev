@@ -17,6 +17,8 @@ RUN apt-get update \
         libchromaprint-tools \
         p7zip-full \
         gcc \
+        g++ \
+        cmake \
         libc6-dev \
     && install -m 0755 -d /etc/apt/keyrings \
     && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
@@ -32,6 +34,11 @@ COPY pyproject.toml README.md ./
 # Create minimal package structure for editable install
 RUN mkdir -p orchestrator && touch orchestrator/__init__.py \
     && pip install --no-cache-dir -e . \
+    && pip install --no-cache-dir \
+        "implicit>=0.7" \
+        "faiss-cpu>=1.7" \
+        "sentence-transformers>=2.2" \
+        torch --extra-index-url https://download.pytorch.org/whl/cpu \
     && rm -rf orchestrator
 
 # Copy templates (less frequently changed)

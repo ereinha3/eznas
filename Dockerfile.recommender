@@ -1,0 +1,41 @@
+# Recommendation engine container (V2 — collaborative embeddings)
+# Runs as an independent service alongside the main orchestrator.
+# Trains ALS embeddings from MovieLens 25M, projects cold-start items
+# via MLP, and generates personalized recommendations from Jellyfin
+# watch history.
+FROM python:3.12-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1
+
+WORKDIR /app
+
+# Install only what the recommender needs
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+        curl \
+        gcc \
+        g++ \
+        libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
+COPY pyproject.toml README.md ./
+RUN mkdir -p orchestrator && touch orchestrator/__init__.py \
+    && pip install --no-cache-dir . \
+    && pip install --no-cache-dir \
+        "implicit>=0.7" \
+        "faiss-cpu>=1.7" \
+        "numpy>=1.24" \
+        "sentence-transformers>=2.2" \
+        "scipy>=1.10" \
+        "torch>=2.0" \
+    && rm -rf orchestrator
+
+# Copy source
+COPY orchestrator/ ./orchestrator/
+
+# Data directory for FAISS index, ALS embeddings, MovieLens cache
+VOLUME /data/recommender
+
+CMD ["python", "-m", "orchestrator.pipeline.recommender_runner"]
