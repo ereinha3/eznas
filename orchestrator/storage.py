@@ -331,6 +331,18 @@ class ConfigRepository:
             data["enrichment"] = enrichment
             self._save_section(section="pipeline", data=data)
 
+    def load_recommender_state(self) -> dict[str, Any]:
+        """Get the recommender sub-state from pipeline state."""
+        pipeline = self.load_pipeline_state()
+        return pipeline.get("recommender", {})
+
+    def save_recommender_state(self, recommender: dict[str, Any]) -> None:
+        """Atomically update the recommender sub-state within pipeline state."""
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            data["recommender"] = recommender
+            self._save_section(section="pipeline", data=data)
+
     def has_users(self) -> bool:
         """Check if any users exist in auth state."""
         auth = self.get_auth_state()

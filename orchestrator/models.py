@@ -228,11 +228,84 @@ class EnrichmentConfig(BaseModel):
     )
 
 
+class RecommenderConfig(BaseModel):
+    """Configuration for the media recommendation engine.
+
+    When enabled, the recommender loads pre-computed movie embeddings from
+    the Remsky HuggingFace dataset (680K movies, nomic-embed-text 768-dim),
+    builds a FAISS similarity index, ingests Jellyfin watch history per user,
+    and generates personalized recommendations (both owned and unowned media).
+    """
+
+    enabled: bool = False
+
+    # --- Index ---
+    refresh_interval_hours: int = Field(
+        default=24, ge=1,
+        description="How often to rebuild the FAISS index and refresh recommendations",
+    )
+    min_vote_count: int = Field(
+        default=10, ge=0,
+        description="Minimum TMDb vote_count to include in index (reduces memory)",
+    )
+    use_compressed_index: bool = Field(
+        default=True,
+        description="Use FAISS IndexIVFPQ (~41MB) instead of IndexFlatIP (~600MB)",
+    )
+
+    # --- User profiles ---
+    min_watched_for_profile: int = Field(
+        default=3, ge=1,
+        description="Minimum watched items before generating recommendations",
+    )
+
+    # --- Recommendations ---
+    max_recommendations_per_user: int = Field(
+        default=50, ge=10,
+        description="Maximum stored recommendations per user",
+    )
+    because_you_watched_count: int = Field(
+        default=10, ge=1,
+        description="Items per 'Because you watched X' row",
+    )
+    owned_weight: float = Field(
+        default=1.5, ge=1.0, le=5.0,
+        description="Score multiplier for items already in Jellyfin library",
+    )
+
+    # --- LightFM collaborative filtering ---
+    collaborative_enabled: bool = Field(
+        default=False,
+        description="Enable LightFM collaborative filtering (requires >= 5 users with profiles)",
+    )
+    collaborative_weight: float = Field(
+        default=0.3, ge=0.0, le=1.0,
+        description="Blend weight for collaborative vs content-based scores (0=content only, 1=collab only)",
+    )
+
+    # --- Auto-request via Jellyseerr ---
+    auto_request_enabled: bool = Field(
+        default=False,
+        description="Automatically request top unowned recommendations via Jellyseerr",
+    )
+    auto_request_max_per_day: int = Field(
+        default=2, ge=0,
+        description="Maximum auto-requests per day per user",
+    )
+
+    # --- TMDb metadata enrichment ---
+    tmdb_api_key: Optional[str] = Field(
+        default=None,
+        description="TMDb API v3 key for fetching poster images and metadata",
+    )
+
+
 class PipelineConfig(ServiceBaseConfig):
     port: Optional[int] = Field(default=None, ge=1, le=65535)
     proxy_url: Optional[str] = None
     backfill: BackfillConfig = Field(default_factory=BackfillConfig)
     enrichment: EnrichmentConfig = Field(default_factory=EnrichmentConfig)
+    recommender: RecommenderConfig = Field(default_factory=RecommenderConfig)
 
 
 # Services that always route through Gluetun when it is enabled.
