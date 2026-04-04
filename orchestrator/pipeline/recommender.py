@@ -922,6 +922,7 @@ class RecommenderEngine:
             "vote_average": item.vote_average,
             "release_date": item.release_date,
             "poster_path": item.poster_path,
+            "backdrop_path": item.backdrop_path,
             "overview": item.overview,
             "jellyfin_id": item.jellyfin_id,
         }

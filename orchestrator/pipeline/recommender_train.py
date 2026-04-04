@@ -494,6 +494,7 @@ def _apply_enrichment_to_metadata(data_dir: Path, cache: dict) -> None:
         enrichment = cache.get(tmdb_id)
         if enrichment:
             meta["poster_path"] = enrichment.get("poster_path", "")
+            meta["backdrop_path"] = enrichment.get("backdrop_path", "")
             meta["overview"] = enrichment.get("overview", "")
             meta["vote_average"] = enrichment.get("vote_average", 0)
             meta["release_date"] = enrichment.get("release_date", "")

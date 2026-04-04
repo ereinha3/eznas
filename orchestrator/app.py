@@ -1713,6 +1713,62 @@ def jellyfin_recommendation_sections(
     return {"Sections": sections}
 
 
+@app.get("/api/recommend/home/{jellyfin_user_id}")
+def recommend_home_sections(jellyfin_user_id: str, limit: int = 15):
+    """Homepage recommendation sections in Jellyseerr card format.
+
+    Returns personalized sections for the homepage:
+    - "Recommended for You" — top ALS picks split into owned/available
+    - "Because You Watched X" — per-item similar (multiple sections)
+
+    No auth required — secured by Docker network isolation.
+    """
+    engine = _get_recommender_engine()
+    recs = engine.get_recommendations(jellyfin_user_id)
+    if recs is None:
+        return {"sections": []}
+
+    sections = []
+
+    # "Recommended for You" — split into owned and available
+    for_you = recs.get("for_you", [])
+    if for_you:
+        owned = [_to_jellyseerr_result(r) for r in for_you if r.get("in_library")][:limit]
+        available = [_to_jellyseerr_result(r) for r in for_you if not r.get("in_library")][:limit]
+        if owned:
+            sections.append({
+                "name": "Recommended for You",
+                "type": "for_you_owned",
+                "results": owned,
+            })
+        if available:
+            sections.append({
+                "name": "Discover New Favorites",
+                "type": "for_you_available",
+                "results": available,
+            })
+
+    # "Because You Watched X" — each recent watch gets a section
+    for byw in recs.get("because_you_watched", []):
+        items = byw.get("items", [])
+        if not items:
+            continue
+        seed_title = byw.get("seed_title", "")
+        owned = [_to_jellyseerr_result(r) for r in items if r.get("in_library")][:limit]
+        available = [_to_jellyseerr_result(r) for r in items if not r.get("in_library")][:limit]
+        # Combine owned + available for BYW sections
+        combined = owned + available
+        if combined:
+            sections.append({
+                "name": f"Because You Watched {seed_title}",
+                "type": "because_you_watched",
+                "seed_tmdb_id": byw.get("seed_tmdb_id"),
+                "results": combined[:limit],
+            })
+
+    return {"sections": sections}
+
+
 def _to_jellyfin_item(rec: dict) -> dict:
     """Convert a recommendation dict to a Jellyfin-compatible item format."""
     poster_path = rec.get("poster_path", "")
@@ -1762,7 +1818,7 @@ def _to_jellyseerr_result(rec: dict) -> dict:
         "voteCount": 0,
         "genreIds": [],
         "originalLanguage": "en",
-        "backdropPath": "",
+        "backdropPath": rec.get("backdrop_path", ""),
         "posterPath": poster_path,
     }
 

@@ -35,6 +35,7 @@ class IndexedItem:
     release_date: str
     poster_path: str
     media_type: str  # "movie" or "tv"
+    backdrop_path: str = ""
     overview: str = ""
     in_library: bool = False
     jellyfin_id: Optional[str] = None
@@ -105,8 +106,9 @@ class EmbeddingIndex:
                 vote_average=meta.get("vote_average", 0.0),
                 release_date=meta.get("release_date", ""),
                 poster_path=meta.get("poster_path", ""),
-                overview=meta.get("overview", ""),
                 media_type="movie",
+                backdrop_path=meta.get("backdrop_path", ""),
+                overview=meta.get("overview", ""),
                 source="als",
             ))
 
@@ -302,6 +304,7 @@ class EmbeddingIndex:
                 "vote_average": item.vote_average,
                 "release_date": item.release_date,
                 "poster_path": item.poster_path,
+                "backdrop_path": item.backdrop_path,
                 "overview": item.overview,
                 "media_type": item.media_type,
                 "source": item.source,
@@ -325,6 +328,7 @@ class EmbeddingIndex:
                 release_date=row.get("release_date", ""),
                 poster_path=row.get("poster_path", ""),
                 media_type=row.get("media_type", "movie"),
+                backdrop_path=row.get("backdrop_path", ""),
                 overview=row.get("overview", ""),
                 source=row.get("source", "als"),
             ))
