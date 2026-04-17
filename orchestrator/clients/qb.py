@@ -587,6 +587,15 @@ class QBittorrentClient(ServiceClient):
             "web_ui_csrf_protection_enabled": False,
             "web_ui_clickjacking_protection_enabled": False,
             "web_ui_secure_cookie_enabled": False,
+            # Bind to VPN tunnel interface (tun0) — required for Gluetun.
+            # Without this, qBittorrent binds to eth0 (Docker network) and
+            # Gluetun's firewall blocks outbound UDP from that interface,
+            # causing all UDP tracker announces to fail with "Operation not
+            # permitted". Binding to tun0 routes tracker/peer traffic
+            # through the encrypted VPN tunnel.
+            "current_network_interface": "tun0",
+            "current_interface_name": "tun0",
+            "current_interface_address": "",  # Auto-detect from tun0
         }
 
         response = client.post(
