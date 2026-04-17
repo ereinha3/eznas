@@ -1462,6 +1462,74 @@ def sweep_status(session: Session = Depends(require_admin)) -> SweepStatusRespon
         )
 
 
+# ── Subtitle Sweep Endpoints ──────────────────────────────────────────
+
+
+@app.post("/api/pipeline/sweep/srt/scan")
+def sweep_srt_scan(session: Session = Depends(require_admin)):
+    """Scan library for orphaned .srt files that can be embedded into MKVs."""
+    from .pipeline.sweep import LibrarySweeper
+
+    config = repo.load_stack()
+    sweeper = LibrarySweeper(config, repo)
+    results = sweeper.scan_orphaned_srt()
+    return {
+        "total": len(results),
+        "files": [
+            {
+                "video": str(item["video"]),
+                "srt": str(item["srt"]),
+                "language": item["language"],
+                "entries": item["entries"],
+            }
+            for item in results
+        ],
+    }
+
+
+@app.post("/api/pipeline/sweep/srt/start")
+def sweep_srt_start(session: Session = Depends(require_admin)):
+    """Embed all orphaned .srt files into their parent MKVs."""
+    from .pipeline.sweep import LibrarySweeper
+
+    with _sweep_lock:
+        if _active_sweep["status"] in ("scanning", "running"):
+            raise HTTPException(
+                status_code=409,
+                detail="A sweep is already in progress",
+            )
+        _active_sweep.update({
+            "status": "running",
+            "sweep_id": str(uuid4())[:12],
+            "progress_current": 0,
+            "progress_total": 0,
+            "current_file": "subtitle sweep",
+            "succeeded": 0,
+            "failed": 0,
+            "errors": [],
+        })
+
+    def _run_srt_sweep():
+        try:
+            config = repo.load_stack()
+            sweeper = LibrarySweeper(config, repo)
+            count = sweeper.embed_orphaned_srt()
+            with _sweep_lock:
+                _active_sweep["status"] = "completed"
+                _active_sweep["succeeded"] = count
+        except Exception as exc:
+            logger.error(f"SRT sweep failed: {exc}")
+            with _sweep_lock:
+                _active_sweep["status"] = "failed"
+                _active_sweep["errors"] = [str(exc)]
+
+    thread = threading.Thread(
+        target=_run_srt_sweep, daemon=True, name="sweep-srt"
+    )
+    thread.start()
+    return {"status": "started", "sweep_id": _active_sweep["sweep_id"]}
+
+
 # ── Enrichment Pipeline Endpoints ─────────────────────────────────────
 
 @app.get("/api/pipeline/enrichment/status")

@@ -613,3 +613,176 @@ class LibrarySweeper:
                 print(f"[sweep] triggered {command} on {name}")
             except (httpx.RequestError, httpx.HTTPStatusError) as exc:
                 print(f"[sweep] {name} rescan failed: {exc}")
+
+    # ------------------------------------------------------------------
+    # Subtitle sweep — embed orphaned .srt files into MKV containers
+    # ------------------------------------------------------------------
+
+    # Known subtitle language codes for filename detection
+    _KNOWN_LANG_CODES: Set[str] = {
+        "en", "eng", "ja", "jpn", "es", "spa", "fr", "fra", "de", "deu",
+        "it", "ita", "pt", "por", "ru", "rus", "ko", "kor", "zh", "zho",
+        "ar", "ara", "hi", "hin", "pl", "pol", "nl", "nld", "sv", "swe",
+        "da", "dan", "no", "nor", "fi", "fin", "cs", "ces", "hu", "hun",
+        "ro", "ron", "tr", "tur", "he", "heb", "el", "ell", "th", "tha",
+        "vi", "vie", "id", "ind", "uk", "ukr", "hr", "hrv", "bg", "bul",
+        "chi", "ger", "fre", "dut", "rum",
+    }
+    _SUBTITLE_HINTS: Set[str] = {"hi", "cc", "sdh", "forced"}
+
+    def scan_orphaned_srt(self) -> List[dict]:
+        """Scan the library for external .srt files that can be embedded.
+
+        Returns a list of dicts describing each SRT and its parent video:
+            [{
+                "video": Path,
+                "srt": Path,
+                "language": str,
+                "entries": int,
+            }, ...]
+        """
+        from .subtitle_align import parse_srt, probe_video_duration, validate_timing
+
+        results: List[dict] = []
+        media_root = self.pool_root / "media"
+
+        for video_path in self._walk_video_files(media_root):
+            video_base = video_path.stem
+            srt_files = list(video_path.parent.glob(f"{video_base}*.srt"))
+
+            for srt_path in srt_files:
+                if srt_path.stat().st_size == 0:
+                    continue
+
+                entries = parse_srt(srt_path)
+                if not entries:
+                    continue
+
+                # Detect language from filename
+                lang = self._detect_srt_lang(srt_path, video_base)
+
+                # Quick validation (probe video only if needed)
+                duration = probe_video_duration(video_path)
+                if duration is None:
+                    continue
+
+                validation = validate_timing(entries, duration)
+                if not validation.is_valid:
+                    continue
+
+                results.append({
+                    "video": video_path,
+                    "srt": srt_path,
+                    "language": lang,
+                    "entries": len(entries),
+                })
+
+        print(f"[sweep] found {len(results)} orphaned SRT files to embed")
+        return results
+
+    def embed_orphaned_srt(self, dry_run: bool = False) -> int:
+        """Scan and embed all orphaned .srt files into their parent MKVs.
+
+        For each video with external .srt files:
+        1. Validates the SRT timing against the video
+        2. Remuxes the SRT into the MKV (ffmpeg copy mode)
+        3. Replaces the original MKV atomically
+        4. Deletes the source .srt file
+
+        Args:
+            dry_run: If True, scan only — don't modify any files.
+
+        Returns:
+            Number of SRT files embedded.
+        """
+        from .subtitle_align import remux_subtitle_into_mkv
+
+        srt_list = self.scan_orphaned_srt()
+        if not srt_list:
+            return 0
+
+        if dry_run:
+            for item in srt_list:
+                print(
+                    f"[sweep/srt] would embed {item['srt'].name} ({item['language']}, "
+                    f"{item['entries']} cues) into {item['video'].name}"
+                )
+            return 0
+
+        embedded_count = 0
+        scratch = self._resolve_scratch()
+
+        # Group SRTs by video file (embed all at once)
+        from collections import defaultdict
+        by_video: Dict[Path, List[dict]] = defaultdict(list)
+        for item in srt_list:
+            by_video[item["video"]].append(item)
+
+        for video_path, srt_items in by_video.items():
+            current_input = video_path
+
+            for i, item in enumerate(srt_items):
+                srt_path = item["srt"]
+                lang = item["language"]
+
+                # Stage in scratch or beside the video
+                if scratch:
+                    output_path = scratch / f"{video_path.stem}.srtremux{i}.tmp.mkv"
+                else:
+                    output_path = video_path.with_suffix(f".srtremux{i}.tmp.mkv")
+
+                ok = remux_subtitle_into_mkv(
+                    video_path=current_input,
+                    srt_path=srt_path,
+                    output_path=output_path,
+                    language=lang,
+                )
+
+                if not ok or not output_path.exists():
+                    print(f"[sweep/srt] FAILED to embed {srt_path.name}")
+                    self._cleanup(output_path)
+                    break
+
+                # If we had an intermediate staging file, clean it up
+                if current_input != video_path:
+                    self._cleanup(current_input)
+
+                current_input = output_path
+
+            # Atomic replacement: final staging → original video
+            if current_input != video_path and current_input.exists():
+                try:
+                    os.replace(current_input, video_path)
+                    print(f"[sweep/srt] embedded {len(srt_items)} SRT(s) into {video_path.name}")
+
+                    # Delete source SRT files
+                    for item in srt_items:
+                        try:
+                            item["srt"].unlink()
+                        except OSError:
+                            pass
+                    embedded_count += len(srt_items)
+
+                except OSError as exc:
+                    print(f"[sweep/srt] atomic replace failed: {exc}")
+                    self._cleanup(current_input)
+
+        if embedded_count > 0:
+            print(f"[sweep/srt] embedded {embedded_count} subtitle file(s) total")
+            self._trigger_arr_rescans()
+
+        return embedded_count
+
+    def _detect_srt_lang(self, srt_path: Path, video_stem: str) -> str:
+        """Detect subtitle language from SRT filename suffix."""
+        full_stem = srt_path.stem
+        suffix = full_stem[len(video_stem):]
+        parts = [p.lower() for p in suffix.split(".") if p]
+
+        for part in reversed(parts):
+            if part in self._SUBTITLE_HINTS:
+                continue
+            if part in self._KNOWN_LANG_CODES:
+                return part
+
+        return "und"

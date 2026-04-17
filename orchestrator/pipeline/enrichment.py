@@ -1693,6 +1693,52 @@ class EnrichmentEngine:
         except OSError:
             pass
 
+    # Known subtitle language codes (ISO 639-1 and 639-2) for filename parsing
+    _KNOWN_LANG_CODES: set[str] = {
+        # ISO 639-1 (2-letter)
+        "en", "ja", "es", "fr", "de", "it", "pt", "ru", "ko", "zh",
+        "ar", "hi", "th", "vi", "pl", "nl", "sv", "da", "no", "fi",
+        "cs", "hu", "ro", "bg", "hr", "sk", "sl", "uk", "he", "tr",
+        "el", "id", "ms", "ta", "te", "bn",
+        # ISO 639-2 (3-letter)
+        "eng", "jpn", "spa", "fra", "deu", "ita", "por", "rus", "kor",
+        "zho", "ara", "hin", "tha", "vie", "pol", "nld", "swe", "dan",
+        "nor", "fin", "ces", "hun", "ron", "bul", "hrv", "slk", "slv",
+        "ukr", "heb", "tur", "ell", "ind", "msa", "tam", "tel", "ben",
+        # Common extras
+        "und", "chi", "ger", "fre", "dut", "rum",
+        # Subtitle type hints (not languages but commonly in filenames)
+        "hi", "cc", "sdh",
+    }
+
+    def _detect_srt_language(self, srt_path: Path, video_stem: str) -> str:
+        """Detect subtitle language from SRT filename.
+
+        Searches from the end of the filename parts (closest to .srt extension)
+        and validates against known language codes to avoid matching random words.
+
+        Examples:
+            "Show - S01E01.en.srt" → "en"
+            "Show - S01E01.en.hi.srt" → "en" (skips "hi" which is hearing impaired)
+            "Show - S01E01.srt" → "und" (no language tag)
+        """
+        # Get the suffix parts after the video base name
+        # "Show - S01E01.en.hi.srt" → stem = "Show - S01E01.en.hi"
+        # Split by "." and search from end for language codes
+        full_stem = srt_path.stem  # e.g., "Show - S01E01.en.hi"
+        suffix = full_stem[len(video_stem):]  # e.g., ".en.hi"
+        parts = [p.lower() for p in suffix.split(".") if p]
+
+        # Search from end, skip subtitle type hints (hi, cc, sdh)
+        subtitle_hints = {"hi", "cc", "sdh", "forced"}
+        for part in reversed(parts):
+            if part in subtitle_hints:
+                continue
+            if part in self._KNOWN_LANG_CODES:
+                return part
+
+        return "und"
+
     def _remux_orphaned_srt_files(
         self,
         library_path: Path,
@@ -1708,14 +1754,29 @@ class EnrichmentEngine:
         and remuxes them into the MKV container so Jellyfin can serve them
         without external file dependencies.
 
+        After successful remux, the source .srt file is deleted since its
+        content is now embedded in the MKV.
+
+        The chromaprint offset is NOT applied to these SRTs — they were
+        downloaded by Bazarr for the library file directly, not for the
+        enrichment candidate. The offset only applies to subtitles extracted
+        from the candidate (a different video release).
+
         Args:
             library_path: Original library file (used to locate sibling .srt).
             staging: Current staging file to remux subtitles into.
-            offset_seconds: Chromaprint alignment offset from audio correlation.
+            offset_seconds: Chromaprint alignment offset (NOT used for Bazarr SRTs).
 
         Returns:
             Path to the (possibly new) staging file after remux.
         """
+        from .subtitle_align import (
+            apply_offset,
+            remux_subtitle_into_mkv,
+            validate_timing,
+            write_srt,
+        )
+
         srt_dir = library_path.parent
         video_base = library_path.stem
 
@@ -1736,6 +1797,7 @@ class EnrichmentEngine:
 
         current_output = staging
         remuxed_count = 0
+        deleted_srts: list[Path] = []
 
         for srt_path in sorted(srt_files):
             if srt_path.stat().st_size == 0:
@@ -1747,18 +1809,10 @@ class EnrichmentEngine:
                 log.debug("enrichment: skipping empty/unparseable %s", srt_path.name)
                 continue
 
-            # Determine language from filename
-            # Pattern: .en.srt, .en.hi.srt, .ja.srt
-            lang = "und"
-            parts = srt_path.stem.split(".")
-            for part in parts:
-                if len(part) in (2, 3) and part.isalpha():
-                    lang = part
-                    break
+            # Detect language from filename (search from end, validate against known codes)
+            lang = self._detect_srt_language(srt_path, video_base)
 
             # Validate timing
-            from .subtitle_align import validate_timing
-
             validation = validate_timing(entries, video_duration)
             if not validation.is_valid:
                 log.warning(
@@ -1768,23 +1822,16 @@ class EnrichmentEngine:
                 )
                 continue
 
-            # Apply offset before remux if needed
-            offset_ms = int(offset_seconds * 1000)
+            # NOTE: Do NOT apply the chromaprint offset to Bazarr SRTs.
+            # The offset corrects for timing differences between the library
+            # file and the enrichment candidate. Bazarr SRTs are authored for
+            # the library file directly — applying the offset would misalign them.
             srt_to_remux = srt_path
-            if abs(offset_seconds) > 0.001:
-                from .subtitle_align import apply_offset, write_srt
-
-                offset_entries = apply_offset(entries, offset_ms)
-                offset_srt = srt_path.with_suffix(".offset.tmp.srt")
-                write_srt(offset_srt, offset_entries)
-                srt_to_remux = offset_srt
 
             # Create a new staging file with the subtitle remuxed
             new_staging = current_output.with_suffix(
                 f".subremux{remuxed_count}.tmp.mkv"
             )
-
-            from .subtitle_align import remux_subtitle_into_mkv
 
             ok = remux_subtitle_into_mkv(
                 video_path=current_output,
@@ -1793,19 +1840,13 @@ class EnrichmentEngine:
                 language=lang,
             )
 
-            # Clean up offset temp file
-            if srt_to_remux != srt_path and srt_to_remux.exists():
-                try:
-                    srt_to_remux.unlink()
-                except OSError:
-                    pass
-
             if ok and new_staging.exists():
                 # Clean up old staging
                 if current_output != staging:
                     self._cleanup_staging(current_output)
                 current_output = new_staging
                 remuxed_count += 1
+                deleted_srts.append(srt_path)
                 log.info(
                     "enrichment: remuxed orphaned subtitle %s (%s) into staging",
                     srt_path.name,
@@ -1815,10 +1856,20 @@ class EnrichmentEngine:
                 log.warning("enrichment: failed to remux subtitle %s", srt_path.name)
                 self._cleanup_staging(new_staging)
 
+        # Delete source SRT files after all remuxes succeed
+        for srt_path in deleted_srts:
+            try:
+                srt_path.unlink()
+                log.debug("enrichment: deleted embedded SRT: %s", srt_path.name)
+            except OSError as exc:
+                log.warning("enrichment: failed to delete %s: %s", srt_path.name, exc)
+
         if remuxed_count > 0:
             log.info(
-                "enrichment: remuxed %d orphaned subtitle(s) into staging file",
+                "enrichment: remuxed %d orphaned subtitle(s) into staging, "
+                "deleted %d source SRT(s)",
                 remuxed_count,
+                len(deleted_srts),
             )
 
         return current_output
