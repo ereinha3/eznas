@@ -1385,6 +1385,12 @@ class PipelineRunner:
                 pass  # best-effort; non-fatal
 
             log.info("  [%d/%d] moved to %s", i, total, plan.final_output)
+
+            # Write NFO file for Jellyfin identification (if not present).
+            # Prevents Jellyfin from merging similarly-named series
+            # (e.g., "Hellsing" and "Hellsing Ultimate").
+            self._ensure_nfo(config, plan)
+
             succeeded += 1
 
         # Clean up staging files
@@ -1653,6 +1659,98 @@ class PipelineRunner:
     def _clear_processed(self, torrent_hash: str) -> None:
         """Remove a torrent from the processed set so it can be reprocessed."""
         self.repo.delete_pipeline_entry(torrent_hash)
+
+    def _ensure_nfo(self, config: StackConfig, plan) -> None:
+        """Write an NFO file in the series/movie folder if one doesn't exist.
+
+        Queries the arr API using the media_id from the plan's torrent metadata
+        to get TVDB/TMDB/IMDB IDs. Writes tvshow.nfo (TV) or movie.nfo (movies).
+        This is best-effort — failures are logged but don't block the import.
+        """
+        try:
+            from .nfo import write_tvshow_nfo, write_movie_nfo
+
+            # Determine if this is TV or movies from the output path
+            final = plan.final_output
+            media_dir = final.parent  # Episode dir (Season X/) or movie dir
+            is_tv = "/tv/" in str(final) or "/anime/" in str(final)
+
+            if is_tv:
+                # For TV: NFO goes in the series folder (parent of Season X/)
+                series_dir = media_dir.parent if "season" in media_dir.name.lower() else media_dir
+                nfo_path = series_dir / "tvshow.nfo"
+            else:
+                # For movies: NFO goes in the movie folder
+                series_dir = media_dir
+                nfo_path = series_dir / "movie.nfo"
+
+            if nfo_path.exists():
+                return  # Already have an NFO
+
+            # Query the arr API for IDs
+            state = self.repo.load_state()
+            secrets = state.get("secrets", {})
+            cat_config = config.download_policy.categories
+            normalized = self._normalize_category(plan.torrent.category)
+            vpn_active = config.services.gluetun.enabled
+            from ..models import VPN_ROUTED_SERVICES
+
+            if normalized == cat_config.sonarr:
+                service, port = "sonarr", 8989
+                endpoint = "/api/v3/series"
+            elif normalized == cat_config.radarr:
+                service, port = "radarr", 7878
+                endpoint = "/api/v3/movie"
+            else:
+                return
+
+            api_key = secrets.get(service, {}).get("api_key")
+            if not api_key:
+                return
+
+            host = "gluetun" if (vpn_active and service in VPN_ROUTED_SERVICES) else service
+
+            # Look up the specific item by library path
+            resp = httpx.get(
+                f"http://{host}:{port}{endpoint}",
+                headers={"X-Api-Key": api_key},
+                timeout=httpx.Timeout(10.0),
+            )
+            if resp.status_code != 200:
+                return
+
+            items = resp.json()
+            # Match by path — find the item whose path matches our output directory
+            series_name = series_dir.name
+            matched = None
+            for item in items:
+                item_path = Path(item.get("path", ""))
+                if item_path.name == series_name:
+                    matched = item
+                    break
+
+            if not matched:
+                return
+
+            title = matched.get("title", series_name)
+            tvdb_id = matched.get("tvdbId")
+            tmdb_id = matched.get("tmdbId")
+            imdb_id = matched.get("imdbId")
+            year = matched.get("year")
+
+            if is_tv:
+                write_tvshow_nfo(
+                    series_dir, title=title,
+                    tvdb_id=tvdb_id, tmdb_id=tmdb_id, imdb_id=imdb_id, year=year,
+                )
+            else:
+                write_movie_nfo(
+                    series_dir, title=title,
+                    tmdb_id=tmdb_id, imdb_id=imdb_id, year=year,
+                )
+
+        except Exception as exc:
+            log.debug("NFO generation failed (non-fatal): %s", exc)
 
     def _lookup_arr_metadata(
         self, config: StackConfig, torrent: TorrentRecord
