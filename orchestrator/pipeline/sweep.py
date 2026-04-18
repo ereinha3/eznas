@@ -644,7 +644,11 @@ class LibrarySweeper:
         from .subtitle_align import parse_srt, probe_video_duration, validate_timing
 
         results: List[dict] = []
+        # pool_root is /data inside container, media is at /data/tv and /data/movies
+        # (no /data/media/ subdirectory in the container mount)
         media_root = self.pool_root / "media"
+        if not media_root.exists():
+            media_root = self.pool_root  # Fallback: scan pool_root directly
 
         for video_path in self._walk_video_files(media_root):
             video_base = video_path.stem
