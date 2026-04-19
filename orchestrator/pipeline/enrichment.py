@@ -417,6 +417,38 @@ class EnrichmentEngine:
     # Gap scanning
     # ------------------------------------------------------------------
 
+    def _resolve_target_languages(
+        self,
+        config: StackConfig,
+        enrich_cfg: EnrichmentConfig,
+    ) -> List[str]:
+        """Derive enrichment target languages.
+
+        If enrichment.target_languages is explicitly set, use those.
+        Otherwise, derive from media_policy.keep_audio + "original"
+        so the enrichment engine searches for all user-preferred languages
+        plus the original language of each media item.
+        """
+        if enrich_cfg.target_languages:
+            return enrich_cfg.target_languages
+
+        # Derive from media policy
+        policy_langs = set()
+        for category_entry in [config.media_policy.movies]:
+            for lang in category_entry.keep_audio:
+                if lang.lower() != "und":
+                    policy_langs.add(lang)
+
+        # Always include "original" so we search for the native language
+        # (e.g., Japanese for anime that only has an English dub)
+        targets = sorted(policy_langs) + ["original"]
+
+        log.info(
+            "enrichment: target_languages derived from media_policy: %s",
+            targets,
+        )
+        return targets
+
     def scan_library_gaps(
         self,
         config: StackConfig,
@@ -424,7 +456,7 @@ class EnrichmentEngine:
     ) -> List[EnrichmentCandidate]:
         """Identify library files missing desired audio languages.
 
-        The ``target_languages`` config supports a special ``"original"``
+        The ``target_languages`` supports a special ``"original"``
         sentinel which resolves to the actual original language of each
         media item (looked up from Radarr/Sonarr API).  For example,
         ``["eng", "original"]`` means: every file should have both English
@@ -434,13 +466,16 @@ class EnrichmentEngine:
         pool = self._resolve_pool_root(config)
         candidates: List[EnrichmentCandidate] = []
 
+        # Resolve target languages (explicit config or derived from media policy)
+        target_langs = self._resolve_target_languages(config, enrich_cfg)
+
         # Separate the "original" sentinel from concrete language codes
         has_original_target = "original" in [
-            l.lower() for l in enrich_cfg.target_languages
+            l.lower() for l in target_langs
         ]
         concrete_targets = {
             _normalize_lang(l)
-            for l in enrich_cfg.target_languages
+            for l in target_langs
             if l.lower() != "original"
         }
 
@@ -1536,12 +1571,22 @@ class EnrichmentEngine:
         return video_files[0][0]
 
     def _find_grab_key(self, torrent_name: str, grabbed: dict) -> Optional[str]:
-        """Find the grab key for a torrent by matching name prefix."""
+        """Find the grab key for a torrent by matching name prefix.
+
+        Handles two naming discrepancies:
+        1. qBT name is a prefix of stored name (indexer adds description suffix)
+        2. Stored key is a prefix of qBT name
+        """
         # Exact match on stored torrent_name
         for key, info in grabbed.items():
             if info.get("torrent_name") == torrent_name:
                 return key
-        # Fallback: key is title[:120]
+        # Stored name starts with qBT name (indexer added suffix like " | Show Title")
+        for key, info in grabbed.items():
+            stored = info.get("torrent_name", "")
+            if stored and stored.startswith(torrent_name):
+                return key
+        # qBT name starts with stored key (key is truncated)
         for key in grabbed:
             if torrent_name.startswith(key[:100]):
                 return key

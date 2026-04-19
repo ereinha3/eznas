@@ -201,11 +201,12 @@ class EnrichmentConfig(BaseModel):
 
     # --- Target audio ---
     target_languages: List[str] = Field(
-        default_factory=lambda: ["eng", "original"],
+        default_factory=list,
         description=(
             "Audio languages every library file should have. Use ISO 639-2 "
             "codes (e.g. 'eng', 'jpn'). The special value 'original' resolves "
-            "to each media item's original language from Radarr/Sonarr metadata."
+            "to each media item's original language from Radarr/Sonarr metadata. "
+            "If empty, derived from media_policy.keep_audio + 'original'."
         ),
     )
 
