@@ -96,14 +96,16 @@
 - ✅ Jellyfin plugin configuration scripted (`jellyfin_setup.py`)
 - ✅ Studio collection auto-sync (`jellyfin_studio_collections.py`)
 
-## Activation Required
+## Deployment Verification
 
-### Enrichment Pipeline — Ready but Not Running
-The enrichment pipeline is fully implemented but needs activation:
-1. **Rebuild Docker image** — picks up `libchromaprint-tools` (fpcalc binary)
-2. **Apply Stack** — creates `enrichment` qBT category
-3. **Restart pipeline worker** — picks up `enrichment.enabled: true` from stack.yaml
+### Enrichment Pipeline — Implemented, Verify After Rebuilds
+The enrichment pipeline is fully implemented and `stack.yaml` currently enables
+it. After code or image changes, verify the running stack picked up the feature:
+1. **Rebuild Docker image** — picks up `libchromaprint-tools` (`fpcalc`) and current pipeline code
+2. **Apply Stack** — creates/refreshes the `enrichment` qBittorrent category
+3. **Restart pipeline worker** — reloads `services.pipeline.enrichment`
 4. Verify `fpcalc -version` works inside the container
+5. Check pipeline logs for enrichment scan/grab activity
 
 Current stack.yaml enrichment config:
 ```yaml

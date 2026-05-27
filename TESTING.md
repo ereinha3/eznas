@@ -114,15 +114,17 @@ If you want to simulate a real download scenario:
 
 The full pipeline worker runs the following phases every tick (default 60s):
 
-1. **Phase 1** — Process completed qBittorrent torrents (remux + import)
-2. **Phase 1.5** — Health/stall detection (kill dead torrents, exponential backoff)
-3. **Phase 1.9** — Cleanup processed sources
-4. **Phase 2** — Scan orphans (untracked files in scratch)
-5. **Phase 3** — Stale staging file cleanup
-6. **Phase 3.5** — Stale orphan source cleanup (3-day TTL)
+1. **Pre-tick cleanup** — Stale staging files and stale orphan sources
+2. **Phase 1** — Process completed qBittorrent torrents (remux + import)
+3. **Phase 1.5** — Health/stall detection (kill dead torrents, exponential backoff)
+4. **Phase 1.9** — Cleanup processed sources
+5. **Phase 2** — Scan orphans (untracked files in scratch)
+6. **Phase 3** — Trigger Radarr/Sonarr library refresh
 7. **Phase 4** — Backfill engine (search for missing content)
 8. **Phase 5** — Prowlarr direct-grab fallback (bypasses arr title matching)
-9. **Phase 6** — Nightly automation (indexer discovery + missing content search)
+9. **Phase 6** — Nightly automation (indexer discovery, missing searches, studio collections)
+10. **Phase 7** — Media enrichment (cross-mux missing audio and upgrade video)
+11. **Phase 8** — Embed orphaned external SRT subtitles into MKVs
 
 ## Next Steps
 
@@ -133,4 +135,3 @@ After testing, you can:
 - Test with different file formats and categories
 - Test health/stall detection by creating a stuck torrent
 - Test backfill by removing a file from the library and waiting for the next nightly run
-

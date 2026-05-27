@@ -89,17 +89,17 @@ docker compose -f docker-compose.bootstrap.yml up -d
 
 ---
 
-## Recommended Workflow for Testing/Development
+## Recommended Workflow
 
-Since you're in a testing phase, here's the best approach:
+Choose the setup based on the work you are doing:
 
-### **Use Dev Setup for Now** ✅
+### **Use Dev Setup for Active Development** ✅
 
 **Why**:
 1. **Hot reload** = faster iteration when fixing bugs
 2. **Separate frontend** = see UI changes instantly
 3. **Easy debugging** = can exec into containers, see logs easily
-4. **Conflict detection** = we just fixed it to auto-stop dev services when applying
+4. **Conflict detection** = apply flow can stop conflicting dev services before starting the generated stack
 
 **Workflow**:
 ```bash
@@ -119,15 +119,9 @@ docker compose -f docker-compose.dev.yml --profile full up -d
 docker compose -f generated/docker-compose.yml down  # Stop generated stack
 ```
 
-### **Ignore Prod Setup for Now** ⏸️
+### **Use Prod Setup for Deployment**
 
-**Why**:
-- You're not deploying yet
-- Dev setup is better for testing
-- Prod setup is for final deployment
-- No need to maintain both during active development
-
-**When to switch to prod**:
+Use `docker-compose.bootstrap.yml` when:
 - You're ready to deploy to a server
 - You want a stable, production-ready setup
 - You're done with active development

@@ -1,5 +1,9 @@
 # Current Work Session - NAS Orchestrator
 
+> Historical archive: this file records the 2026-02-03 work session and is no
+> longer the current source of truth. For active project context, read
+> `CLAUDE.md` and `docs/SESSION_HANDOFF.md`.
+
 **Date**: 2026-02-03
 **Status**: ✅ All critical issues resolved, system fully operational
 

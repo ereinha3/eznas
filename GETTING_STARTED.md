@@ -56,19 +56,19 @@ Or if accessing remotely:
 http://<your-server-ip>:8443
 ```
 
-### Step 4: Login with Default Credentials
+### Step 4: Complete First-Run Setup
 
-On first startup, the system automatically creates default admin credentials. These are displayed prominently on the login page:
+On first startup, the UI shows the setup wizard instead of a login form. The
+wizard asks you to create the first admin account and choose your initial
+storage paths.
 
-**Example:**
-- **Username:** `admin`
-- **Password:** `bCUrCpWoD0m0hqFj` (randomly generated, yours will be different)
-
-⚠️ **Important:** The default password is shown only once on the login screen. Copy it immediately!
+There is no longer an auto-generated default password. The password you enter
+in the wizard becomes the EZNAS admin password and is also saved into the
+service secrets used to provision Jellyfin, Jellyseerr, and qBittorrent.
 
 ### Step 5: Configure Your Stack
 
-After logging in:
+After setup, log in with the admin account you created and review the stack:
 
 1. **Storage Paths** - Set your media library locations:
    - **Pool Path:** Where your media library lives (e.g., `/mnt/pool`)
@@ -147,31 +147,30 @@ This starts:
 
 When the orchestrator starts for the first time:
 
-1. **Default Admin Creation:** The system automatically creates an `admin` user with a randomly generated secure password
-2. **Credential Display:** The password is displayed on the login page in a yellow notification box
-3. **Auto-hide:** The notification disappears after 30 seconds for security
-4. **One-time Display:** The password is logged to the container logs and shown in the UI only until first login
+1. **Setup Wizard:** The UI prompts for admin credentials, storage paths, and enabled services
+2. **Admin Creation:** The system creates the admin user with the password you entered
+3. **Initial Config:** The wizard writes `stack.yaml` and split runtime state files under `ORCH_ROOT`
+4. **Service Secrets:** Admin credentials are copied into `secrets.json` for Jellyfin, Jellyseerr, and qBittorrent provisioning
 
-### Locating Your Default Password
+### If You Cannot Log In
 
-If you missed the password on the login screen:
+There is no generated password to recover. If setup completed and you cannot
+log in, inspect the auth state or reset the setup.
 
-**Method 1: Check Container Logs**
-```bash
-docker logs nas-orchestrator 2>&1 | grep "Created default admin"
-# Output: Created default admin user (admin / YOUR_PASSWORD_HERE)
-```
-
-**Method 2: API Endpoint**
+**Check setup status:**
 ```bash
 curl http://localhost:8443/api/setup/status
-# Returns: {"needs_setup":false,"has_config":true,"default_password":"YOUR_PASSWORD"}
+# Example: {"needs_setup":false,"has_config":true}
 ```
 
-**Method 3: State File** (Advanced)
+**Inspect auth state** (advanced):
 ```bash
-cat generated/state.json | jq '.auth._setup.default_password'
+cat auth.json | jq '.users | keys'
 ```
+
+If no users exist, revisit `http://localhost:8443` and complete the setup
+wizard. If users exist but the password is lost, reset to factory defaults or
+use the user-management code path from a trusted local shell.
 
 ### Changing the Default Password
 
@@ -179,10 +178,11 @@ After your first login:
 
 1. Go to **Settings** or **User Management**
 2. Click **Change Password**
-3. Enter your current password (the default)
+3. Enter your current password
 4. Set your new secure password
 
-⚠️ **Security Note:** Always change the default password immediately after first login!
+⚠️ **Security Note:** Use a strong admin password during setup and rotate it if
+it has been shared with any provisioned service.
 
 ---
 
@@ -202,7 +202,7 @@ User → Jellyseerr (request) → Sonarr/Radarr → Prowlarr (25 indexers)
 Orchestrator UI (React) → FastAPI Backend → Docker Compose → All Services
                               ↓
                        Configuration Files
-                       (stack.yaml, state.json)
+                       (stack.yaml + split state JSON)
 ```
 
 ### File Locations
@@ -210,7 +210,11 @@ Orchestrator UI (React) → FastAPI Backend → Docker Compose → All Services
 | File | Purpose | Location |
 |------|---------|----------|
 | `stack.yaml` | User configuration | Project root or `/config` in container |
-| `state.json` | Runtime state & secrets | Project root or `/config` in container |
+| `auth.json` | Users, sessions, auth config | Project root or `/config` in container |
+| `secrets.json` | Service API keys and credentials | Project root or `/config` in container |
+| `services.json` | Per-service runtime IDs/state | Project root or `/config` in container |
+| `runs.json` | Apply/converge run history | Project root or `/config` in container |
+| `pipeline.json` | Pipeline state, events, processed items | Project root or `/config` in container |
 | `generated/docker-compose.yml` | Rendered compose file | `generated/` directory |
 | `generated/.env` | Environment variables | `generated/` directory |
 | `generated/.secrets/` | Service secrets | `generated/.secrets/` directory |
@@ -233,8 +237,8 @@ The orchestrator uses Docker volumes for persistence:
 
 ```yaml
 volumes:
-  orchestrator_config:/config  # Configuration and state
-  ./generated:/config/generated  # Generated compose files
+  orchestrator_config:/config    # stack.yaml + split state files
+  ./generated:/config/generated  # generated compose/env/secrets
 ```
 
 ---
@@ -259,14 +263,15 @@ docker port nas-orchestrator
 # Should show: 8443/tcp -> 0.0.0.0:8443
 ```
 
-### Issue: Default Credentials Not Showing
+### Issue: Setup Wizard Not Showing
 
 **Check setup status:**
 ```bash
 curl http://localhost:8443/api/setup/status
 ```
 
-If `default_password` is null, the password may have been cleared after first login. Check container logs for the original password.
+If `needs_setup` is `false`, an admin user already exists and the normal login
+screen is expected.
 
 ### Issue: Permission Denied on Paths
 
@@ -297,7 +302,7 @@ To completely reset and start over:
 docker compose -f docker-compose.bootstrap.yml down
 
 # Clear configuration
-rm -f stack.yaml state.json
+rm -f stack.yaml auth.json secrets.json services.json runs.json pipeline.json
 rm -rf generated/
 
 # Restart

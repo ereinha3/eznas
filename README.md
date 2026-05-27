@@ -1,9 +1,10 @@
 # NAS Orchestrator
 
 Automated, zero-touch provisioning for a NAS media stack (qBittorrent, Radarr,
-Sonarr, Prowlarr, Jellyseerr, Jellyfin, optional Traefik). A FastAPI backend
-renders docker compose from templates, brings services up, configures them via
-API, and performs a post-apply verification pass to confirm state.
+Sonarr, Prowlarr, Jellyseerr, Jellyfin, Bazarr, Gluetun, FlareSolverr, optional
+Traefik). A FastAPI backend renders docker compose from templates, brings
+services up, configures them via API, and performs a post-apply verification
+pass to confirm state.
 
 **🚀 New here?** Check out the [Getting Started Guide](GETTING_STARTED.md) for step-by-step setup instructions!
 
@@ -16,7 +17,7 @@ cd nas_orchestrator
 docker compose -f docker-compose.bootstrap.yml up -d
 
 # Access the UI at http://localhost:8443
-# Login with default credentials shown on the login page
+# Complete the setup wizard to create the first admin account
 ```
 
 ## Progress Report (Detailed)
@@ -28,8 +29,9 @@ docker compose -f docker-compose.bootstrap.yml up -d
   `/api/apply`, `/api/status`, `/api/credentials`, and service-specific credential endpoints.
 - Converge pipeline sequence: validate -> prepare dirs -> render -> compose up ->
   configure -> verify -> finalize.
-- Config/state persistence uses `stack.yaml` and `state.json`. `ORCH_ROOT` can
-  override where these live (container friendly).
+- Config persistence uses `stack.yaml`; runtime state is split into
+  `auth.json`, `secrets.json`, `services.json`, `runs.json`, and
+  `pipeline.json`. `ORCH_ROOT` can override where these live.
 - SSE (Server-Sent Events) streaming for live apply logs in the UI.
 
 **Service automation (configure)**
@@ -39,6 +41,7 @@ docker compose -f docker-compose.bootstrap.yml up -d
 - Prowlarr: API key sync from config.xml, UI authentication (forms-based), app linking to Radarr/Sonarr, auto-population of indexers based on language preferences.
 - Jellyseerr: initial setup + Radarr/Sonarr links.
 - Jellyfin: startup wizard, admin user, libraries, user creation endpoint.
+- Bazarr: Radarr/Sonarr linkage, subtitle providers, and language profiles.
 
 **Verification (post-apply)**
 - qBittorrent: auth + categories + category paths.
@@ -68,8 +71,9 @@ docker compose -f docker-compose.bootstrap.yml up -d
 - Container format standardization (e.g., to MKV).
 - Automatic file movement from staging to final library locations.
 - Torrent cleanup (removes from qBittorrent after processing).
-- Processed torrent tracking in `state.json`.
+- Processed torrent and pipeline event tracking in `pipeline.json`.
 - Integrated into Docker Compose stack as `pipeline-worker` service.
+- Backfill, Prowlarr direct-grab fallback, enrichment, and SRT embedding are implemented.
 
 **Docker**
 - Local multi-stage Dockerfile builds UI + backend into one container.
@@ -92,15 +96,16 @@ docker compose -f docker-compose.bootstrap.yml up -d
 - Pipeline worker: **implemented and integrated**
 - Quality preferences: **implemented** (UI + backend, Radarr/Sonarr integration)
 - Language preferences: **implemented** (UI + backend, pipeline integration)
-- Bootstrap "one command" compose: **pending**
-- Frontend dev container in compose: **pending**
+- Bootstrap "one command" compose: **implemented**
+- Frontend dev container in compose: **implemented**
+- Enrichment pipeline: **implemented**; deployment/runtime verification required after image rebuilds.
 
 ### Known Issues / Constraints
 
 - `.env` files are blocked in this workspace; use `VITE_API_ORIGIN` when running
   Vite manually.
-- First-run still requires either running FastAPI locally or a bootstrap compose
-  to render the main compose bundle.
+- First-run starts with `docker-compose.bootstrap.yml`, then the setup wizard
+  creates the admin account and initial `stack.yaml`.
 - Verification failures are logged but not yet surfaced as rich UI badges.
 - Custom formats in Radarr/Sonarr are created internally but not exposed in UI
   (simplified UX approach).
@@ -109,6 +114,10 @@ docker compose -f docker-compose.bootstrap.yml up -d
   Health checks and service clients use `127.0.0.1:{port}` to work around this.
 - **Port conflicts**: Dev compose services (`*-dev` containers) can conflict with generated
   stack services if both are running. Stop dev services before running Apply.
+- Some generated files and `stack.yaml` are still tracked in git from earlier
+  history even though `.gitignore` now excludes runtime/generated state. Treat
+  generated `.env`/`.secrets` files and local stack files as sensitive until
+  they are explicitly removed from tracking.
 
 ## How To Run (Current)
 
@@ -135,17 +144,20 @@ npm run build
 ```
 Then run the backend and hit `http://<host>:8443/`.
 
-### Docker Compose (current)
-Render the compose bundle (once) then bring everything up:
+### Docker Compose (production/bootstrap)
+Start the orchestrator UI, then complete setup and Apply Stack from the UI:
 ```bash
 cd /home/ethan/eznas/nas_orchestrator
-source .venv/bin/activate
-uvicorn orchestrator.app:app --host 0.0.0.0 --port 8443
+docker compose -f docker-compose.bootstrap.yml up -d
 ```
-Use the UI to `Render` or `Apply`, then:
+
+### Docker Dev Environment
+For active backend/frontend work with hot reload:
 ```bash
-cd /home/ethan/eznas/nas_orchestrator/generated
-docker compose up -d --build
+cd /home/ethan/eznas/nas_orchestrator
+./scripts/dev.sh up
+./scripts/dev.sh up-full      # optional media services
+./scripts/dev.sh up-pipeline  # optional pipeline worker
 ```
 
 ### Testing the Pipeline
@@ -162,18 +174,18 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
 - **FastAPI Backend** (`orchestrator/app.py`): Main API server, serves UI, handles config/apply/status.
 - **Converge Engine** (`orchestrator/converge/`): Orchestrates validation, deployment, configuration, verification.
 - **Service Clients** (`orchestrator/clients/`): Python modules for each service API (qBittorrent, Radarr, Sonarr, etc.).
-- **Config Repository** (`orchestrator/storage.py`): Manages `stack.yaml` and `state.json` persistence.
+- **Config Repository** (`orchestrator/storage.py`): Manages `stack.yaml` plus split state section files.
 - **Compose Renderer** (`orchestrator/rendering.py`): Jinja2-based template rendering for docker-compose.yml.
 - **Pipeline Worker** (`orchestrator/pipeline/`): Continuous loop for processing completed downloads (remux, move, cleanup).
 - **Remux Engine** (`orchestrator/pipeline/remux.py`): Builds ffmpeg commands for lossless remuxing with language filtering.
 
 ### Data Flow
 
-1. User configures stack via UI → `stack.yaml` saved.
+1. User completes setup/configuration via UI → `stack.yaml` and section state files are saved.
 2. User clicks "Apply" → FastAPI triggers `ApplyRunner`.
-3. `ApplyRunner` validates → renders compose → `docker compose up` → configures services → verifies.
+3. `ApplyRunner` validates → prepares paths/secrets → renders compose → `docker compose up` → configures services → verifies.
 4. SSE streams events to UI in real-time.
-5. Pipeline worker polls qBittorrent → processes completed downloads → remuxes → moves to library.
+5. Pipeline worker polls qBittorrent → processes completed downloads → remuxes/enriches → moves to library.
 
 ### Configuration Model
 
@@ -188,13 +200,11 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
 
 ## Current Objectives
 
-- Create a bootstrap compose so users can run one `docker compose up` and land
-  on the admin UI immediately.
-- Add a frontend dev container (Vite) to the stack for UI development without
-  running npm manually.
 - Add richer verification UI and a "Verify only" action.
 - Surface verification results per service in the UI.
 - Improve diagnostics when verification fails (actionable hints).
+- Finish generated secret/config tracking cleanup for files that predate the
+  current `.gitignore`.
 
 ## Recent Changes
 
@@ -206,6 +216,9 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
   instead of container names, enabling it to work when orchestrator runs in a container.
 - **Health check enhancements**: Added fallback to `host.docker.internal` for containerized
   orchestrator scenarios.
+- **Bootstrap and dev compose**: `docker-compose.bootstrap.yml` and
+  `docker-compose.dev.yml` are available for production setup and hot-reload development.
+- **State file split**: Runtime state is stored in section files instead of a monolithic `state.json`.
 - **Pipeline worker fully integrated**: Continuous service that processes completed downloads.
 - **Quality preferences**: UI fields and backend integration for resolution, bitrate, container format.
 - **Language preferences**: Configurable audio/subtitle filtering in UI and pipeline.
@@ -216,7 +229,7 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
 
 ### Key Files
 - `stack.yaml`: Main configuration file (user-editable).
-- `state.json`: Runtime state, secrets, run history (auto-generated).
+- `auth.json`, `secrets.json`, `services.json`, `runs.json`, `pipeline.json`: Runtime state sections (auto-generated; sensitive).
 - `orchestrator/app.py`: FastAPI entrypoint.
 - `orchestrator/converge/runner.py`: Main apply/converge logic.
 - `orchestrator/pipeline/runner.py`: Pipeline worker loop.
@@ -228,9 +241,12 @@ python test_pipeline.py --source /mnt/raid/data/media/movies/Some.Movie.mkv --ca
 - `ORCH_ROOT`: Override config root directory (default: project root).
 - `VITE_API_ORIGIN`: API origin for Vite dev server (default: `http://localhost:8443`).
 - `PIPELINE_INTERVAL`: Pipeline worker polling interval in seconds (default: 60).
+- `POOL_PATH`, `SCRATCH_PATH`, `APPDATA_PATH`: Host path overrides used by dev compose.
 
 ### Important Paths
 - Config root: `ORCH_ROOT` or project root.
+- State files: `auth.json`, `secrets.json`, `services.json`, `runs.json`,
+  `pipeline.json` in the config root.
 - Generated files: `generated/` directory (docker-compose.yml, .env files).
 - Frontend build: `frontend/dist/` (served by FastAPI).
 - Templates: `templates/` directory (Jinja2 templates).
