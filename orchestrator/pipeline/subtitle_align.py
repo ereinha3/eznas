@@ -480,7 +480,7 @@ def remux_subtitle_into_mkv(
     if title:
         args.extend([f"-metadata:s:s:{sub_index}", f"title={title}"])
     if forced:
-        args.extend([f"-disposition:s:s:{sub_index}", "forced"])
+        args.extend([f"-disposition:s:{sub_index}", "forced"])
 
     args.append(str(output_path))
 

@@ -13,8 +13,35 @@ from .bdmv import (
     get_bdmv_stream_languages,
     map_clpi_to_ffprobe_indices,
 )
-from .remux import TrackSelection, build_ffmpeg_command
+from .remux import (
+    RemuxNotes,
+    SubtitlePolicy,
+    TrackSelection,
+    build_remux,
+    select_subtitle_streams,
+)
 from ..models import StackConfig
+
+
+def selection_from_config(config: StackConfig) -> TrackSelection:
+    """Build the TrackSelection for the media policy + output container.
+
+    The same policy applies to every category; original-language detection
+    keeps native audio for foreign content.
+    """
+    policy = config.media_policy.movies
+    rules = policy.subtitles
+    return TrackSelection(
+        audio=list(policy.keep_audio),
+        subtitles=list(policy.keep_subs),
+        subtitle_policy=SubtitlePolicy(
+            max_per_language=rules.max_per_language,
+            prefer=tuple(rules.prefer),
+            keep_forced=rules.keep_forced,
+            keep_sdh=rules.keep_sdh,
+        ),
+        container=config.quality.preferred_container,
+    )
 
 
 _UNSAFE_CHARS = re.compile(r'[<>:"/\\|?*\x00-\x1f]')
@@ -278,6 +305,8 @@ class PipelinePlan:
     selection: TrackSelection
     original_language: Optional[str] = None
     is_bdmv: bool = False
+    # Subtitle decisions, incl. image subs dropped because of MP4 output.
+    remux_notes: Optional[RemuxNotes] = None
 
 
 class PipelineWorker:
@@ -297,6 +326,7 @@ class PipelineWorker:
             categories.radarr: self.pool_root / "movies",
             categories.sonarr: self.pool_root / "tv",
         }
+        self.output_ext = f".{config.quality.preferred_container}"
 
     def _normalize_category(self, category: str) -> str:
         """Normalize category names to handle *arr service suffixes.
@@ -417,12 +447,23 @@ class PipelineWorker:
                 )
                 continue
 
-            # SAFETY: Skip if this file already exists in the library.
+            # SAFETY: Skip if this file already exists in the library, in
+            # either container (switching mkv<->mp4 must not import twice).
             # Avoids redundant ffmpeg runs for already-imported episodes.
-            if final_output.exists():
+            existing = next(
+                (
+                    candidate
+                    for candidate in (
+                        final_output.with_suffix(ext) for ext in (".mkv", ".mp4")
+                    )
+                    if candidate.exists()
+                ),
+                None,
+            )
+            if existing is not None:
                 print(
                     f"[pipeline] skipping {source.name}: already exists "
-                    f"in library at {final_output.name}"
+                    f"in library at {existing.name}"
                 )
                 continue
 
@@ -482,7 +523,7 @@ class PipelineWorker:
             # so the final move is an atomic rename, not a cross-device copy.
             staging_output = final_output.parent / f".tmp_{final_output.name}"
 
-            command = build_ffmpeg_command(
+            build = build_remux(
                 source, staging_output, selection,
                 original_language=original_language,
             )
@@ -491,9 +532,10 @@ class PipelineWorker:
                 source=source,
                 staging_output=staging_output,
                 final_output=final_output,
-                ffmpeg_command=command,
+                ffmpeg_command=build.command,
                 selection=selection,
                 original_language=original_language,
+                remux_notes=build.notes,
             ))
 
         # Filter out any plans that were nullified by overlap replacement
@@ -613,6 +655,7 @@ class PipelineWorker:
         # Stage as a temp file next to the final output (same filesystem)
         staging_output = final_output.parent / f".tmp_{final_output.name}"
 
+        notes: Optional[RemuxNotes] = None
         if feature.is_playlist and len(feature.clips) > 1:
             # Multi-clip: create a concat file list and use concat demuxer
             concat_list = final_output.parent / f".tmp_{torrent.name}_concat.txt"
@@ -629,11 +672,13 @@ class PipelineWorker:
                 source_suffix=main_m2ts.suffix,
             )
         else:
-            command = build_ffmpeg_command(
+            build = build_remux(
                 main_m2ts, staging_output, selection,
                 original_language=original_language,
                 stream_languages=stream_languages,
             )
+            command = build.command
+            notes = build.notes
 
         return [PipelinePlan(
             torrent=torrent,
@@ -644,6 +689,7 @@ class PipelineWorker:
             selection=selection,
             original_language=original_language,
             is_bdmv=True,
+            remux_notes=notes,
         )]
 
     def _build_concat_command(
@@ -679,7 +725,6 @@ class PipelineWorker:
         # Build keep-lists (normalise ISO 639-2 B/T variants)
         from .remux import _normalize_lang
         keep_audio = {_normalize_lang(lang) for lang in selection.audio}
-        keep_subs = {_normalize_lang(lang) for lang in selection.subtitles}
         if original_language:
             keep_audio.add(_normalize_lang(original_language))
 
@@ -701,20 +746,27 @@ class PipelineWorker:
                         audio_output_idx += 1
                     audio_input_idx += 1
 
-            sub_input_idx = 0
-            sub_output_idx = 0
-            for entry in stream_languages:
-                if entry.get("type") == "subtitle":
-                    lang = _normalize_lang(entry.get("lang", "und"))
-                    if lang in keep_subs:
-                        args.extend(["-map", f"0:s:{sub_input_idx}"])
-                        if lang != "und":
-                            args.extend([
-                                f"-metadata:s:s:{sub_output_idx}",
-                                f"language={lang}",
-                            ])
-                        sub_output_idx += 1
-                    sub_input_idx += 1
+            # CLPI gives only languages; BDMV subtitles are PGS.  Apply the
+            # same subtitle policy (MP4 output drops them: image-based).
+            clpi_subs = [
+                {
+                    "index": pos,
+                    "codec_type": "subtitle",
+                    "codec_name": "hdmv_pgs_subtitle",
+                    "tags": {"language": entry.get("lang", "und")},
+                }
+                for pos, entry in enumerate(
+                    e for e in stream_languages if e.get("type") == "subtitle"
+                )
+            ]
+            sub_sel = select_subtitle_streams(clpi_subs, selection)
+            for out_idx, track in enumerate(sub_sel.selected):
+                args.extend(["-map", f"0:s:{track.stream_index}"])
+                if track.lang != "und":
+                    args.extend([
+                        f"-metadata:s:s:{out_idx}",
+                        f"language={track.lang}",
+                    ])
 
             # SAFETY: If filtering removed all audio, keep all as fallback
             if audio_output_idx == 0 and audio_input_idx > 0:
@@ -724,8 +776,13 @@ class PipelineWorker:
                 )
                 args.extend(["-map", "0:a?"])
         else:
-            # No CLPI data — keep all audio and subtitle streams as fallback
-            args.extend(["-map", "0:a?", "-map", "0:s?"])
+            # No CLPI data — keep all audio; map no subtitles (fail closed:
+            # without languages the subtitle policy cannot be applied).
+            print(
+                "[pipeline] WARNING: concat without CLPI data — copying all "
+                "audio and NO subtitles"
+            )
+            args.extend(["-map", "0:a?"])
 
         args.extend(["-c", "copy", str(destination)])
         return args
@@ -762,7 +819,7 @@ class PipelineWorker:
                 # the root folder differs from the pipeline base_dir.
                 # e.g. library_path = /data/movies/Hereditary (2018)
                 folder_name = library_path.name  # "Hereditary (2018)"
-                file_name = f"{folder_name}.mkv"
+                file_name = f"{folder_name}{self.output_ext}"
                 return library_path / file_name
 
             # Fallback: regex-parse from file stem, then torrent name
@@ -771,10 +828,10 @@ class PipelineWorker:
                 title, year = parse_movie_name(torrent.name)
             if year:
                 folder_name = _sanitize_filename(f"{title} ({year})")
-                file_name = f"{folder_name}.mkv"
+                file_name = f"{folder_name}{self.output_ext}"
             else:
                 folder_name = _sanitize_filename(title)
-                file_name = f"{folder_name}.mkv"
+                file_name = f"{folder_name}{self.output_ext}"
             return base_dir / folder_name / file_name
 
         elif normalized_category == categories.sonarr:
@@ -847,9 +904,9 @@ class PipelineWorker:
                 show_dir = library_path if library_path else base_dir / show_name
                 season_dir = show_dir / f"Season {season}"
                 if end_episode and end_episode > episode:
-                    file_name = f"{show_name} - S{season:02d}E{episode:02d}-E{end_episode:02d}.mkv"
+                    file_name = f"{show_name} - S{season:02d}E{episode:02d}-E{end_episode:02d}{self.output_ext}"
                 else:
-                    file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
+                    file_name = f"{show_name} - S{season:02d}E{episode:02d}{self.output_ext}"
                 return season_dir / file_name
 
             # Couldn't parse episode — try season-level info for directory,
@@ -860,24 +917,18 @@ class PipelineWorker:
                 show_name = library_path.name if library_path else _sanitize_filename(parsed_show_name)
                 show_dir = library_path if library_path else base_dir / show_name
                 season_dir = show_dir / f"Season {season}"
-                return season_dir / f"{source.stem}.mkv"
+                return season_dir / f"{source.stem}{self.output_ext}"
 
             # Total fallback — use API show name if available
             if library_path:
-                return library_path / f"{source.stem}.mkv"
-            return base_dir / f"{source.stem}.mkv"
+                return library_path / f"{source.stem}{self.output_ext}"
+            return base_dir / f"{source.stem}{self.output_ext}"
 
         # Unknown category
-        return base_dir / f"{source.stem}.mkv"
+        return base_dir / f"{source.stem}{self.output_ext}"
 
     def _policy_for_category(self, _category: str) -> TrackSelection:
-        # Use the same media policy for all categories
-        # Original language detection ensures foreign content keeps native audio
-        policy = self.config.media_policy.movies
-        return TrackSelection(
-            audio=list(policy.keep_audio),
-            subtitles=list(policy.keep_subs),
-        )
+        return selection_from_config(self.config)
 
     def _select_video_files(self, files: Iterable[Path]) -> List[Path]:
         """Return all video files from the torrent, sorted largest first."""

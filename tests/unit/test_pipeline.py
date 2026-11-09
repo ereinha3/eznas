@@ -177,7 +177,7 @@ class TestBuildFFmpegCommand:
             assert "0:a:0" in " ".join(cmd)
 
     def test_probe_failure_fallback(self):
-        """When probe fails, should copy all streams."""
+        """When probe fails, copy all audio but no subtitles (fail closed)."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
 
         with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
@@ -189,10 +189,10 @@ class TestBuildFFmpegCommand:
                 selection
             )
 
-            # Should fall back to copying all
+            # Audio falls back to copy-all; subtitles are not copied blindly
             cmd_str = " ".join(cmd)
             assert "0:a" in cmd_str
-            assert "0:s" in cmd_str
+            assert "0:s" not in cmd_str
 
 
 class TestPipelineWorker:

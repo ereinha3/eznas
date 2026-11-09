@@ -11,7 +11,7 @@ import os
 import re
 import subprocess
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Dict, List, Optional, Set
 
@@ -20,7 +20,17 @@ import httpx
 from ..models import StackConfig
 from ..storage import ConfigRepository
 from .languages import arr_language_to_iso
-from .remux import TrackSelection, StreamInfo, build_ffmpeg_command, probe_streams
+from .remux import (
+    TrackSelection,
+    StreamInfo,
+    build_remux,
+    container_for_path,
+    parse_subtitle_tracks,
+    probe_raw_streams,
+    select_subtitle_streams,
+    select_subtitles,
+    stream_info_from_streams,
+)
 from .worker import VIDEO_EXTENSIONS, PipelineWorker
 
 
@@ -63,6 +73,35 @@ class SweepResult:
     errors: List[str] = field(default_factory=list)
 
 
+def unwanted_subtitle_streams(
+    streams: List[dict],
+    selection: TrackSelection,
+    *,
+    container: str,
+) -> List[str]:
+    """Describe every subtitle stream the policy would remove.
+
+    Uses the same selection as the remux command builder, so a file is
+    compliant exactly when re-remuxing it would keep every subtitle.
+    """
+    result = select_subtitle_streams(streams, selection, container=container)
+    return [t.describe() for t in result.dropped]
+
+
+def _policy_fingerprint(selection: TrackSelection) -> str:
+    """Stable hash of the policy, so a policy change invalidates swept state."""
+    policy = selection.subtitle_policy
+    key = repr((
+        sorted(lang.lower() for lang in selection.audio),
+        [lang.lower() for lang in selection.subtitles],
+        policy.max_per_language,
+        [p.lower() for p in policy.prefer],
+        policy.keep_forced,
+        policy.keep_sdh,
+    ))
+    return hashlib.sha256(key.encode()).hexdigest()[:16]
+
+
 # ---------------------------------------------------------------------------
 # LibrarySweeper
 # ---------------------------------------------------------------------------
@@ -94,6 +133,10 @@ class LibrarySweeper:
         """
         plan = SweepPlan()
         swept_state = self._load_swept_state()
+        base_selection = self._worker._policy_for_category(
+            self.config.download_policy.categories.radarr
+        )
+        fingerprint = _policy_fingerprint(base_selection)
 
         # Pre-load original language data from Radarr/Sonarr
         self._load_arr_original_languages()
@@ -110,19 +153,28 @@ class LibrarySweeper:
             for file_path in self._walk_video_files(lib_dir):
                 plan.total_files_scanned += 1
 
-                # Skip files already swept at current mtime
-                if self._is_already_swept(file_path, swept_state):
+                # Skip files already swept at current mtime + policy
+                if self._is_already_swept(file_path, swept_state, fingerprint):
                     plan.files_already_clean += 1
                     continue
 
                 # Probe the file
-                stream_info = probe_streams(file_path)
-                if stream_info is None or not stream_info.has_video:
+                raw_streams = probe_raw_streams(file_path)
+                if raw_streams is None:
+                    print(f"[sweep] cannot probe {file_path.name}; leaving it alone")
+                    plan.files_already_clean += 1
+                    continue
+                stream_info = stream_info_from_streams(raw_streams)
+                if not stream_info.has_video:
                     plan.files_already_clean += 1
                     continue
 
-                # Get the policy for this category
-                selection = self._worker._policy_for_category(category)
+                # Policy for this category; an existing file keeps its own
+                # container (the sweep never converts mkv <-> mp4).
+                selection = replace(
+                    self._worker._policy_for_category(category),
+                    container=container_for_path(file_path),
+                )
 
                 # Look up the original language from API data
                 original_language = self._get_original_language_for_file(
@@ -130,8 +182,11 @@ class LibrarySweeper:
                 )
 
                 # Check if stripping is needed
-                unwanted_audio, unwanted_subs = self._detect_unwanted(
+                unwanted_audio = self._detect_unwanted_audio(
                     stream_info, selection, original_language=original_language,
+                )
+                unwanted_subs = unwanted_subtitle_streams(
+                    raw_streams, selection, container=selection.container,
                 )
 
                 if not unwanted_audio and not unwanted_subs:
@@ -196,12 +251,20 @@ class LibrarySweeper:
                     action.path, action.category
                 )
 
-                # Build and run ffmpeg
-                cmd = build_ffmpeg_command(
+                # Build and run ffmpeg.  If the file cannot be probed the
+                # builder would map no subtitles; for an in-place rewrite of
+                # a library file that is destructive, so abort instead.
+                build = build_remux(
                     action.path, staging_path, action.selection,
                     original_language=original_language,
                 )
-                success = self._run_ffmpeg(cmd)
+                if build.notes.probe_failed:
+                    result.failed += 1
+                    result.errors.append(
+                        f"probe failed, not rewriting: {action.path}"
+                    )
+                    continue
+                success = self._run_ffmpeg(build.command)
 
                 if not success:
                     result.failed += 1
@@ -228,8 +291,10 @@ class LibrarySweeper:
                 os.replace(str(staging_path), str(action.path))
                 result.succeeded += 1
 
-                # Mark as swept
-                self._mark_swept(action.path, "ok")
+                # Mark as swept under the current policy
+                self._mark_swept(
+                    action.path, "ok", _policy_fingerprint(action.selection),
+                )
 
             except Exception as exc:
                 result.failed += 1
@@ -254,14 +319,16 @@ class LibrarySweeper:
     # Detection logic
     # ------------------------------------------------------------------
 
-    def _detect_unwanted(
+    def _detect_unwanted_audio(
         self,
         info: StreamInfo,
         selection: TrackSelection,
         *,
         original_language: Optional[str] = None,
-    ) -> tuple[List[str], List[str]]:
-        """Determine which audio/subtitle languages should be stripped.
+    ) -> List[str]:
+        """Determine which audio languages should be stripped.
+
+        Subtitles are checked by :func:`unwanted_subtitle_streams`.
 
         Args:
             info: Stream metadata from ffprobe.
@@ -270,7 +337,7 @@ class LibrarySweeper:
                 When provided, overrides the unreliable first-audio-track
                 heuristic from probe_streams().
 
-        Returns (unwanted_audio, unwanted_subtitles).
+        Returns the unwanted audio languages.
         """
         keep_audio: Set[str] = set(lang.lower() for lang in selection.audio)
         keep_audio.add("und")  # Always keep undetermined
@@ -281,20 +348,10 @@ class LibrarySweeper:
         if orig:
             keep_audio.add(orig.lower())
 
-        keep_subs: Set[str] = set(lang.lower() for lang in selection.subtitles)
-        # "forced" is a disposition flag, not a language — remove from set
-        keep_subs.discard("forced")
-
-        unwanted_audio = [
+        return [
             lang for lang in sorted(info.audio_languages)
             if lang.lower() not in keep_audio
         ]
-        unwanted_subs = [
-            lang for lang in sorted(info.subtitle_languages)
-            if lang.lower() not in keep_subs
-        ]
-
-        return unwanted_audio, unwanted_subs
 
     # ------------------------------------------------------------------
     # Original language lookup from Radarr/Sonarr API
@@ -467,19 +524,31 @@ class LibrarySweeper:
         pipeline = self.repo.load_pipeline_state()
         return pipeline.get("swept", {})
 
-    def _is_already_swept(self, path: Path, swept_state: dict) -> bool:
-        """Check if a file was already swept at its current mtime."""
+    def _is_already_swept(
+        self, path: Path, swept_state: dict, fingerprint: str,
+    ) -> bool:
+        """Check if a file was already swept at its current mtime and policy.
+
+        Records without a policy fingerprint predate the subtitle policy and
+        are re-checked.
+        """
         key = str(path)
         record = swept_state.get(key)
         if record is None:
             return False
         try:
             current_mtime = path.stat().st_mtime
-            return record.get("mtime") == current_mtime and record.get("status") == "ok"
+            return (
+                record.get("mtime") == current_mtime
+                and record.get("status") == "ok"
+                and record.get("policy") == fingerprint
+            )
         except OSError:
             return False
 
-    def _mark_swept(self, path: Path, status: str) -> None:
+    def _mark_swept(
+        self, path: Path, status: str, fingerprint: Optional[str] = None,
+    ) -> None:
         """Record a file as swept in pipeline state."""
         pipeline = self.repo.load_pipeline_state()
         swept = pipeline.setdefault("swept", {})
@@ -491,6 +560,7 @@ class LibrarySweeper:
             "status": status,
             "mtime": mtime,
             "timestamp": int(time.time()),
+            "policy": fingerprint,
         }
         self.repo.save_pipeline_state(pipeline)
 
@@ -506,8 +576,8 @@ class LibrarySweeper:
     ) -> Path:
         """Compute a staging path for the remuxed output.
 
-        With scratch disk: /scratch/postproc/sweep-{hash12}/filename.mkv
-        Without scratch:   source.parent/.filename.tmp.mkv
+        With scratch disk: /scratch/postproc/sweep-{hash12}/filename.ext
+        Without scratch:   source.parent/.filename.tmp.ext (same container)
         """
         if use_scratch and scratch_root is not None:
             hash_input = str(source).encode()
@@ -515,7 +585,7 @@ class LibrarySweeper:
             return scratch_root / "postproc" / f"sweep-{hash12}" / source.name
         else:
             # Dot-prefix hides from media scanners
-            return source.parent / f".{source.stem}.tmp.mkv"
+            return source.parent / f".{source.stem}.tmp{source.suffix}"
 
     def _resolve_scratch(self) -> Optional[Path]:
         """Resolve the scratch root, preferring container mounts."""
@@ -630,6 +700,73 @@ class LibrarySweeper:
     }
     _SUBTITLE_HINTS: Set[str] = {"hi", "cc", "sdh", "forced"}
 
+    # ISO 639-1 -> 639-2/B for the two-letter codes above, so embedded
+    # tracks carry the same codes the subtitle policy uses.
+    _ISO1_TO_ISO2: Dict[str, str] = {
+        "en": "eng", "ja": "jpn", "es": "spa", "fr": "fre", "de": "ger",
+        "it": "ita", "pt": "por", "ru": "rus", "ko": "kor", "zh": "chi",
+        "ar": "ara", "hi": "hin", "pl": "pol", "nl": "dut", "sv": "swe",
+        "da": "dan", "no": "nor", "fi": "fin", "cs": "cze", "hu": "hun",
+        "ro": "rum", "tr": "tur", "he": "heb", "el": "gre", "th": "tha",
+        "vi": "vie", "id": "ind", "uk": "ukr", "hr": "hrv", "bg": "bul",
+    }
+
+    def _srt_kind(self, srt_path: Path, video_stem: str) -> str:
+        """Return "forced", "sdh" or "normal" from Bazarr-style name hints."""
+        suffix = srt_path.stem[len(video_stem):] if srt_path.stem.startswith(video_stem) else srt_path.stem
+        parts = {p.lower() for p in re.split(r"[._ -]+", suffix) if p}
+        if "forced" in parts:
+            return "forced"
+        if parts & {"hi", "cc", "sdh"}:
+            return "sdh"
+        return "normal"
+
+    def _srts_allowed_by_policy(
+        self, video_path: Path, srt_items: List[dict],
+    ) -> List[dict]:
+        """Return the SRTs that the subtitle policy would keep once embedded.
+
+        An SRT is skipped when the file already has a track filling its
+        policy slot (any codec, not just SubRip), including identical
+        duplicates.  If the video cannot be probed nothing is embedded
+        (fail closed), so a slow probe cannot let duplicates through.
+        """
+        existing = probe_raw_streams(video_path)
+        if existing is None:
+            print(f"[sweep/srt] cannot probe {video_path.name}; not embedding")
+            return []
+        selection = replace(
+            self._worker._policy_for_category(
+                self.config.download_policy.categories.radarr
+            ),
+            container="mkv",
+        )
+        tracks = parse_subtitle_tracks(existing)
+        accepted: List[dict] = []
+        for n, item in enumerate(srt_items):
+            kind = self._srt_kind(item["srt"], video_path.stem)
+            pseudo = {
+                "index": f"srt{n}",
+                "codec_type": "subtitle",
+                "codec_name": "subrip",
+                "tags": {"language": item["language"]},
+                "disposition": {
+                    "forced": int(kind == "forced"),
+                    "hearing_impaired": int(kind == "sdh"),
+                },
+            }
+            candidate = parse_subtitle_tracks([pseudo], input_index=1, origin=1)[0]
+            chosen = select_subtitles(tracks + [candidate], selection).selected
+            if candidate in chosen:
+                tracks.append(candidate)
+                accepted.append({**item, "kind": kind})
+            else:
+                print(
+                    f"[sweep/srt] skipping {item['srt'].name}: policy slot for "
+                    f"{item['language']} {kind} already filled"
+                )
+        return accepted
+
     def scan_orphaned_srt(self) -> List[dict]:
         """Scan the library for external .srt files that can be embedded.
 
@@ -662,8 +799,9 @@ class LibrarySweeper:
                 if not entries:
                     continue
 
-                # Detect language from filename
+                # Detect language from filename (normalised to ISO 639-2)
                 lang = self._detect_srt_lang(srt_path, video_base)
+                lang = self._ISO1_TO_ISO2.get(lang, lang)
 
                 # Quick validation (probe video only if needed)
                 duration = probe_video_duration(video_path)
@@ -723,6 +861,9 @@ class LibrarySweeper:
             by_video[item["video"]].append(item)
 
         for video_path, srt_items in by_video.items():
+            srt_items = self._srts_allowed_by_policy(video_path, srt_items)
+            if not srt_items:
+                continue
             current_input = video_path
 
             for i, item in enumerate(srt_items):
@@ -740,6 +881,9 @@ class LibrarySweeper:
                     srt_path=srt_path,
                     output_path=output_path,
                     language=lang,
+                    forced=item["kind"] == "forced",
+                    # Title marks SDH so the policy recognises it later.
+                    title="SDH" if item["kind"] == "sdh" else None,
                 )
 
                 if not ok or not output_path.exists():

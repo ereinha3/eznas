@@ -289,6 +289,9 @@ class TestMp4Container:
         assert _sub_maps(cmd, streams) == [2, 3]
         assert "-c:s" in cmd and cmd[cmd.index("-c:s") + 1] == "mov_text"
         assert cmd[-1] == "/out.mp4"
+        # mov_text loses the "SDH" title, so the kind is carried as disposition
+        assert cmd[cmd.index("-disposition:s:1") + 1] == "hearing_impaired"
+        assert "-disposition:s:0" not in cmd
 
     def test_mp4_command_without_subs_has_no_subtitle_codec(self):
         streams = [_video(0), _audio(1), _sub(2, "eng", PGS)]
@@ -426,7 +429,7 @@ class TestCrossmuxPolicy:
             )
         # forced sorts first -> output subtitle index 0
         assert cmd.index("1:7") < cmd.index("0:2")
-        assert cmd[cmd.index("-disposition:s:s:0") + 1] == "forced"
+        assert cmd[cmd.index("-disposition:s:0") + 1] == "forced"
 
     def test_crossmux_refuses_when_library_unprobeable(self):
         with patch("orchestrator.pipeline.remux.probe_raw_streams", return_value=None):
@@ -533,3 +536,64 @@ class TestSweepCompliance:
         run_ffmpeg.assert_not_called()
         assert result.failed == 1 and result.succeeded == 0
         assert video.read_bytes() == b"x" * 2048
+
+
+# ---------------------------------------------------------------------------
+# SRT embed guard (sweep)
+# ---------------------------------------------------------------------------
+
+class TestSrtEmbedGuard:
+    def _sweeper(self, config: StackConfig) -> LibrarySweeper:
+        repo = MagicMock()
+        repo.load_pipeline_state.return_value = {}
+        return LibrarySweeper(config, repo)
+
+    def _item(self, tmp: Path, name: str, lang: str = "eng") -> dict:
+        return {"video": tmp / "Movie.mkv", "srt": tmp / name, "language": lang, "entries": 10}
+
+    def test_duplicate_srt_is_not_embedded(
+        self, stack_config_with_temp_paths: StackConfig, temp_dir: Path,
+    ):
+        sweeper = self._sweeper(stack_config_with_temp_paths)
+        with patch("orchestrator.pipeline.sweep.probe_raw_streams",
+                   return_value=pirates_streams()):
+            accepted = sweeper._srts_allowed_by_policy(
+                temp_dir / "Movie.mkv",
+                [self._item(temp_dir, "Movie.en.srt"), self._item(temp_dir, "Movie.en.sdh.srt")],
+            )
+        assert accepted == []
+
+    def test_existing_pgs_does_not_block_preferred_text(
+        self, stack_config_with_temp_paths: StackConfig, temp_dir: Path,
+    ):
+        sweeper = self._sweeper(stack_config_with_temp_paths)
+        streams = [_video(0), _audio(1), _sub(2, "eng", PGS)]
+        with patch("orchestrator.pipeline.sweep.probe_raw_streams", return_value=streams):
+            accepted = sweeper._srts_allowed_by_policy(
+                temp_dir / "Movie.mkv",
+                [self._item(temp_dir, "Movie.en.srt"), self._item(temp_dir, "Movie.en.2.srt")],
+            )
+        # The first SRT takes the normal slot; the second duplicates it.
+        assert [a["srt"].name for a in accepted] == ["Movie.en.srt"]
+        assert accepted[0]["kind"] == "normal"
+
+    def test_existing_text_blocks_srt_in_other_text_codec(
+        self, stack_config_with_temp_paths: StackConfig, temp_dir: Path,
+    ):
+        sweeper = self._sweeper(stack_config_with_temp_paths)
+        streams = [_video(0), _audio(1), _sub(2, "eng", "ass")]
+        with patch("orchestrator.pipeline.sweep.probe_raw_streams", return_value=streams):
+            accepted = sweeper._srts_allowed_by_policy(
+                temp_dir / "Movie.mkv", [self._item(temp_dir, "Movie.en.srt")],
+            )
+        assert accepted == []
+
+    def test_unprobeable_video_embeds_nothing(
+        self, stack_config_with_temp_paths: StackConfig, temp_dir: Path,
+    ):
+        sweeper = self._sweeper(stack_config_with_temp_paths)
+        with patch("orchestrator.pipeline.sweep.probe_raw_streams", return_value=None):
+            accepted = sweeper._srts_allowed_by_policy(
+                temp_dir / "Movie.mkv", [self._item(temp_dir, "Movie.en.srt")],
+            )
+        assert accepted == []
