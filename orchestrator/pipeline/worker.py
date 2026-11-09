@@ -102,6 +102,24 @@ def parse_movie_name(torrent_name: str) -> Tuple[str, Optional[str]]:
     return (title, year)
 
 
+_EXPLICIT_SEASON_RE = re.compile(
+    r"S\d{1,2}\s*EP?\d{1,3}"           # S01E15, S01EP15
+    r"|(?<!\d)\d{1,2}x\d{1,3}(?!\d)"   # 1x15
+    r"|Season\s*\d+.*?Episode\s*\d+"   # Season 1 Episode 15
+    r"|(?<![A-Za-z])S\d{1,2}\s*-\s*\d",  # Show S1 - 15
+    re.IGNORECASE,
+)
+
+
+def has_explicit_season(name: str) -> bool:
+    """True when ``name`` states its season explicitly (S01E15, 1x15, ...).
+
+    Absolute-numbered anime names ("Show - 50") return False: their parsed
+    season 1 is only a default and may need Sonarr's absolute map.
+    """
+    return bool(_EXPLICIT_SEASON_RE.search(name))
+
+
 def parse_tv_episode(name: str) -> Optional[Tuple[str, int, int, Optional[int]]]:
     """Extract show name, season, and episode from a torrent or file name.
 
@@ -780,10 +798,12 @@ class PipelineWorker:
         elif normalized_category == categories.sonarr:
             # TV: try parsing episode info from the FILE name first
             # (season packs have episode info in files, not torrent name)
-            episode_info = parse_tv_episode(source.stem)
+            parsed_from = source.stem
+            episode_info = parse_tv_episode(parsed_from)
             if not episode_info:
                 # Fall back to torrent name (single-episode downloads)
-                episode_info = parse_tv_episode(torrent.name)
+                parsed_from = torrent.name
+                episode_info = parse_tv_episode(parsed_from)
 
             if episode_info:
                 _, season, episode, end_episode = episode_info
@@ -800,8 +820,10 @@ class PipelineWorker:
                 #     episode list (wrong numbering scheme)
                 if absolute_episode_map:
                     should_remap = False
-                    if season == 1:
-                        # Classic case: absolute numbered, default season 1
+                    if season == 1 and not has_explicit_season(parsed_from):
+                        # Classic case: absolute numbered ("Show - 50"),
+                        # parser defaulted to season 1.  An explicit S01Exx
+                        # is trusted unless Sonarr lacks it (branch below).
                         should_remap = True
                     else:
                         # Check if this (season, episode) actually exists
