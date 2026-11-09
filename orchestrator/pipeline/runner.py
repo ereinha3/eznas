@@ -410,7 +410,17 @@ class PipelineRunner:
                             dest_free / (1024**3),
                         )
                         continue
-                    ok = self._process_torrent(api, config, torrent)
+                    # One bad torrent must not abort the tick and stall
+                    # everything queued behind it.
+                    try:
+                        ok = self._process_torrent(api, config, torrent)
+                    except Exception as exc:
+                        log.exception("failed to process %s", torrent.name[:80])
+                        self.repo.emit_event(
+                            "process", "error",
+                            f"Failed to process {torrent.name[:80]}: {exc}",
+                        )
+                        continue
                     if ok:
                         needs_refresh[torrent.category] = True
 

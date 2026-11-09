@@ -409,7 +409,7 @@ class PipelineWorker:
 
             # SAFETY: Skip if this output path is already claimed by another
             # plan in this batch — prevents the overwrite-chain bug.
-            existing_outputs = {p.final_output for p in plans}
+            existing_outputs = {p.final_output for p in plans if p is not None}
             if final_output in existing_outputs:
                 print(
                     f"[pipeline] skipping {source.name}: output path "
