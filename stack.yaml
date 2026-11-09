@@ -30,8 +30,15 @@ services:
     proxy_url: null
   jellyfin:
     enabled: true
+    hardware_acceleration: nvenc
+    hardware_device: nvidia.com/gpu=all
     port: 8096
-    proxy_url: null
+    proxy_url: jellyfin.reinhart.ai
+    remember_subtitle_selections: false
+    render_group_id: 992
+    subtitle_mode: OnlyForced
+    transcode_path: /transcode
+    video_group_id: 44
   bazarr:
     enabled: true
     port: 6767

@@ -373,8 +373,25 @@ services:
       - TZ={{ runtime.timezone }}
     volumes:
       - {{ paths.appdata }}/jellyfin:/config
-      - {{ scratch_host }}/transcode:/transcode
+      - {{ scratch_host }}/transcode:{{ services.jellyfin.transcode_path }}
       - {{ paths.pool }}:/data
+{% if services.jellyfin.hardware_acceleration != "none" %}
+    devices:
+{% if services.jellyfin.hardware_acceleration == "nvenc" %}
+      - {{ services.jellyfin.hardware_device }}
+{% else %}
+      - {{ services.jellyfin.hardware_device }}:{{ services.jellyfin.hardware_device }}
+{% endif %}
+{% if services.jellyfin.hardware_acceleration == "vaapi" and (services.jellyfin.render_group_id is not none or services.jellyfin.video_group_id is not none) %}
+    group_add:
+{% if services.jellyfin.render_group_id is not none %}
+      - "{{ services.jellyfin.render_group_id }}"
+{% endif %}
+{% if services.jellyfin.video_group_id is not none %}
+      - "{{ services.jellyfin.video_group_id }}"
+{% endif %}
+{% endif %}
+{% endif %}
 {% if services.jellyfin.port %}
     ports:
       - "{{ services.jellyfin.port }}:8096"

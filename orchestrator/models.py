@@ -116,6 +116,16 @@ class JellyseerrConfig(ServiceBaseConfig):
 class JellyfinConfig(ServiceBaseConfig):
     port: int = Field(default=8096, ge=1, le=65535)
     proxy_url: Optional[str] = None
+    hardware_acceleration: Literal["none", "vaapi", "nvenc"] = "none"
+    # vaapi: a host device path (/dev/dri). nvenc: a CDI device name (nvidia.com/gpu=all).
+    hardware_device: str = "/dev/dri"
+    render_group_id: Optional[int] = Field(default=None, ge=0)
+    video_group_id: Optional[int] = Field(default=None, ge=0)
+    transcode_path: str = "/transcode"
+    subtitle_mode: Literal["Default", "Always", "OnlyForced", "None", "Smart"] = (
+        "OnlyForced"
+    )
+    remember_subtitle_selections: bool = False
 
 
 class BazarrConfig(ServiceBaseConfig):

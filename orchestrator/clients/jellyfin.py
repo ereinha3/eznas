@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 from urllib.parse import quote
 
 import httpx
@@ -39,7 +39,6 @@ class JellyfinClient(ServiceClient):
     INTERNAL_PORT = 8096
 
     def ensure(self, config: StackConfig) -> EnsureOutcome:
-        jellyfin_cfg = config.services.jellyfin
         base_url = service_base_url("jellyfin", config, self.INTERNAL_PORT)
         status_url = f"{base_url}/System/Ping"
         ok, status_detail = wait_for_http_ready(
@@ -105,6 +104,63 @@ class JellyfinClient(ServiceClient):
             )
 
         client.headers["X-Emby-Token"] = startup.token
+
+        try:
+            encoding_changed, encoding_detail = self._ensure_encoding_options(
+                client, config
+            )
+        except httpx.HTTPStatusError as exc:
+            log.debug("Jellyfin encoding API error: %s", exc, exc_info=True)
+            return EnsureOutcome(
+                detail=f"encoding ensure failed ({exc.response.status_code})",
+                success=False,
+                changed=changed,
+            )
+        except httpx.RequestError as exc:
+            log.debug(
+                "Jellyfin request error while ensuring encoding options: %s",
+                exc,
+                exc_info=True,
+            )
+            return EnsureOutcome(
+                detail=f"encoding ensure failed ({exc.__class__.__name__}: {exc})",
+                success=False,
+                changed=changed,
+            )
+
+        changed = changed or encoding_changed
+        if encoding_detail:
+            detail_parts.append(encoding_detail)
+
+        try:
+            user_changed, user_detail = self._ensure_user_configurations(
+                client, config
+            )
+        except httpx.HTTPStatusError as exc:
+            log.debug("Jellyfin user configuration API error: %s", exc, exc_info=True)
+            return EnsureOutcome(
+                detail=f"user configuration ensure failed ({exc.response.status_code})",
+                success=False,
+                changed=changed,
+            )
+        except httpx.RequestError as exc:
+            log.debug(
+                "Jellyfin request error while ensuring user configurations: %s",
+                exc,
+                exc_info=True,
+            )
+            return EnsureOutcome(
+                detail=(
+                    "user configuration ensure failed "
+                    f"({exc.__class__.__name__}: {exc})"
+                ),
+                success=False,
+                changed=changed,
+            )
+
+        changed = changed or user_changed
+        if user_detail:
+            detail_parts.append(user_detail)
 
         try:
             libs_changed, libs_detail = self._ensure_libraries(client, config)
@@ -215,6 +271,126 @@ class JellyfinClient(ServiceClient):
         if not token:
             log.warning("Jellyfin authentication succeeded without access token")
         return token
+
+    def _ensure_encoding_options(
+        self, client: httpx.Client, config: StackConfig
+    ) -> Tuple[bool, str]:
+        response = client.get("/System/Configuration/encoding")
+        response.raise_for_status()
+        current = response.json() or {}
+        desired = self._desired_encoding_options(current, config)
+
+        if desired == current:
+            return False, "encoding=ready"
+
+        client.post("/System/Configuration/encoding", json=desired).raise_for_status()
+        jellyfin_cfg = config.services.jellyfin
+        return (
+            True,
+            f"encoding=updated:{jellyfin_cfg.hardware_acceleration},"
+            f"{jellyfin_cfg.transcode_path}",
+        )
+
+    def _desired_encoding_options(
+        self, current: Dict[str, Any], config: StackConfig
+    ) -> Dict[str, Any]:
+        jellyfin_cfg = config.services.jellyfin
+        desired = dict(current)
+        acceleration = jellyfin_cfg.hardware_acceleration
+
+        desired["TranscodingTempPath"] = jellyfin_cfg.transcode_path
+        desired["HardwareAccelerationType"] = acceleration
+        desired["EnableHardwareEncoding"] = acceleration != "none"
+        desired["EnableTonemapping"] = acceleration != "none"
+        desired["EnableVppTonemapping"] = acceleration == "vaapi"
+        desired["EnableThrottling"] = False
+        desired["EnableSegmentDeletion"] = True
+        desired["SegmentKeepSeconds"] = self._at_least(
+            desired.get("SegmentKeepSeconds"),
+            720,
+        )
+
+        if acceleration == "vaapi":
+            desired["VaapiDevice"] = self._derive_vaapi_device(
+                jellyfin_cfg.hardware_device
+            )
+            desired["HardwareDecodingCodecs"] = self._merge_hardware_codecs(
+                current.get("HardwareDecodingCodecs")
+            )
+        elif acceleration == "nvenc":
+            # Pascal (GTX 10xx) NVDEC; no AV1. CUDA tone mapping covers HDR->SDR.
+            desired["HardwareDecodingCodecs"] = self._merge_hardware_codecs(
+                current.get("HardwareDecodingCodecs"),
+                ("h264", "hevc", "mpeg2video", "vc1", "vp8", "vp9"),
+            )
+            desired["EnableDecodingColorDepth10Hevc"] = True
+            desired["EnableDecodingColorDepth10Vp9"] = True
+            desired["EnableEnhancedNvdecDecoder"] = True
+        else:
+            desired["HardwareDecodingCodecs"] = []
+
+        return desired
+
+    def _derive_vaapi_device(self, hardware_device: str) -> str:
+        normalized = hardware_device.rstrip("/")
+        if normalized == "/dev/dri":
+            return "/dev/dri/renderD128"
+        return normalized
+
+    def _merge_hardware_codecs(
+        self, existing: Any, required: tuple = ("h264", "hevc", "vc1")
+    ) -> List[str]:
+        codecs: List[str] = []
+        if isinstance(existing, list):
+            codecs.extend(str(codec) for codec in existing if codec)
+        for codec in required:
+            if codec not in codecs:
+                codecs.append(codec)
+        return codecs
+
+    def _at_least(self, value: Any, minimum: int) -> int:
+        try:
+            parsed = int(value)
+        except (TypeError, ValueError):
+            return minimum
+        return max(parsed, minimum)
+
+    def _ensure_user_configurations(
+        self, client: httpx.Client, config: StackConfig
+    ) -> Tuple[bool, str]:
+        response = client.get("/Users")
+        response.raise_for_status()
+        users = response.json() or []
+        updated: List[str] = []
+
+        for user in users:
+            user_id = user.get("Id")
+            if not user_id:
+                continue
+            current = user.get("Configuration") or {}
+            desired = self._desired_user_configuration(current, config)
+            if desired == current:
+                continue
+            client.post(
+                f"/Users/{user_id}/Configuration",
+                json=desired,
+            ).raise_for_status()
+            updated.append(user.get("Name") or user_id)
+
+        if not updated:
+            return False, "users=ready"
+        return True, f"users=updated:{','.join(updated)}"
+
+    def _desired_user_configuration(
+        self, current: Dict[str, Any], config: StackConfig
+    ) -> Dict[str, Any]:
+        jellyfin_cfg = config.services.jellyfin
+        desired = dict(current)
+        desired["SubtitleMode"] = jellyfin_cfg.subtitle_mode
+        desired["RememberSubtitleSelections"] = (
+            jellyfin_cfg.remember_subtitle_selections
+        )
+        return desired
 
     def _ensure_libraries(
         self, client: httpx.Client, config: StackConfig
