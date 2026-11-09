@@ -13,7 +13,8 @@ from .bdmv import (
     get_bdmv_stream_languages,
     map_clpi_to_ffprobe_indices,
 )
-from .remux import TrackSelection, build_ffmpeg_command
+from ..clients.quality_target import resolution_height, should_replace_existing, target_height
+from .remux import TrackSelection, build_ffmpeg_command, probe_video_quality
 from ..models import StackConfig
 
 
@@ -278,6 +279,9 @@ class PipelinePlan:
     selection: TrackSelection
     original_language: Optional[str] = None
     is_bdmv: bool = False
+    # True when the existing library file is knowingly replaced by a higher
+    # resolution one within the central quality target.
+    replace_existing: bool = False
 
 
 class PipelineWorker:
@@ -419,12 +423,19 @@ class PipelineWorker:
 
             # SAFETY: Skip if this file already exists in the library.
             # Avoids redundant ffmpeg runs for already-imported episodes.
+            replace_existing = False
             if final_output.exists():
+                if not self._is_quality_upgrade(source, final_output):
+                    print(
+                        f"[pipeline] skipping {source.name}: already exists "
+                        f"in library at {final_output.name}"
+                    )
+                    continue
                 print(
-                    f"[pipeline] skipping {source.name}: already exists "
-                    f"in library at {final_output.name}"
+                    f"[pipeline] replacing {final_output.name}: {source.name} "
+                    f"is a higher resolution within the quality target"
                 )
-                continue
+                replace_existing = True
 
             final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -494,6 +505,7 @@ class PipelineWorker:
                 ffmpeg_command=command,
                 selection=selection,
                 original_language=original_language,
+                replace_existing=replace_existing,
             ))
 
         # Filter out any plans that were nullified by overlap replacement
@@ -736,6 +748,20 @@ class PipelineWorker:
         plans = self.build_plans(torrent)
         # Return the plan for the largest source file
         return max(plans, key=lambda p: p.source.stat().st_size if p.source.exists() else 0)
+
+    def _is_quality_upgrade(self, source: Path, existing: Path) -> bool:
+        """Central quality rule: replace only for an upgrade within target."""
+        target = target_height(self.config)
+        allow = bool(self.config.quality.allow_upgrades)
+        if target is None or not allow:
+            return False
+        incoming = probe_video_quality(source)
+        current = probe_video_quality(existing)
+        if not incoming or not current:
+            return False
+        return should_replace_existing(
+            resolution_height(current), resolution_height(incoming), target, allow,
+        )
 
     def _compute_final_path(
         self,

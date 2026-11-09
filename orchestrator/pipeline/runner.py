@@ -1350,7 +1350,7 @@ class PipelineRunner:
             if plan.final_output.exists():
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
-                if existing_size > new_size:
+                if existing_size > new_size and not plan.replace_existing:
                     log.warning(
                         "  [%d/%d] REFUSED to overwrite existing %s "
                         "(%.2f GB) with smaller file (%.2f GB)",
@@ -2251,7 +2251,7 @@ class PipelineRunner:
             if plan.final_output.exists():
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
-                if existing_size > new_size:
+                if existing_size > new_size and not plan.replace_existing:
                     log.warning(
                         "  [%d/%d] REFUSED to overwrite existing %s "
                         "(%.2f GB) with smaller file (%.2f GB)",

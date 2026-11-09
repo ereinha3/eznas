@@ -46,6 +46,12 @@ from .remux import (
 )
 from .worker import VIDEO_EXTENSIONS, parse_tv_episode
 
+
+def effective_target_resolution(config: StackConfig, enrich_cfg: EnrichmentConfig) -> str:
+    """The central ``quality.target_resolution`` wins over the enrichment setting."""
+    target = config.quality.target_resolution
+    return target.value if target else enrich_cfg.target_resolution
+
 log = logging.getLogger("pipeline")
 
 
@@ -552,7 +558,7 @@ class EnrichmentEngine:
                         current_codec = vq.codec
                         current_score = vq.score
                         target_min = RESOLUTION_TARGET_SCORES.get(
-                            enrich_cfg.target_resolution,
+                            effective_target_resolution(config, enrich_cfg),
                             200,
                         )
                         if vq.score < target_min:
@@ -629,7 +635,7 @@ class EnrichmentEngine:
                 break
 
             # Build search queries
-            queries = self._build_queries(candidate, enrich_cfg)
+            queries = self._build_queries(candidate, enrich_cfg, config)
 
             # Search Prowlarr
             results = self._search_prowlarr(
@@ -715,6 +721,7 @@ class EnrichmentEngine:
         self,
         candidate: EnrichmentCandidate,
         enrich_cfg: EnrichmentConfig,
+        config: StackConfig,
     ) -> List[str]:
         """Build Prowlarr search queries for an enrichment candidate.
 
@@ -731,7 +738,7 @@ class EnrichmentEngine:
 
         if candidate.video_below_target:
             # Video upgrade queries — prioritize quality
-            target = enrich_cfg.target_resolution
+            target = effective_target_resolution(config, enrich_cfg)
             if target == "2160p":
                 queries.append(f"{base} 2160p remux")
                 queries.append(f"{base} 4K")

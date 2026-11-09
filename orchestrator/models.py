@@ -61,7 +61,21 @@ class ResolutionPreset(str, Enum):
 
 class QualityConfig(BaseModel):
     preset: QualityPreset = QualityPreset.balanced
-    target_resolution: Optional[ResolutionPreset] = None
+    target_resolution: Optional[ResolutionPreset] = Field(
+        default=None,
+        description=(
+            "Central resolution target. Caps Radarr/Sonarr quality profiles, "
+            "drives the pipeline keep/replace rule and the enrichment upgrade target."
+        ),
+    )
+    allow_upgrades: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Upgrade toggle: sets upgradeAllowed on the arr profiles and lets the "
+            "pipeline replace a library file with a higher resolution one within the target. "
+            "None leaves arr profiles' upgradeAllowed untouched and the pipeline never replaces."
+        ),
+    )
     max_bitrate_mbps: Optional[int] = Field(default=None, ge=1)
     preferred_container: str = "mkv"
 
