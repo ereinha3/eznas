@@ -929,9 +929,11 @@ class EnrichmentEngine:
                         cand_vq.score,
                     )
 
-        staging = library_path.with_suffix(".enrichment.tmp.mkv")
+        # Stage in the library file's own container: the staged file
+        # replaces it in place, so an MP4 must stay an MP4.
+        staging = library_path.with_suffix(f".enrichment.tmp{library_path.suffix}")
         # Subtitles from library + candidate are re-selected under the
-        # media policy (output stays MKV: the staging file is .mkv).
+        # media policy for that container.
         selection = selection_from_config(config)
 
         try:
@@ -1847,6 +1849,15 @@ class EnrichmentEngine:
         if video_duration is None:
             log.warning(
                 "enrichment: cannot probe staging duration for %s — skipping subtitle remux",
+                staging.name,
+            )
+            return staging
+
+        # remux_subtitle_into_mkv only writes MKV; never put MKV content
+        # into a staged MP4 that will replace an MP4 library file.
+        if staging.suffix.lower() != ".mkv":
+            log.info(
+                "enrichment: %s is not MKV — leaving external subtitles alone",
                 staging.name,
             )
             return staging
