@@ -220,7 +220,7 @@ class TestBuildFFmpegCommand:
             assert "-map 0:1" in " ".join(cmd)
 
     def test_probe_failure_fallback(self):
-        """When probe fails, should copy all streams."""
+        """When probe fails, copy all audio but no subtitles (fail closed)."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
 
         with self._with_ffprobe({}, returncode=1):
@@ -233,7 +233,7 @@ class TestBuildFFmpegCommand:
             # Should fall back to copying all
             cmd_str = " ".join(cmd)
             assert "0:a" in cmd_str
-            assert "0:s" in cmd_str
+            assert "0:s" not in cmd_str  # fail closed: no blind subtitle copy
 
     def test_duplicate_subtitles_are_pruned_and_defaults_cleared(self):
         """Only one normal and one SDH subtitle should survive per language."""
