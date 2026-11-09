@@ -120,6 +120,29 @@ def has_explicit_season(name: str) -> bool:
     return bool(_EXPLICIT_SEASON_RE.search(name))
 
 
+_SPECIAL_RE = re.compile(r"(?<![A-Za-z])(?:SP|OVA|OAD|ONA)\s*\d{1,3}(?![0-9])", re.IGNORECASE)
+_EXTRA_RE = re.compile(
+    r"(?<![A-Za-z])(?:NC\s*OP|NC\s*ED|NCOP|NCED|Creditless|PV|CM|Preview|Trailer|Teaser|Menu"
+    r"|Featurette|Bonus|Extras?|Making[ .]of|Behind[ .]the[ .]Scenes|Interview|Special)(?![A-Za-z])",
+    re.IGNORECASE,
+)
+
+
+def classify_extra(name: str) -> Optional[str]:
+    """Return the Jellyfin folder for an unmatched pack file, or None.
+
+    Numbered specials (SP08, OVA 2) go to ``Specials`` (Season 0).
+    Creditless OP/ED, previews, trailers and other bonus material go to
+    ``extras`` so Jellyfin lists them as extras instead of episodes.
+    """
+    stripped = re.sub(r"^\[[^\]]*\]\s*", "", name)
+    if _SPECIAL_RE.search(stripped):
+        return "Specials"
+    if _EXTRA_RE.search(stripped):
+        return "extras"
+    return None
+
+
 def parse_tv_episode(name: str) -> Optional[Tuple[str, int, int, Optional[int]]]:
     """Extract show name, season, and episode from a torrent or file name.
 
@@ -874,8 +897,20 @@ class PipelineWorker:
                     file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
                 return season_dir / file_name
 
-            # Couldn't parse episode — try season-level info for directory,
-            # keep original filename
+            # Couldn't parse episode.  Specials and bonus material go to
+            # Specials/ or extras/ under the show, keeping the release name.
+            extra_folder = classify_extra(source.stem)
+            if extra_folder:
+                if library_path:
+                    show_dir = library_path
+                else:
+                    show_info = parse_tv_season(torrent.name)
+                    show_dir = base_dir / _sanitize_filename(
+                        show_info[0] if show_info else _clean_show_name(torrent.name)
+                    )
+                return show_dir / extra_folder / f"{source.stem}.mkv"
+
+            # Otherwise try season-level info for directory, keep original filename
             season_info = parse_tv_season(torrent.name)
             if season_info:
                 parsed_show_name, season = season_info
