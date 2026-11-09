@@ -33,6 +33,7 @@ from orchestrator.pipeline.remux import (
     normalize_language_code,
     subtitle_identity_from_srt_filename,
 )
+from orchestrator.pipeline.worker import selection_for_policy
 from orchestrator.storage import ConfigRepository
 
 
@@ -356,7 +357,8 @@ def policy_for_category(config: StackConfig, category: str) -> TrackSelection:
         entry = config.media_policy.anime
     else:
         entry = config.media_policy.movies
-    return TrackSelection(audio=entry.keep_audio, subtitles=entry.keep_subs)
+    # Audits check existing files, which keep their own container.
+    return selection_for_policy(entry)
 
 
 def load_original_language_map(

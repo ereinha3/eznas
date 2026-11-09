@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, validator
 
+from .pipeline.remux import SUBTITLE_PREFER_TOKENS
+
 
 class PathConfig(BaseModel):
     pool: Path
@@ -38,9 +40,40 @@ class DownloadPolicy(BaseModel):
     categories: DownloadCategories = Field(default_factory=DownloadCategories)
 
 
+class SubtitleRules(BaseModel):
+    """How many subtitle tracks to keep per language in ``keep_subs``.
+
+    Per language: up to ``max_per_language`` normal tracks ranked by
+    ``prefer``, plus one forced track if ``keep_forced`` and one SDH track
+    if ``keep_sdh``.  Exact duplicates (same language + codec + kind)
+    always collapse to one.  The defaults match the original policy.
+    """
+
+    max_per_language: int = Field(default=1, ge=1)
+    # Ordered codec classes ("text", "image") or codec names/aliases
+    # ("srt", "ass", "pgs", "vobsub", ...).  Earlier entries win.
+    prefer: List[str] = Field(default_factory=lambda: ["text", "image"])
+    keep_forced: bool = True
+    keep_sdh: bool = True
+
+    @validator("prefer")
+    def validate_prefer(cls, value: List[str]) -> List[str]:
+        cleaned = [v.strip().lower() for v in value if v and v.strip()]
+        unknown = [v for v in cleaned if v not in SUBTITLE_PREFER_TOKENS]
+        if unknown:
+            raise ValueError(
+                f"unknown subtitle prefer entries {unknown}; "
+                f"use one of {sorted(SUBTITLE_PREFER_TOKENS)}"
+            )
+        return cleaned
+
+
 class MediaPolicyEntry(BaseModel):
     keep_audio: List[str] = Field(default_factory=lambda: ["eng", "und"])
+    # Subtitle languages to keep.  The pseudo-language "forced" keeps
+    # forced tracks of any language.
     keep_subs: List[str] = Field(default_factory=lambda: ["eng"])
+    subtitles: SubtitleRules = Field(default_factory=SubtitleRules)
 
 
 class MediaPolicy(BaseModel):
@@ -84,7 +117,15 @@ class QualityConfig(BaseModel):
         ),
     )
     max_bitrate_mbps: Optional[int] = Field(default=None, ge=1)
+    # Output container for pipeline imports: "mkv" or "mp4".
     preferred_container: str = "mkv"
+
+    @validator("preferred_container")
+    def validate_container(cls, value: str) -> str:
+        normalized = (value or "").strip().lower().lstrip(".")
+        if normalized not in ("mkv", "mp4"):
+            raise ValueError("preferred_container must be 'mkv' or 'mp4'")
+        return normalized
 
 
 class UIConfig(BaseModel):

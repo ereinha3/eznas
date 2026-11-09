@@ -24,6 +24,7 @@ from orchestrator.pipeline.remux import (
     build_remux,
     build_video_upgrade_command,
     select_subtitle_streams,
+    stream_info_from_streams,
 )
 from orchestrator.pipeline.sweep import LibrarySweeper, unwanted_subtitle_streams
 from orchestrator.pipeline.worker import PipelineWorker, TorrentInfo
@@ -505,7 +506,9 @@ class TestSweepCompliance:
         sweeper._arr_data_loaded = True
 
         with patch("orchestrator.pipeline.sweep.probe_raw_streams",
-                   return_value=pirates_streams()):
+                   return_value=pirates_streams()), \
+             patch("orchestrator.pipeline.sweep.probe_streams",
+                   return_value=stream_info_from_streams(pirates_streams())):
             plan = sweeper.scan()
         assert plan.files_to_process == 1
         assert len(plan.actions[0].unwanted_subtitles) == 42
@@ -513,7 +516,9 @@ class TestSweepCompliance:
         # A file swept "ok" under an older policy must be re-checked.
         state["swept"] = {str(video): {"status": "ok", "mtime": video.stat().st_mtime}}
         with patch("orchestrator.pipeline.sweep.probe_raw_streams",
-                   return_value=pirates_streams()):
+                   return_value=pirates_streams()), \
+             patch("orchestrator.pipeline.sweep.probe_streams",
+                   return_value=stream_info_from_streams(pirates_streams())):
             plan = sweeper.scan()
         assert plan.files_to_process == 1
 
@@ -600,3 +605,12 @@ class TestSrtEmbedGuard:
                 temp_dir / "Movie.mkv", [self._item(temp_dir, "Movie.en.srt")],
             )
         assert accepted == []
+
+
+def test_mp4_forced_default_flag_is_not_a_violation():
+    # ffmpeg's MP4 muxer marks the first subtitle track default; a re-check
+    # must not treat that as non-compliant (endless sweep rewrites).
+    streams = [_video(0), _audio(1), _sub(2, "eng", "mov_text", default=True)]
+    assert unwanted_subtitle_streams(streams, _sel(), container="mp4") == []
+    mkv = [_video(0), _audio(1), _sub(2, "eng", "subrip", default=True)]
+    assert unwanted_subtitle_streams(mkv, _sel(), container="mkv") != []

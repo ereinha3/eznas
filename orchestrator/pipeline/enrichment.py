@@ -34,6 +34,7 @@ from .chromaprint import validate_and_align
 from .languages import arr_language_to_iso
 from .remux import (
     RESOLUTION_TARGET_SCORES,
+    RemuxPolicyError,
     SubtitleIdentity,
     _normalize_lang,
     build_crossmux_command,
@@ -47,7 +48,7 @@ from .remux import (
     subtitle_identity_from_mkvmerge_track,
     subtitle_identity_from_srt_filename,
 )
-from .worker import VIDEO_EXTENSIONS, parse_tv_episode
+from .worker import VIDEO_EXTENSIONS, parse_tv_episode, selection_for_policy
 
 
 def effective_target_resolution(config: StackConfig, enrich_cfg: EnrichmentConfig) -> str:
@@ -1422,6 +1423,7 @@ class EnrichmentEngine:
         # Check both old (visible) and new (dot-prefix hidden) naming patterns
         for _lf in (
             library_path.parent / f".{library_path.stem}.enrichment.tmp.mkv",
+            library_path.parent / f".{library_path.stem}.enrichment.tmp{library_path.suffix}",
             library_path.with_suffix(".enrichment.tmp.mkv"),
         ):
             if _lf.exists():
@@ -1590,37 +1592,52 @@ class EnrichmentEngine:
 
         # Dot-prefix hides from media scanners (Radarr/Sonarr) so they
         # don't index the temp file and mark the movie as deleted.
-        staging = library_path.parent / f".{library_path.stem}.enrichment.tmp.mkv"
+        # Stage in the library file's own container: the staged file
+        # replaces it in place, so an MP4 must stay an MP4.
+        staging = (
+            library_path.parent
+            / f".{library_path.stem}.enrichment.tmp{library_path.suffix}"
+        )
+        # Library + candidate subtitles are re-selected under the media
+        # policy (same movies policy as the subtitle targets above).
+        selection = selection_for_policy(config.media_policy.movies)
 
-        if is_video_upgrade:
-            # Video upgrade: take video from candidate, audio/subs from library
-            # Also grab any extra audio/subs from candidate we don't have
-            cmd = build_video_upgrade_command(
-                library=library_path,
-                candidate=candidate_path,
-                offset_seconds=alignment.offset_seconds,
-                destination=staging,
-                extra_audio=audio_tracks if audio_tracks else None,
-                extra_subs=sub_tracks if sub_tracks else None,
-            )
-            operation = "video upgrade"
-        else:
-            # Audio-only enrichment: keep library video, add candidate audio
-            if not audio_tracks:
-                log.warning(
-                    "enrichment: no audio tracks to add and no video upgrade — nothing to do",
+        try:
+            if is_video_upgrade:
+                # Video upgrade: take video from candidate, audio from library
+                # Also grab any extra audio/subs from candidate we don't have
+                cmd = build_video_upgrade_command(
+                    library=library_path,
+                    candidate=candidate_path,
+                    offset_seconds=alignment.offset_seconds,
+                    destination=staging,
+                    selection=selection,
+                    extra_audio=audio_tracks if audio_tracks else None,
+                    extra_subs=sub_tracks if sub_tracks else None,
                 )
-                self._mark_failed(state, grab_key, "nothing to enrich", target_override=_fail_target)
-                return False
-            cmd = build_crossmux_command(
-                library=library_path,
-                candidate=candidate_path,
-                audio_tracks=audio_tracks,
-                subtitle_tracks=sub_tracks or None,
-                offset_seconds=alignment.offset_seconds,
-                destination=staging,
-            )
-            operation = "audio cross-mux"
+                operation = "video upgrade"
+            else:
+                # Audio-only enrichment: keep library video, add candidate audio
+                if not audio_tracks:
+                    log.warning(
+                        "enrichment: no audio tracks to add and no video upgrade — nothing to do",
+                    )
+                    self._mark_failed(state, grab_key, "nothing to enrich", target_override=_fail_target)
+                    return False
+                cmd = build_crossmux_command(
+                    library=library_path,
+                    candidate=candidate_path,
+                    audio_tracks=audio_tracks,
+                    subtitle_tracks=sub_tracks or None,
+                    offset_seconds=alignment.offset_seconds,
+                    destination=staging,
+                    selection=selection,
+                )
+                operation = "audio cross-mux"
+        except RemuxPolicyError as exc:
+            log.error("enrichment: %s", exc)
+            self._mark_failed(state, grab_key, "library probe failed", target_override=_fail_target)
+            return False
 
         log.info("enrichment: running %s ffmpeg command", operation)
         log.debug("enrichment: cmd=%s", " ".join(cmd))
@@ -2626,6 +2643,15 @@ class EnrichmentEngine:
         if video_duration is None:
             log.warning(
                 "enrichment: cannot probe staging duration for %s — skipping subtitle remux",
+                staging.name,
+            )
+            return staging
+
+        # remux_subtitle_into_mkv only writes MKV; never put MKV content
+        # into a staged MP4 that will replace an MP4 library file.
+        if staging.suffix.lower() != ".mkv":
+            log.info(
+                "enrichment: %s is not MKV — leaving external subtitles alone",
                 staging.name,
             )
             return staging
