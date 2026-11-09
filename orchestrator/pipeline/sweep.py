@@ -139,9 +139,6 @@ class LibrarySweeper:
         """
         plan = SweepPlan()
         swept_state = self._load_swept_state()
-        policy_version = self._policy_version(
-            self._worker._policy_for_category(self.config.download_policy.categories.radarr)
-        )
 
         # Pre-load original language data from Radarr/Sonarr
         self._load_arr_original_languages()
@@ -159,6 +156,9 @@ class LibrarySweeper:
                 plan.total_files_scanned += 1
 
                 # Skip files already swept at current mtime + policy
+                policy_version = self._policy_version(
+                    self._worker._policy_for_category(category)
+                )
                 if self._is_already_swept(file_path, swept_state, policy_version):
                     plan.files_already_clean += 1
                     continue
@@ -194,9 +194,6 @@ class LibrarySweeper:
         """
         plan = SweepPlan()
         swept_state = self._load_swept_state()
-        policy_version = self._policy_version(
-            self._worker._policy_for_category(self.config.download_policy.categories.radarr)
-        )
         self._load_arr_original_languages()
 
         seen: Set[Path] = set()
@@ -211,12 +208,15 @@ class LibrarySweeper:
                 plan.files_already_clean += 1
                 continue
 
-            if skip_swept and self._is_already_swept(file_path, swept_state, policy_version):
+            category = self._category_for_library_path(file_path)
+            if category is None:
                 plan.files_already_clean += 1
                 continue
 
-            category = self._category_for_library_path(file_path)
-            if category is None:
+            policy_version = self._policy_version(
+                self._worker._policy_for_category(category)
+            )
+            if skip_swept and self._is_already_swept(file_path, swept_state, policy_version):
                 plan.files_already_clean += 1
                 continue
 
@@ -976,6 +976,11 @@ class LibrarySweeper:
         # SRTs whose slot is already filled (any codec) are deleted so Bazarr
         # re-downloads cannot re-add the same subtitle every cycle.  If the
         # video cannot be probed nothing is embedded or deleted.
+        # mkvmerge writes MKV; never replace an MP4 library file with it.
+        if video_path.suffix.lower() != ".mkv":
+            print(f"[sweep/srt] skipped {video_path.name} — not MKV")
+            return 0
+
         rejected: List[dict] = []
         srt_items = self._srts_allowed_by_policy(video_path, srt_items, rejected)
         for item in rejected:

@@ -614,3 +614,27 @@ def test_mp4_forced_default_flag_is_not_a_violation():
     assert unwanted_subtitle_streams(streams, _sel(), container="mp4") == []
     mkv = [_video(0), _audio(1), _sub(2, "eng", "subrip", default=True)]
     assert unwanted_subtitle_streams(mkv, _sel(), container="mkv") != []
+
+
+def test_srt_embed_never_rewrites_mp4(stack_config_with_temp_paths: StackConfig, temp_dir: Path):
+    repo = MagicMock()
+    repo.load_pipeline_state.return_value = {}
+    sweeper = LibrarySweeper(stack_config_with_temp_paths, repo)
+    video = temp_dir / "Movie.mp4"
+    video.write_bytes(b"x" * 2048)
+    item = {"video": video, "srt": temp_dir / "Movie.en.srt", "language": "eng", "entries": 10}
+    with patch("orchestrator.pipeline.sweep.subprocess.run") as run:
+        assert sweeper._embed_srt_for_video(video, [item]) == 0
+    run.assert_not_called()
+    assert video.read_bytes() == b"x" * 2048
+
+
+def test_swept_state_version_is_per_category(stack_config_with_temp_paths: StackConfig):
+    cfg = stack_config_with_temp_paths.model_copy(deep=True)
+    cfg.media_policy.anime.subtitles.max_per_language = 2
+    repo = MagicMock()
+    sweeper = LibrarySweeper(cfg, repo)
+    movies = sweeper._policy_version(sweeper._worker._policy_for_category("movies"))
+    anime = sweeper._policy_version(sweeper._worker._policy_for_category("anime"))
+    assert movies == LibrarySweeper._TRACK_POLICY_VERSION  # default stays plain
+    assert anime != movies
