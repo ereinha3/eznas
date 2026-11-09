@@ -15,6 +15,11 @@ import type {
   SweepScanResponse,
   SweepStartResponse,
   SweepStatusResponse,
+  MediaAuditLatestResponse,
+  MediaAuditScanResponse,
+  RemediationPlanResponse,
+  RemediationStartResponse,
+  RemediationStatusResponse,
   EnrichmentStatusResponse,
   EnrichmentScanResponse,
   PipelineHealthResponse,
@@ -437,6 +442,53 @@ export async function sweepStatus(): Promise<SweepStatusResponse> {
   return handleResponse(response)
 }
 
+export async function mediaAuditScan(): Promise<MediaAuditScanResponse> {
+  const response = await fetch('/api/pipeline/media-audit/scan', {
+    method: 'POST',
+    headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+export async function mediaAuditLatest(): Promise<MediaAuditLatestResponse> {
+  const response = await fetch('/api/pipeline/media-audit/latest', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+export async function remediationPlan(): Promise<RemediationPlanResponse> {
+  const response = await fetch('/api/pipeline/remediation/plan', {
+    method: 'POST',
+    headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+export async function remediationStart(batchName: string, dryRun: boolean = false): Promise<RemediationStartResponse> {
+  const response = await fetch('/api/pipeline/remediation/start', {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify({ batch_name: batchName, dry_run: dryRun }),
+  })
+  return handleResponse(response)
+}
+
+export async function remediationStatus(): Promise<RemediationStatusResponse> {
+  const response = await fetch('/api/pipeline/remediation/status', {
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+export async function remediationCancel(): Promise<RemediationStatusResponse> {
+  const response = await fetch('/api/pipeline/remediation/cancel', {
+    method: 'POST',
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
 // Enrichment pipeline
 
 export async function enrichmentStatus(): Promise<EnrichmentStatusResponse> {
@@ -450,6 +502,23 @@ export async function enrichmentScan(): Promise<EnrichmentScanResponse> {
   const response = await fetch('/api/pipeline/enrichment/scan', {
     method: 'POST',
     headers: buildHeaders(),
+  })
+  return handleResponse(response)
+}
+
+// Storage usage
+
+export interface StoragePool {
+  label: string
+  path: string
+  total_bytes: number
+  used_bytes: number
+  free_bytes: number
+}
+
+export async function fetchStorageUsage(): Promise<{ pools: StoragePool[] }> {
+  const response = await fetch('/api/system/storage', {
+    headers: buildHeaders(false),
   })
   return handleResponse(response)
 }
@@ -482,6 +551,29 @@ export async function recommenderForUser(userId: string): Promise<UserRecommenda
 export async function recommenderRebuild(): Promise<{ ok: boolean }> {
   const response = await fetch('/api/pipeline/recommender/rebuild', {
     method: 'POST',
+    headers: buildHeaders(false),
+  })
+  return handleResponse(response)
+}
+
+// Pipeline events
+
+export interface PipelineEvent {
+  ts: number
+  phase: string
+  level: string
+  msg: string
+  detail?: Record<string, unknown>
+}
+
+export async function fetchPipelineEvents(
+  limit: number = 200,
+  since: number = 0,
+  phase?: string,
+): Promise<{ events: PipelineEvent[] }> {
+  const params = new URLSearchParams({ limit: String(limit), since: String(since) })
+  if (phase) params.set('phase', phase)
+  const response = await fetch(`/api/pipeline/events?${params}`, {
     headers: buildHeaders(false),
   })
   return handleResponse(response)

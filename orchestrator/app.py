@@ -10,6 +10,7 @@ import socket
 import threading
 import time
 import traceback
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
 from typing import List, Optional
@@ -35,9 +36,7 @@ from .models import (
     InitializeResponse,
     ValidationResult,
     RenderResult,
-    RunRecord,
     Session,
-    User,
     UserRole,
     LoginRequest,
     LoginResponse,
@@ -61,6 +60,12 @@ from .models import (
     SweepScanResponse,
     SweepStartResponse,
     SweepStatusResponse,
+    MediaAuditLatestResponse,
+    MediaAuditScanResponse,
+    RemediationPlanResponse,
+    RemediationStartRequest,
+    RemediationStartResponse,
+    RemediationStatusResponse,
 )
 from .system import scan_volumes, validate_path
 from .auth import (
@@ -68,7 +73,6 @@ from .auth import (
     require_auth,
     require_admin,
     require_sudo,
-    security,
     get_auth_manager,
 )
 from .clients.prowlarr import ProwlarrClient
@@ -1314,6 +1318,132 @@ _active_sweep: dict = {
     "thread": None,
 }
 _sweep_lock = threading.Lock()
+_remediation_lock = threading.Lock()
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _default_remediation_job() -> dict:
+    return {
+        "status": "idle",
+        "job_id": None,
+        "batch_name": None,
+        "mode": None,
+        "dry_run": False,
+        "progress_current": 0,
+        "progress_total": 0,
+        "current_file": None,
+        "succeeded": 0,
+        "failed": 0,
+        "skipped": 0,
+        "errors": [],
+        "started_at": None,
+        "updated_at": None,
+        "ended_at": None,
+        "input_audit_path": None,
+        "cancel_requested": False,
+    }
+
+
+def _load_remediation_job() -> dict:
+    pipeline = repo.load_pipeline_state()
+    remediation = pipeline.get("remediation") or {}
+    return dict(remediation.get("active_job") or _default_remediation_job())
+
+
+def _save_remediation_job(job: dict) -> None:
+    with _remediation_lock:
+        pipeline = repo.load_pipeline_state()
+        remediation = pipeline.setdefault("remediation", {})
+        remediation["active_job"] = job
+        jobs = remediation.setdefault("jobs", {})
+        job_id = job.get("job_id")
+        if job_id:
+            jobs[job_id] = job
+            remediation["last_job_id"] = job_id
+        repo.save_pipeline_state(pipeline)
+
+
+def _update_remediation_job(**updates) -> dict:
+    with _remediation_lock:
+        pipeline = repo.load_pipeline_state()
+        remediation = pipeline.setdefault("remediation", {})
+        job = dict(remediation.get("active_job") or _default_remediation_job())
+        job.update(updates)
+        job["updated_at"] = _utc_now()
+        remediation["active_job"] = job
+        jobs = remediation.setdefault("jobs", {})
+        job_id = job.get("job_id")
+        if job_id:
+            jobs[job_id] = job
+            remediation["last_job_id"] = job_id
+        repo.save_pipeline_state(pipeline)
+        return job
+
+
+def _remediation_is_active() -> bool:
+    status = _load_remediation_job().get("status")
+    return status in {"queued", "scanning", "running"}
+
+
+def _remediation_cancel_requested(job_id: str) -> bool:
+    job = _load_remediation_job()
+    return job.get("job_id") == job_id and bool(job.get("cancel_requested"))
+
+
+def _remediation_response(job: dict) -> RemediationStatusResponse:
+    return RemediationStatusResponse(
+        status=job.get("status", "idle"),
+        job_id=job.get("job_id"),
+        batch_name=job.get("batch_name"),
+        mode=job.get("mode"),
+        dry_run=bool(job.get("dry_run", False)),
+        progress_current=int(job.get("progress_current", 0) or 0),
+        progress_total=int(job.get("progress_total", 0) or 0),
+        current_file=job.get("current_file"),
+        succeeded=int(job.get("succeeded", 0) or 0),
+        failed=int(job.get("failed", 0) or 0),
+        skipped=int(job.get("skipped", 0) or 0),
+        errors=list(job.get("errors", []) or []),
+        started_at=job.get("started_at"),
+        updated_at=job.get("updated_at"),
+        ended_at=job.get("ended_at"),
+        input_audit_path=job.get("input_audit_path"),
+    )
+
+
+@app.get("/api/system/storage")
+def system_storage(session: Session = Depends(require_auth)):
+    """Return disk usage for configured storage paths."""
+    import shutil
+
+    try:
+        config = repo.load_stack()
+    except Exception:
+        return {"pools": []}
+
+    pools = []
+    for label, path_str in [
+        ("Media Library", config.paths.pool),
+        ("Downloads", config.paths.scratch),
+    ]:
+        if not path_str:
+            continue
+        try:
+            usage = shutil.disk_usage(path_str)
+            pools.append({
+                "label": label,
+                "path": path_str,
+                "total_bytes": usage.total,
+                "used_bytes": usage.used,
+                "free_bytes": usage.free,
+            })
+        except OSError:
+            pass
+
+    return {"pools": pools}
 
 
 @app.get("/api/pipeline/health")
@@ -1345,6 +1475,48 @@ def pipeline_health(session: Session = Depends(require_auth)):
         "processed_count": processed_count,
         "orphan_count": orphan_count,
     }
+
+
+@app.get("/api/pipeline/events")
+def pipeline_events(
+    limit: int = 200,
+    since: float = 0,
+    phase: str | None = None,
+    session: Session = Depends(require_auth),
+):
+    """Return recent pipeline events from the ring buffer.
+
+    Query params:
+        limit: Max events to return (default 200).
+        since: Only events after this unix timestamp.
+        phase: Filter to a specific phase (process, enrichment, health, etc.).
+    """
+    events = repo.load_pipeline_events(since=since, limit=limit, phase=phase)
+    return {"events": events}
+
+
+@app.get("/api/pipeline/events/stream")
+async def stream_pipeline_events(
+    since: float = 0,
+    session: Session = Depends(require_auth),
+) -> EventSourceResponse:
+    """SSE stream of pipeline events. Polls pipeline.json every 2s for new events."""
+
+    async def event_generator():
+        cursor = since
+        while True:
+            events = repo.load_pipeline_events(since=cursor, limit=50)
+            for evt in events:
+                yield {
+                    "event": "pipeline_event",
+                    "data": json.dumps(evt),
+                }
+                evt_ts = evt.get("ts", 0)
+                if evt_ts > cursor:
+                    cursor = evt_ts
+            await asyncio.sleep(2)
+
+    return EventSourceResponse(event_generator())
 
 
 @app.post("/api/pipeline/sweep/scan", response_model=SweepScanResponse)
@@ -1385,6 +1557,11 @@ def sweep_start(session: Session = Depends(require_admin)) -> SweepStartResponse
             raise HTTPException(
                 status_code=409,
                 detail="A sweep is already in progress",
+            )
+        if _remediation_is_active():
+            raise HTTPException(
+                status_code=409,
+                detail="A remediation job is already in progress",
             )
 
         sweep_id = str(uuid4())[:12]
@@ -1462,6 +1639,212 @@ def sweep_status(session: Session = Depends(require_admin)) -> SweepStatusRespon
         )
 
 
+# ── Media Audit / Remediation Endpoints ──────────────────────────────
+
+
+@app.post("/api/pipeline/media-audit/scan", response_model=MediaAuditScanResponse)
+def media_audit_scan(
+    workers: int = 6,
+    timeout: int = 45,
+    session: Session = Depends(require_admin),
+) -> MediaAuditScanResponse:
+    """Run a read-only media playback audit and persist latest audit metadata."""
+    from .pipeline.media_audit import run_media_audit
+
+    workers = max(1, min(workers, 16))
+    timeout = max(5, min(timeout, 300))
+    result = run_media_audit(
+        repo_root=CONFIG_ROOT,
+        workers=workers,
+        timeout=timeout,
+        persist=True,
+    )
+    return MediaAuditScanResponse(
+        summary=result["summary"],
+        json_path=result["json_path"],
+        markdown_path=result["markdown_path"],
+    )
+
+
+@app.get("/api/pipeline/media-audit/latest", response_model=MediaAuditLatestResponse)
+def media_audit_latest(
+    session: Session = Depends(require_admin),
+) -> MediaAuditLatestResponse:
+    """Return latest media audit metadata if one has been generated."""
+    from .pipeline.remediation import load_latest_audit
+
+    report = load_latest_audit(repo, CONFIG_ROOT)
+    if report is None:
+        return MediaAuditLatestResponse(available=False)
+    return MediaAuditLatestResponse(
+        available=True,
+        summary=report["summary"],
+        json_path=report["json_path"],
+        markdown_path=report["markdown_path"],
+    )
+
+
+@app.post("/api/pipeline/remediation/plan", response_model=RemediationPlanResponse)
+def remediation_plan(
+    session: Session = Depends(require_admin),
+) -> RemediationPlanResponse:
+    """Build a staged remediation plan from the latest media audit."""
+    from .pipeline.remediation import build_remediation_plan, load_latest_audit
+
+    report = load_latest_audit(repo, CONFIG_ROOT)
+    if report is None:
+        return RemediationPlanResponse(needs_audit=True)
+    plan = build_remediation_plan(report)
+    return RemediationPlanResponse(**plan)
+
+
+@app.post("/api/pipeline/remediation/start", response_model=RemediationStartResponse)
+def remediation_start(
+    request: RemediationStartRequest,
+    session: Session = Depends(require_admin),
+) -> RemediationStartResponse:
+    """Start lossless remediation for one audited batch."""
+    from .pipeline.media_audit import REMUXABLE_BATCHES
+    from .pipeline.remediation import load_latest_audit, target_paths_for_batch
+    from .pipeline.sweep import LibrarySweeper
+
+    batch_name = request.batch_name
+    if batch_name not in REMUXABLE_BATCHES:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"Batch '{batch_name}' is not an automatic lossless remux batch; "
+                "replace or encode it through the codec remediation workflow."
+            ),
+        )
+
+    report = load_latest_audit(repo, CONFIG_ROOT)
+    if report is None:
+        raise HTTPException(status_code=409, detail="Run a media audit first")
+    targets = target_paths_for_batch(report, batch_name)
+
+    with _sweep_lock:
+        if _active_sweep["status"] in ("scanning", "running"):
+            raise HTTPException(
+                status_code=409,
+                detail="A sweep is already in progress",
+            )
+        if _remediation_is_active():
+            raise HTTPException(
+                status_code=409,
+                detail="A remediation job is already in progress",
+            )
+
+    job_id = str(uuid4())[:12]
+    job = _default_remediation_job()
+    job.update(
+        {
+            "status": "queued",
+            "job_id": job_id,
+            "batch_name": batch_name,
+            "mode": "lossless_remux",
+            "dry_run": request.dry_run,
+            "progress_total": len(targets),
+            "started_at": _utc_now(),
+            "updated_at": _utc_now(),
+            "input_audit_path": report.get("json_path"),
+        }
+    )
+    _save_remediation_job(job)
+
+    def _run_remediation() -> None:
+        try:
+            _update_remediation_job(status="scanning", current_file="building target plan")
+            config = repo.load_stack()
+            sweeper = LibrarySweeper(config, repo)
+            plan = sweeper.scan_targets(targets)
+            _update_remediation_job(
+                status="running" if not request.dry_run else "completed",
+                progress_current=0,
+                progress_total=plan.files_to_process,
+                current_file=None,
+                skipped=0 if not request.dry_run else plan.files_to_process,
+            )
+
+            if request.dry_run or plan.files_to_process == 0:
+                _update_remediation_job(
+                    status="completed",
+                    ended_at=_utc_now(),
+                    current_file=None,
+                )
+                return
+
+            def _progress(current: int, total: int, path: str) -> None:
+                _update_remediation_job(
+                    progress_current=current,
+                    progress_total=total,
+                    current_file=path or None,
+                )
+
+            result = sweeper.execute(
+                plan,
+                progress_callback=_progress,
+                should_cancel=lambda: _remediation_cancel_requested(job_id),
+            )
+            cancelled = _remediation_cancel_requested(job_id)
+            status = "cancelled" if cancelled else "completed"
+            errors = [err for err in result.errors if err != "cancelled"]
+            _update_remediation_job(
+                status=status,
+                progress_current=result.total,
+                progress_total=result.total,
+                current_file=None,
+                succeeded=result.succeeded,
+                failed=result.failed,
+                skipped=result.skipped,
+                errors=errors[:50],
+                ended_at=_utc_now(),
+            )
+        except Exception as exc:
+            logger.error("Remediation %s failed: %s", job_id, exc)
+            _update_remediation_job(
+                status="failed",
+                errors=[str(exc)],
+                ended_at=_utc_now(),
+                current_file=None,
+            )
+
+    thread = threading.Thread(
+        target=_run_remediation,
+        daemon=True,
+        name=f"remediation-{job_id}",
+    )
+    thread.start()
+
+    return RemediationStartResponse(
+        job_id=job_id,
+        batch_name=batch_name,
+        status="queued",
+        total_files=len(targets),
+        dry_run=request.dry_run,
+    )
+
+
+@app.get("/api/pipeline/remediation/status", response_model=RemediationStatusResponse)
+def remediation_status(
+    session: Session = Depends(require_admin),
+) -> RemediationStatusResponse:
+    """Poll current remediation job status."""
+    return _remediation_response(_load_remediation_job())
+
+
+@app.post("/api/pipeline/remediation/cancel", response_model=RemediationStatusResponse)
+def remediation_cancel(
+    session: Session = Depends(require_admin),
+) -> RemediationStatusResponse:
+    """Request cancellation of the active remediation job."""
+    job = _load_remediation_job()
+    if job.get("status") not in {"queued", "scanning", "running"}:
+        return _remediation_response(job)
+    updated = _update_remediation_job(cancel_requested=True)
+    return _remediation_response(updated)
+
+
 # ── Subtitle Sweep Endpoints ──────────────────────────────────────────
 
 
@@ -1497,6 +1880,11 @@ def sweep_srt_start(session: Session = Depends(require_admin)):
             raise HTTPException(
                 status_code=409,
                 detail="A sweep is already in progress",
+            )
+        if _remediation_is_active():
+            raise HTTPException(
+                status_code=409,
+                detail="A remediation job is already in progress",
             )
         _active_sweep.update({
             "status": "running",
@@ -1575,6 +1963,21 @@ def enrichment_status(session: Session = Depends(require_auth)):
             "timestamp": info.get("timestamp"),
         })
 
+    # Recent failures (last 10)
+    recent_failures = sorted(
+        [(k, v) for k, v in processed.items()
+         if isinstance(v, dict) and v.get("status") == "failed"],
+        key=lambda x: x[1].get("timestamp", 0),
+        reverse=True,
+    )[:10]
+    failure_items = []
+    for path, info in recent_failures:
+        failure_items.append({
+            "path": Path(path).name,
+            "reason": info.get("reason", "unknown"),
+            "timestamp": info.get("timestamp"),
+        })
+
     return {
         "enabled": True,
         "last_search": state.get("last_search", 0),
@@ -1583,6 +1986,8 @@ def enrichment_status(session: Session = Depends(require_auth)):
         "failed": failed_count,
         "active_downloads": active,
         "recent": recent_items,
+        "recent_failures": failure_items,
+        "queue_size": state.get("queue_size", 0),
     }
 
 

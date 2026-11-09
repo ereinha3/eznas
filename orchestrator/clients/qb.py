@@ -12,7 +12,6 @@ import re
 import secrets
 import subprocess
 import time
-from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
 import httpx
@@ -167,7 +166,8 @@ class QBittorrentClient(ServiceClient):
         categories = config.download_policy.categories
         detail = (
             f"user={qb_state.get('username')} "
-            f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr}"
+            f"categories=radarr:{categories.radarr},sonarr:{categories.sonarr},"
+            f"anime:{categories.anime}"
         )
         return EnsureOutcome(
             detail=detail, changed=update_result.changed or categories_changed
@@ -245,6 +245,7 @@ class QBittorrentClient(ServiceClient):
             expected = {
                 config.download_policy.categories.radarr: f'{CONTAINER_PATHS["downloads_complete"]}/movies',
                 config.download_policy.categories.sonarr: f'{CONTAINER_PATHS["downloads_complete"]}/tv',
+                config.download_policy.categories.anime: f'{CONTAINER_PATHS["downloads_complete"]}/anime',
             }
             missing = []
             mismatched = []
@@ -551,8 +552,6 @@ class QBittorrentClient(ServiceClient):
         desired_username: str,
         desired_password: Optional[str],
     ) -> Tuple[EnsureOutcome, str]:
-        qb_cfg = config.services.qbittorrent
-        downloads_root = CONTAINER_PATHS["downloads"]
         complete_path = CONTAINER_PATHS["downloads_complete"]
         incomplete_path = CONTAINER_PATHS["downloads_incomplete"]
 
@@ -613,6 +612,7 @@ class QBittorrentClient(ServiceClient):
         mapping = {
             categories.radarr: f'{CONTAINER_PATHS["downloads_complete"]}/movies',
             categories.sonarr: f'{CONTAINER_PATHS["downloads_complete"]}/tv',
+            categories.anime: f'{CONTAINER_PATHS["downloads_complete"]}/anime',
             "enrichment": f'{CONTAINER_PATHS["downloads_complete"]}/enrichment',
         }
         changed = False

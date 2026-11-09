@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field, validator
 
@@ -31,6 +31,7 @@ class PathConfig(BaseModel):
 class DownloadCategories(BaseModel):
     radarr: str = "movies"
     sonarr: str = "tv"
+    anime: str = "anime"
 
 
 class DownloadPolicy(BaseModel):
@@ -44,6 +45,12 @@ class MediaPolicyEntry(BaseModel):
 
 class MediaPolicy(BaseModel):
     movies: MediaPolicyEntry = Field(default_factory=MediaPolicyEntry)
+    anime: MediaPolicyEntry = Field(
+        default_factory=lambda: MediaPolicyEntry(
+            keep_audio=["jpn", "eng", "und"],
+            keep_subs=["eng"],
+        )
+    )
 
 
 class QualityPreset(str, Enum):
@@ -61,7 +68,21 @@ class ResolutionPreset(str, Enum):
 
 class QualityConfig(BaseModel):
     preset: QualityPreset = QualityPreset.balanced
-    target_resolution: Optional[ResolutionPreset] = None
+    target_resolution: Optional[ResolutionPreset] = Field(
+        default=None,
+        description=(
+            "Central resolution target. Caps Radarr/Sonarr quality profiles, "
+            "drives the pipeline keep/replace rule and the enrichment upgrade target."
+        ),
+    )
+    allow_upgrades: Optional[bool] = Field(
+        default=None,
+        description=(
+            "Upgrade toggle: sets upgradeAllowed on the arr profiles and lets the "
+            "pipeline replace a library file with a higher resolution one within the target. "
+            "None leaves arr profiles' upgradeAllowed untouched and the pipeline never replaces."
+        ),
+    )
     max_bitrate_mbps: Optional[int] = Field(default=None, ge=1)
     preferred_container: str = "mkv"
 
@@ -172,24 +193,31 @@ class BackfillConfig(BaseModel):
 class EnrichmentConfig(BaseModel):
     """Configuration for the media enrichment pipeline (audio cross-mux).
 
-    When enabled, the enrichment engine scans the media library for files
-    missing desired audio languages (e.g., English dub for Japanese anime),
-    searches for alternate releases via Prowlarr, downloads candidates,
-    uses chromaprint acoustic fingerprinting to compute precise audio
-    alignment, and cross-muxes the missing audio track into the library file.
+    When enabled, the enrichment engine continuously searches for missing
+    audio languages (e.g., English dub for Japanese anime), downloads
+    alternate releases via Prowlarr, uses chromaprint fingerprinting for
+    precise audio alignment, and cross-muxes missing tracks into library files.
+
+    Runs as an always-on daemon: maintains a queue of files needing enrichment,
+    keeps up to max_concurrent_downloads active at all times, and processes
+    completed downloads immediately. New library additions are prioritized.
     """
 
     enabled: bool = False
 
-    # --- Search ---
-    search_interval_hours: int = Field(
-        default=24, ge=1,
-        description="How often to search for enrichment candidates",
+    # --- Concurrency ---
+    max_concurrent_downloads: int = Field(
+        default=1, ge=1,
+        description="Maximum enrichment downloads active at once in qBittorrent",
     )
-    max_grabs_per_cycle: int = Field(
-        default=2, ge=1,
-        description="Maximum enrichment downloads to start per cycle",
+    queue_rescan_hours: int = Field(
+        default=6, ge=1,
+        description="How often to rebuild the candidate queue from a full library scan",
     )
+
+    # --- Backward compat (ignored, kept so old configs don't error) ---
+    search_interval_hours: int = Field(default=24, ge=1, exclude=True)
+    max_grabs_per_cycle: int = Field(default=2, ge=1, exclude=True)
     search_queries: List[str] = Field(
         default_factory=lambda: ["dual audio", "english dub", "multi"],
         description="Search terms appended to title when searching Prowlarr",
@@ -236,6 +264,16 @@ class EnrichmentConfig(BaseModel):
     prefer_hevc: bool = Field(
         default=True,
         description="Prefer HEVC/H.265 over H.264 when upgrading video",
+    )
+
+    # --- Stale grab cleanup ---
+    grab_ttl_hours: int = Field(
+        default=48, ge=1,
+        description="Maximum hours a grabbed torrent can remain before being evicted as stale",
+    )
+    stall_timeout_hours: int = Field(
+        default=6, ge=1,
+        description="Hours of zero download progress before a torrent is considered stalled",
     )
 
 
@@ -673,3 +711,86 @@ class SweepStatusResponse(BaseModel):
     succeeded: int = 0
     failed: int = 0
     errors: List[str] = Field(default_factory=list)
+
+
+# Media Audit / Remediation Models
+
+
+class MediaAuditBatchSummary(BaseModel):
+    """Summary for one staged media remediation batch."""
+
+    name: str
+    label: str
+    description: str
+    mode: str = "lossless_remux"
+    remuxable: bool = False
+    file_count: int = 0
+    total_bytes: int = 0
+    severity_counts: Dict[str, int] = Field(default_factory=dict)
+    issue_counts: Dict[str, int] = Field(default_factory=dict)
+
+
+class MediaAuditScanResponse(BaseModel):
+    """Result of running a media audit scan."""
+
+    summary: Dict[str, Any]
+    json_path: str
+    markdown_path: str
+
+
+class MediaAuditLatestResponse(BaseModel):
+    """Latest media audit metadata, if available."""
+
+    available: bool
+    summary: Dict[str, Any] = Field(default_factory=dict)
+    json_path: Optional[str] = None
+    markdown_path: Optional[str] = None
+
+
+class RemediationPlanResponse(BaseModel):
+    """Batch remediation plan built from the latest audit."""
+
+    needs_audit: bool = False
+    audit_path: Optional[str] = None
+    markdown_path: Optional[str] = None
+    started_at: Optional[str] = None
+    total_files: int = 0
+    batches: List[MediaAuditBatchSummary] = Field(default_factory=list)
+
+
+class RemediationStartRequest(BaseModel):
+    """Request to start a staged remediation job."""
+
+    batch_name: str
+    dry_run: bool = False
+
+
+class RemediationStartResponse(BaseModel):
+    """Acknowledgement that remediation has started."""
+
+    job_id: str
+    batch_name: str
+    status: str
+    total_files: int = 0
+    dry_run: bool = False
+
+
+class RemediationStatusResponse(BaseModel):
+    """Current durable remediation job status."""
+
+    status: str = "idle"
+    job_id: Optional[str] = None
+    batch_name: Optional[str] = None
+    mode: Optional[str] = None
+    dry_run: bool = False
+    progress_current: int = 0
+    progress_total: int = 0
+    current_file: Optional[str] = None
+    succeeded: int = 0
+    failed: int = 0
+    skipped: int = 0
+    errors: List[str] = Field(default_factory=list)
+    started_at: Optional[str] = None
+    updated_at: Optional[str] = None
+    ended_at: Optional[str] = None
+    input_audit_path: Optional[str] = None

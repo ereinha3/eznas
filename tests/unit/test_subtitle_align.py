@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import tempfile
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
@@ -21,9 +20,6 @@ from orchestrator.pipeline.subtitle_align import (
     probe_video_duration,
     remux_subtitle_into_mkv,
     align_and_remux,
-    SubtitleEntry,
-    ValidationResult,
-    AlignResult,
 )
 
 
@@ -437,8 +433,14 @@ class TestRemuxSubtitle:
         video.write_bytes(b"fake video")
         srt.write_text("1\n00:00:01,000 --> 00:00:04,000\nHello\n", encoding="utf-8")
 
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=0, stderr="")
+        proc = MagicMock()
+        proc.communicate.return_value = (b"", b"")
+        proc.returncode = 0
+
+        with patch("subprocess.run") as mock_run, patch(
+            "subprocess.Popen", return_value=proc
+        ):
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             # Simulate output file creation
             with patch.object(Path, "exists", return_value=True):
                 with patch.object(Path, "stat") as mock_stat:
@@ -460,8 +462,14 @@ class TestRemuxSubtitle:
         video.write_bytes(b"fake video")
         srt.write_text("1\n00:00:01,000 --> 00:00:04,000\nHello\n", encoding="utf-8")
 
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(returncode=1, stderr="error")
+        proc = MagicMock()
+        proc.communicate.return_value = (b"", b"error")
+        proc.returncode = 1
+
+        with patch("subprocess.run") as mock_run, patch(
+            "subprocess.Popen", return_value=proc
+        ):
+            mock_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
             result = remux_subtitle_into_mkv(video, srt, output)
             assert result is False
 

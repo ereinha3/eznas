@@ -11,15 +11,16 @@ import {
   fetchActiveRun,
 } from './api'
 import { LeftNavigation, type PageKey } from './components/LeftNavigation'
-import { DashboardPage } from './pages/DashboardPage'
-import { MediaPage } from './pages/MediaPage'
-import { ServicesPage } from './pages/ServicesPage'
-import { PipelinePage } from './pages/PipelinePage'
-import { RecommendationsPage } from './pages/RecommendationsPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { LogsPage } from './pages/LogsPage'
+import { HomePage } from './pages/HomePage'
+import { LibraryPage } from './pages/LibraryPage'
+import { SystemPage } from './pages/SystemPage'
+import { ActivityPage } from './pages/ActivityPage'
 import { LoginPage } from './pages/LoginPage'
 import { WizardPage } from './pages/WizardPage'
+import { DeployBar } from './components/common/DeployBar'
+import { ComplexityToggle } from './components/common/ComplexityToggle'
+// SettingsLock will be used on the dedicated Settings page
+import { useComplexityMode } from './hooks/useComplexityMode'
 import type { CredentialsResponse, HealthResponse, StackConfig } from './components/types'
 
 const DEFAULT_CONFIG: StackConfig = {
@@ -69,125 +70,70 @@ const DEFAULT_CONFIG: StackConfig = {
   users: [],
 }
 
+function deepEqual(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b)
+}
+
 // Main authenticated app content
 function AuthenticatedApp() {
   const { logout, user, sudoActive } = useAuth()
   const [config, setConfig] = useState<StackConfig>(DEFAULT_CONFIG)
-  const [status, setStatus] = useState('')
-  const [statusVariant, setStatusVariant] = useState<'info' | 'success' | 'error'>('info')
+  const [savedConfig, setSavedConfig] = useState<StackConfig>(DEFAULT_CONFIG)
   const [logEntries, setLogEntries] = useState<string[]>([])
   const [isApplying, setIsApplying] = useState(false)
   const [credentials, setCredentials] = useState<CredentialsResponse | null>(null)
-  const [activePage, setActivePage] = useState<PageKey>('dashboard')
+  const [activePage, setActivePage] = useState<PageKey>('home')
   const [health, setHealth] = useState<HealthResponse | null>(null)
+  const [statusMsg, setStatusMsg] = useState<{ text: string; variant: 'info' | 'success' | 'error' } | null>(null)
   const activeEventSourceRef = useRef<{ runId: string; es: EventSource } | null>(null)
+  const { isAdvanced, toggleMode } = useComplexityMode()
 
-  const setStatusMessage = (message: string, variant: 'info' | 'success' | 'error' = 'info') => {
-    setStatus(message)
-    setStatusVariant(variant)
-  }
+  const hasChanges = !deepEqual(config, savedConfig)
 
   const loadCredentials = async () => {
     try {
       const data = await fetchServiceCredentials()
       setCredentials(data)
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to load credentials.', 'error')
-      throw error
-    }
+    } catch { /* ignore */ }
   }
 
   const refreshConfig = async () => {
     try {
       const loaded = await loadConfig()
       setConfig(loaded)
-      setStatusMessage('Configuration loaded.', 'success')
+      setSavedConfig(loaded)
       await loadCredentials()
     } catch (error: any) {
-      setStatusMessage(error.message || 'Failed to load config', 'error')
+      setStatusMsg({ text: error.message || 'Failed to load config', variant: 'error' })
     }
   }
 
-  useEffect(() => {
-    refreshConfig()
-  }, [])
+  useEffect(() => { refreshConfig() }, [])
 
   useEffect(() => {
     const refreshHealth = async () => {
-      try {
-        setHealth(await fetchHealth())
-      } catch {
-        // Health endpoint may not be available yet
-      }
+      try { setHealth(await fetchHealth()) } catch { /* ignore */ }
     }
     refreshHealth()
     const id = setInterval(refreshHealth, 10000)
     return () => clearInterval(id)
   }, [])
 
-  const handleSave = async (cfg: StackConfig) => {
-    try {
-      const saved = await saveConfig(cfg)
-      setConfig(saved)
-      setStatusMessage('Configuration saved to stack.yaml.', 'success')
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Save failed', 'error')
-    }
-  }
-
-  const handleValidate = async (cfg: StackConfig) => {
-    try {
-      const result = await validateConfig(cfg)
-      const issues = Object.entries(result.checks).filter(([, value]) => value !== 'ok')
-      if (issues.length) {
-        setStatusMessage(
-          `Validation issues: ${issues.map(([k, v]) => `${k}=${v}`).join(', ')}`,
-          'error',
-        )
-      } else {
-        setStatusMessage('All validations passed.', 'success')
-      }
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Validation failed', 'error')
-    }
-  }
-
-  const handleBuild = async () => {
-    try {
-      setStatusMessage('Building orchestrator image...', 'info')
-      const response = await fetch('/api/build', { method: 'POST' })
-      const result = await response.json()
-
-      if (result.ok) {
-        setStatusMessage('Image built successfully!', 'success')
-      } else {
-        setStatusMessage(`Build failed: ${result.message}`, 'error')
-      }
-    } catch (error: any) {
-      setStatusMessage(error.message || 'Build failed', 'error')
-    }
-  }
-
   const appendLog = (line: string) => {
     setLogEntries((prev) => [...prev, line])
   }
 
   const connectToRun = (runId: string, isReconnect: boolean = false) => {
-    // Prevent duplicate connections to the same run
-    if (activeEventSourceRef.current?.runId === runId) {
-      return
-    }
-    // Close any existing connection
+    if (activeEventSourceRef.current?.runId === runId) return
     activeEventSourceRef.current?.es.close()
 
     setIsApplying(true)
     localStorage.setItem('nas_active_run_id', runId)
     if (!isReconnect) {
-      setLogEntries(['Running apply...'])
-      setStatusMessage('Applying stack configuration...', 'info')
+      setLogEntries(['Deploying...'])
+      setStatusMsg({ text: 'Deploying stack configuration...', variant: 'info' })
     } else {
-      appendLog(`Reconnected to run ${runId}...`)
-      setStatusMessage('Reconnected to in-progress apply...', 'info')
+      appendLog(`Reconnected to deployment ${runId}...`)
     }
 
     const token = localStorage.getItem('nas_orchestrator_token')
@@ -209,16 +155,13 @@ function AuthenticatedApp() {
     eventSource.addEventListener('status', (evt) => {
       try {
         const data = JSON.parse(evt.data)
-        appendLog(
-          `status: ${data.ok ? 'success' : 'failed'}${data.summary ? ' - ' + data.summary : ''}`,
-        )
-        setStatusMessage(
-          data.ok ? 'Apply finished successfully.' : `Apply failed: ${data.summary || 'see log.'}`,
-          data.ok ? 'success' : 'error',
-        )
+        appendLog(`Deploy ${data.ok ? 'succeeded' : 'failed'}${data.summary ? ' - ' + data.summary : ''}`)
+        setStatusMsg({
+          text: data.ok ? 'Deploy finished successfully.' : `Deploy failed: ${data.summary || 'see log.'}`,
+          variant: data.ok ? 'success' : 'error',
+        })
       } catch {
         appendLog(`status: ${evt.data}`)
-        setStatusMessage('Apply finished (status unknown).', 'info')
       } finally {
         eventSource.close()
         activeEventSourceRef.current = null
@@ -229,8 +172,8 @@ function AuthenticatedApp() {
     })
 
     eventSource.addEventListener('error', () => {
-      appendLog('Event stream closed.')
-      setStatusMessage('Apply stream ended unexpectedly.', 'error')
+      appendLog('Deploy stream closed.')
+      setStatusMsg({ text: 'Deploy stream ended unexpectedly.', variant: 'error' })
       eventSource.close()
       activeEventSourceRef.current = null
       setIsApplying(false)
@@ -239,7 +182,7 @@ function AuthenticatedApp() {
     })
   }
 
-  // On mount, check for an in-progress run (survives page refresh)
+  // Reconnect to in-progress run on mount
   useEffect(() => {
     const checkActiveRun = async () => {
       try {
@@ -249,122 +192,112 @@ function AuthenticatedApp() {
         } else {
           localStorage.removeItem('nas_active_run_id')
         }
-      } catch {
-        // API may not be ready yet
-      }
+      } catch { /* ignore */ }
     }
     checkActiveRun()
   }, [])
 
-  const handleApply = async (cfg: StackConfig) => {
+  const handleDeploy = async (cfg: StackConfig) => {
     try {
-      const response = await applyConfig(cfg)
-      if (response.already_running) {
-        appendLog(`Run ${response.run_id} already in progress, reconnecting...`)
-      } else {
-        appendLog(`Run ${response.run_id} started.`)
+      // Validate first
+      const result = await validateConfig(cfg)
+      const issues = Object.entries(result.checks).filter(([, value]) => value !== 'ok')
+      if (issues.length) {
+        setStatusMsg({
+          text: `Cannot deploy: ${issues.map(([k, v]) => `${k}: ${v}`).join(', ')}`,
+          variant: 'error',
+        })
+        return
       }
+
+      // Save config
+      const saved = await saveConfig(cfg)
+      setConfig(saved)
+      setSavedConfig(saved)
+
+      // Apply
+      const response = await applyConfig(saved)
       connectToRun(response.run_id, !!response.already_running)
     } catch (error: any) {
       appendLog(`Error: ${error.message}`)
-      setStatusMessage(error.message || 'Apply failed to start', 'error')
+      setStatusMsg({ text: error.message || 'Deploy failed to start', variant: 'error' })
       setIsApplying(false)
     }
   }
 
-  const handleLogout = async () => {
-    await logout()
+  const handleDiscard = () => {
+    setConfig(savedConfig)
+    setStatusMsg(null)
   }
 
   return (
     <div className="app-shell">
-      <header className="hero">
-        <div className="hero-content">
-          <h1>NAS Stack Orchestrator</h1>
-          <p>
-            Configure storage, ports, service toggles, and policy—then let the orchestrator render,
-            deploy, and converge the entire media automation stack.
-          </p>
-          <div className="pill-group">
-            <span className="pill">Docker Compose</span>
-            <span className="pill">Zero-touch bootstrap</span>
-            <span className="pill">Live apply logs</span>
-            <span className="pill">Language-aware pipeline</span>
-          </div>
-        </div>
-        <div className="user-controls">
-          <div className="user-info">
-            <span className="username">{user?.username}</span>
-            {sudoActive && <span className="sudo-badge">SUDO</span>}
-          </div>
-          <button onClick={handleLogout} className="logout-button">
-            Logout
-          </button>
-        </div>
-      </header>
+      <div className="left-nav-column">
+        <LeftNavigation activePage={activePage} onNavigate={setActivePage} />
+      </div>
 
-      <main className="main-layout">
-        <div className="left-nav-column">
-          <LeftNavigation activePage={activePage} onNavigate={setActivePage} />
-        </div>
+      <div className="main-column">
+        <header className="top-bar">
+          <div className="top-bar-left">
+            {health && (
+              <div className={`health-indicator ${health.status}`}>
+                <span className="health-indicator-dot" />
+                <span>{health.status === 'healthy' ? 'all systems healthy' : health.status}</span>
+              </div>
+            )}
+          </div>
+          <div className="top-bar-right">
+            <ComplexityToggle isAdvanced={isAdvanced} onToggle={toggleMode} />
+            <div className="user-controls">
+              <span className="username">{user?.username}</span>
+              {sudoActive && <span className="sudo-badge">SUDO</span>}
+              <button onClick={logout} className="logout-button">Logout</button>
+            </div>
+          </div>
+        </header>
 
         <div className="page-container">
-          {status && (
-            <div className={`status-alert ${statusVariant}`}>
-              {status}
+          {statusMsg && (
+            <div className={`status-alert ${statusMsg.variant}`}>
+              {statusMsg.text}
+              <button className="status-dismiss" onClick={() => setStatusMsg(null)}>&times;</button>
             </div>
           )}
 
-          {activePage === 'dashboard' && (
-            <DashboardPage
-              config={config}
-              health={health}
-            />
+          {activePage === 'home' && (
+            <HomePage config={config} health={health} credentials={credentials} />
           )}
-          {activePage === 'media' && (
-            <MediaPage
-              config={config}
-              onChange={setConfig}
-              onSave={handleSave}
-              onApply={handleApply}
-              isApplying={isApplying}
-            />
+          {activePage === 'library' && (
+            <LibraryPage config={config} onChange={setConfig} isAdvanced={isAdvanced} />
           )}
-          {activePage === 'services' && (
-            <ServicesPage
-              config={config}
-              onChange={setConfig}
-              onSave={handleSave}
-              onValidate={handleValidate}
-              onApply={handleApply}
-              onBuild={handleBuild}
-              isApplying={isApplying}
-              credentials={credentials}
-              health={health}
-            />
+          {activePage === 'system' && (
+            <SystemPage config={config} onChange={setConfig} health={health} credentials={credentials} isAdvanced={isAdvanced} />
           )}
-          {activePage === 'pipeline' && (
-            <PipelinePage config={config} />
+          {activePage === 'activity' && (
+            <ActivityPage logEntries={logEntries} />
           )}
-          {activePage === 'recommendations' && (
-            <RecommendationsPage />
+          {activePage === 'users' && (
+            <div className="page-placeholder">
+              <h2>Users</h2>
+              <p className="page-description">User management and device enrollment. Coming soon.</p>
+            </div>
           )}
           {activePage === 'settings' && (
-            <SettingsPage
-              config={config}
-              onChange={setConfig}
-              onSave={handleSave}
-              onValidate={handleValidate}
-              onApply={handleApply}
-              onBuild={handleBuild}
-              isApplying={isApplying}
-            />
-          )}
-          {activePage === 'logs' && (
-            <LogsPage logEntries={logEntries} />
+            <div className="page-placeholder">
+              <h2>Settings</h2>
+              <p className="page-description">Low-level configuration. Coming soon.</p>
+            </div>
           )}
         </div>
-      </main>
+      </div>
+
+      <DeployBar
+        hasChanges={hasChanges}
+        onDeploy={handleDeploy}
+        onDiscard={handleDiscard}
+        config={config}
+        isApplying={isApplying}
+      />
     </div>
   )
 }
@@ -377,71 +310,31 @@ function AppWithAuth() {
   const [isCheckingSetup, setIsCheckingSetup] = useState(true)
 
   useEffect(() => {
-    // Check if first-time setup is needed
     const checkSetup = async () => {
       try {
         const response = await fetch('/api/setup/status')
         const data = await response.json()
-        
-        if (data.needs_setup) {
-          setNeedsSetup(true)
-        }
-
-        // Show default credentials if available (regardless of needs_setup)
-        if (data.default_password) {
-          setDefaultCreds({ username: 'admin', password: data.default_password })
-        }
-      } catch {
-        // Ignore errors
-      } finally {
-        setIsCheckingSetup(false)
-      }
+        if (data.needs_setup) setNeedsSetup(true)
+        if (data.default_password) setDefaultCreds({ username: 'admin', password: data.default_password })
+      } catch { /* ignore */ }
+      finally { setIsCheckingSetup(false) }
     }
-    
-    // Always check setup status on mount
     checkSetup()
   }, [])
 
-  const handleLoginSuccess = () => {
-    checkSession()
-  }
-
-  const handleSetupComplete = () => {
-    // Reload to clear setup state and show login
-    window.location.reload()
-  }
-
   if (isLoading || isCheckingSetup) {
     return (
-      <div style={{ 
-        minHeight: '100vh', 
-        display: 'flex', 
-        alignItems: 'center', 
-        justifyContent: 'center',
-        background: '#1a1a2e'
-      }}>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1a1a2e' }}>
         <div style={{ color: '#888' }}>Loading...</div>
       </div>
     )
   }
 
-  if (needsSetup) {
-    return <WizardPage onSetupComplete={handleSetupComplete} />
-  }
-
-  if (!isAuthenticated) {
-    return (
-      <LoginPage 
-        onLoginSuccess={handleLoginSuccess}
-        defaultCredentials={defaultCreds}
-      />
-    )
-  }
-
+  if (needsSetup) return <WizardPage onSetupComplete={() => window.location.reload()} />
+  if (!isAuthenticated) return <LoginPage onLoginSuccess={checkSession} defaultCredentials={defaultCreds} />
   return <AuthenticatedApp />
 }
 
-// Root app with provider
 function App() {
   return (
     <AuthProvider>

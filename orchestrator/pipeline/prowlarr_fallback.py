@@ -851,23 +851,17 @@ class ProwlarrDirectGrab:
     def _is_grabbed(self, grabbed: dict, key: str, qbt_names: set[str]) -> bool:
         """Check if this key was already grabbed recently.
 
-        If the torrent title is no longer in qBT (stall-killed, failed, etc.),
-        clear the grab entry so we retry on the next cycle.
+        The grab entry persists for the full ``_GRAB_COOLDOWN`` (48h)
+        regardless of whether the torrent is still in qBittorrent.
+        This prevents re-grab loops when torrents are removed after
+        successful import — the ``hasFile`` filter in Radarr/Sonarr
+        is the primary guard, and this cooldown is the secondary.
         """
         entry = grabbed.get(key)
         if not entry:
             return False
         age = time.time() - entry.get("timestamp", 0)
         if age > self._GRAB_COOLDOWN:
-            del grabbed[key]
-            return False
-        # If the grabbed torrent disappeared from qBT, allow retry
-        title = entry.get("title", "")
-        if title and title not in qbt_names:
-            log.info(
-                "prowlarr-fallback: grabbed torrent gone from qBT, retrying: %s",
-                title[:60],
-            )
             del grabbed[key]
             return False
         return True

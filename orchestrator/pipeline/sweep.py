@@ -7,8 +7,10 @@ same ffprobe/ffmpeg pipeline used for new downloads.
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 import re
+import shutil
 import subprocess
 import time
 from dataclasses import dataclass, field
@@ -20,8 +22,32 @@ import httpx
 from ..models import StackConfig
 from ..storage import ConfigRepository
 from .languages import arr_language_to_iso
-from .remux import TrackSelection, StreamInfo, build_ffmpeg_command, probe_streams
+from .remux import (
+    SubtitleIdentity,
+    TrackSelection,
+    StreamInfo,
+    build_ffmpeg_command,
+    detect_stream_policy_changes,
+    probe_streams,
+    probe_raw_streams,
+    subtitle_identity_from_mkvmerge_track,
+    subtitle_identity_from_srt_filename,
+)
 from .worker import VIDEO_EXTENSIONS, PipelineWorker
+
+
+def _safe_replace(src: Path, dst: Path) -> None:
+    """Replace dst with src, handling cross-device moves.
+
+    Tries atomic ``os.replace`` first (same filesystem).  Falls back to
+    ``shutil.copy2`` + ``unlink`` when source and destination are on
+    different mount points (EXDEV error).
+    """
+    try:
+        os.replace(src, dst)
+    except OSError:
+        shutil.copy2(src, dst)
+        src.unlink()
 
 
 # ---------------------------------------------------------------------------
@@ -69,6 +95,8 @@ class SweepResult:
 
 class LibrarySweeper:
     """Scans and remuxes existing library files to match the media policy."""
+
+    _TRACK_POLICY_VERSION = 2
 
     # Rough estimate: ~60 MB/s remux throughput (copy codec)
     _REMUX_THROUGHPUT = 60 * 1024 * 1024  # bytes per second
@@ -129,10 +157,22 @@ class LibrarySweeper:
                     file_path, category
                 )
 
-                # Check if stripping is needed
-                unwanted_audio, unwanted_subs = self._detect_unwanted(
-                    stream_info, selection, original_language=original_language,
-                )
+                # Check if stripping/track hygiene is needed. The raw-stream
+                # policy catches duplicate same-language audio/subtitle tracks
+                # and stale subtitle default flags, not only unwanted languages.
+                raw_streams = probe_raw_streams(file_path)
+                if raw_streams:
+                    unwanted_audio, unwanted_subs = detect_stream_policy_changes(
+                        raw_streams,
+                        selection,
+                        original_language=original_language,
+                    )
+                else:
+                    unwanted_audio, unwanted_subs = self._detect_unwanted(
+                        stream_info,
+                        selection,
+                        original_language=original_language,
+                    )
 
                 if not unwanted_audio and not unwanted_subs:
                     plan.files_already_clean += 1
@@ -158,6 +198,59 @@ class LibrarySweeper:
 
         return plan
 
+    def scan_targets(
+        self,
+        target_paths: List[str | Path],
+        *,
+        skip_swept: bool = False,
+    ) -> SweepPlan:
+        """Scan an explicit target list instead of the whole library.
+
+        This is used by staged remediation batches generated from a media
+        audit.  The check still probes current files, so stale audit entries
+        do not cause unnecessary remuxes.
+        """
+        plan = SweepPlan()
+        swept_state = self._load_swept_state()
+        self._load_arr_original_languages()
+
+        seen: Set[Path] = set()
+        for raw_path in target_paths:
+            file_path = self._resolve_target_path(Path(raw_path))
+            if file_path in seen:
+                continue
+            seen.add(file_path)
+            plan.total_files_scanned += 1
+
+            if not file_path.exists() or file_path.suffix.lower() not in VIDEO_EXTENSIONS:
+                plan.files_already_clean += 1
+                continue
+
+            if skip_swept and self._is_already_swept(file_path, swept_state):
+                plan.files_already_clean += 1
+                continue
+
+            category = self._category_for_library_path(file_path)
+            if category is None:
+                plan.files_already_clean += 1
+                continue
+
+            action = self._build_action_for_file(file_path, category)
+            if action is None:
+                plan.files_already_clean += 1
+                continue
+
+            plan.files_to_process += 1
+            plan.total_bytes_to_process += action.size
+            plan.actions.append(action)
+
+        if plan.total_bytes_to_process > 0:
+            plan.estimated_time_seconds = (
+                plan.total_bytes_to_process / self._REMUX_THROUGHPUT
+            )
+
+        return plan
+
     # ------------------------------------------------------------------
     # Execute
     # ------------------------------------------------------------------
@@ -167,6 +260,7 @@ class LibrarySweeper:
         plan: SweepPlan,
         *,
         progress_callback=None,
+        should_cancel=None,
     ) -> SweepResult:
         """Remux each file in the plan, replacing it in-place.
 
@@ -182,6 +276,11 @@ class LibrarySweeper:
         use_scratch = scratch_root is not None and scratch_root.exists()
 
         for i, action in enumerate(plan.actions):
+            if should_cancel and should_cancel():
+                result.skipped += result.total - i
+                result.errors.append("cancelled")
+                break
+
             if progress_callback:
                 progress_callback(i, result.total, str(action.path))
 
@@ -225,7 +324,7 @@ class LibrarySweeper:
                     continue
 
                 # Atomic replace: staging -> original
-                os.replace(str(staging_path), str(action.path))
+                _safe_replace(Path(str(staging_path)), action.path)
                 result.succeeded += 1
 
                 # Mark as swept
@@ -295,6 +394,45 @@ class LibrarySweeper:
         ]
 
         return unwanted_audio, unwanted_subs
+
+    def _build_action_for_file(
+        self,
+        file_path: Path,
+        category: str,
+    ) -> Optional[SweepAction]:
+        """Return a SweepAction when the current file violates track policy."""
+        stream_info = probe_streams(file_path)
+        if stream_info is None or not stream_info.has_video:
+            return None
+
+        selection = self._worker._policy_for_category(category)
+        original_language = self._get_original_language_for_file(file_path, category)
+
+        raw_streams = probe_raw_streams(file_path)
+        if raw_streams:
+            unwanted_audio, unwanted_subs = detect_stream_policy_changes(
+                raw_streams,
+                selection,
+                original_language=original_language,
+            )
+        else:
+            unwanted_audio, unwanted_subs = self._detect_unwanted(
+                stream_info,
+                selection,
+                original_language=original_language,
+            )
+
+        if not unwanted_audio and not unwanted_subs:
+            return None
+
+        return SweepAction(
+            path=file_path,
+            size=file_path.stat().st_size,
+            category=category,
+            unwanted_audio=unwanted_audio,
+            unwanted_subtitles=unwanted_subs,
+            selection=selection,
+        )
 
     # ------------------------------------------------------------------
     # Original language lookup from Radarr/Sonarr API
@@ -458,6 +596,49 @@ class LibrarySweeper:
                 if Path(name).suffix.lower() in VIDEO_EXTENSIONS:
                     yield Path(root) / name
 
+    def _resolve_target_path(self, path: Path) -> Path:
+        """Map audit paths to the current runtime library mount when needed."""
+        if path.exists():
+            return path
+
+        configured_pool = Path(self.config.paths.pool)
+        try:
+            relative = path.relative_to(configured_pool)
+        except ValueError:
+            return path
+
+        candidate = self.pool_root / relative
+        if candidate.exists():
+            return candidate
+        return path
+
+    def _category_for_library_path(self, path: Path) -> Optional[str]:
+        """Infer the configured media category for a library file path."""
+        categories = self.config.download_policy.categories
+        roots: Dict[str, List[Path]] = {
+            categories.radarr: [
+                self.pool_root / "movies",
+                Path(self.config.paths.pool) / "movies",
+            ],
+            categories.sonarr: [
+                self.pool_root / "tv",
+                Path(self.config.paths.pool) / "tv",
+            ],
+            categories.anime: [
+                self.pool_root / "anime",
+                Path(self.config.paths.pool) / "anime",
+            ],
+        }
+
+        for category, candidates in roots.items():
+            for root in candidates:
+                try:
+                    path.relative_to(root)
+                    return category
+                except ValueError:
+                    continue
+        return None
+
     # ------------------------------------------------------------------
     # Swept state tracking
     # ------------------------------------------------------------------
@@ -475,7 +656,11 @@ class LibrarySweeper:
             return False
         try:
             current_mtime = path.stat().st_mtime
-            return record.get("mtime") == current_mtime and record.get("status") == "ok"
+            return (
+                record.get("mtime") == current_mtime
+                and record.get("status") == "ok"
+                and record.get("policy_version") == self._TRACK_POLICY_VERSION
+            )
         except OSError:
             return False
 
@@ -490,6 +675,7 @@ class LibrarySweeper:
         swept[str(path)] = {
             "status": status,
             "mtime": mtime,
+            "policy_version": self._TRACK_POLICY_VERSION,
             "timestamp": int(time.time()),
         }
         self.repo.save_pipeline_state(pipeline)
@@ -525,7 +711,9 @@ class LibrarySweeper:
                 return candidate
         scratch = self.config.paths.scratch
         if scratch is not None:
-            return Path(scratch)
+            p = Path(scratch)
+            if p.exists():
+                return p
         return None
 
     # ------------------------------------------------------------------
@@ -618,18 +806,6 @@ class LibrarySweeper:
     # Subtitle sweep — embed orphaned .srt files into MKV containers
     # ------------------------------------------------------------------
 
-    # Known subtitle language codes for filename detection
-    _KNOWN_LANG_CODES: Set[str] = {
-        "en", "eng", "ja", "jpn", "es", "spa", "fr", "fra", "de", "deu",
-        "it", "ita", "pt", "por", "ru", "rus", "ko", "kor", "zh", "zho",
-        "ar", "ara", "hi", "hin", "pl", "pol", "nl", "nld", "sv", "swe",
-        "da", "dan", "no", "nor", "fi", "fin", "cs", "ces", "hu", "hun",
-        "ro", "ron", "tr", "tur", "he", "heb", "el", "ell", "th", "tha",
-        "vi", "vie", "id", "ind", "uk", "ukr", "hr", "hrv", "bg", "bul",
-        "chi", "ger", "fre", "dut", "rum",
-    }
-    _SUBTITLE_HINTS: Set[str] = {"hi", "cc", "sdh", "forced"}
-
     def scan_orphaned_srt(self) -> List[dict]:
         """Scan the library for external .srt files that can be embedded.
 
@@ -653,6 +829,12 @@ class LibrarySweeper:
         for video_path in self._walk_video_files(media_root):
             video_base = video_path.stem
             srt_files = list(video_path.parent.glob(f"{video_base}*.srt"))
+            if not srt_files:
+                continue  # No SRTs — skip without probing video
+
+            # Probe video duration once per video (only if SRTs exist)
+            duration: Optional[float] = None
+            _MIN_CUES_PER_MINUTE = 3
 
             for srt_path in srt_files:
                 if srt_path.stat().st_size == 0:
@@ -662,45 +844,189 @@ class LibrarySweeper:
                 if not entries:
                     continue
 
-                # Detect language from filename
-                lang = self._detect_srt_lang(srt_path, video_base)
+                identity = subtitle_identity_from_srt_filename(srt_path, video_base)
 
-                # Quick validation (probe video only if needed)
-                duration = probe_video_duration(video_path)
+                # Probe video lazily — only on first valid SRT
                 if duration is None:
-                    continue
+                    duration = probe_video_duration(video_path)
+                    if duration is None:
+                        break  # Can't validate any SRTs for this video
 
                 validation = validate_timing(entries, duration)
                 if not validation.is_valid:
                     continue
 
+                # Reject signs-only / sparse subtitles.
+                cues_per_min = len(entries) / max(duration / 60, 1)
+                if cues_per_min < _MIN_CUES_PER_MINUTE:
+                    print(
+                        f"[sweep/srt] skipping {srt_path.name} — too sparse "
+                        f"({len(entries)} cues in {duration/60:.0f}min = "
+                        f"{cues_per_min:.1f}/min, need {_MIN_CUES_PER_MINUTE})"
+                    )
+                    continue
+
                 results.append({
                     "video": video_path,
                     "srt": srt_path,
-                    "language": lang,
+                    "language": identity.lang,
+                    "kind": identity.kind,
                     "entries": len(entries),
                 })
 
         print(f"[sweep] found {len(results)} orphaned SRT files to embed")
         return results
 
-    def embed_orphaned_srt(self, dry_run: bool = False) -> int:
+    def _existing_subrip_identities(self, video_path: Path) -> Set[SubtitleIdentity]:
+        """SubRip subtitle identities already present in the MKV.
+
+        Used to skip embedding when sweep would otherwise add a duplicate
+        track (Bazarr re-downloading a sub after a prior sweep already
+        embedded it).
+        """
+        try:
+            result = subprocess.run(
+                ["mkvmerge", "-J", str(video_path)],
+                capture_output=True, text=True, timeout=30,
+            )
+            if result.returncode not in (0, 1):
+                return set()
+            data = json.loads(result.stdout)
+        except (subprocess.TimeoutExpired, json.JSONDecodeError, OSError):
+            return set()
+
+        identities: Set[SubtitleIdentity] = set()
+        for t in data.get("tracks", []):
+            if t.get("type") != "subtitles":
+                continue
+            if t.get("codec") != "SubRip/SRT":
+                continue
+            identity = subtitle_identity_from_mkvmerge_track(t)
+            if identity:
+                identities.add(identity)
+        return identities
+
+    def _embed_srt_for_video(
+        self,
+        video_path: Path,
+        srt_items: List[dict],
+        scratch: Optional[Path] = None,
+    ) -> int:
+        """Embed all SRT files for a single video using mkvmerge.
+
+        Uses mkvmerge instead of ffmpeg because ffmpeg's matroska muxer
+        re-clusters streams during ``-c copy``, which can corrupt HEVC files
+        carrying Dolby Vision RPU side-data or TrueHD/Atmos substreams (the
+        Bug's Life mid-playback freeze was caused by exactly this path).
+        mkvmerge passes through video/audio bitstreams byte-for-byte and
+        only muxes the SRT track in.
+        """
+        # Idempotency guard: if a SubRip track for this language/kind is
+        # already embedded, drop the .srt and skip. This allows one normal
+        # English track plus one English SDH/forced track while still blocking
+        # Bazarr from re-adding the same normal subtitle on every cycle.
+        existing_identities = self._existing_subrip_identities(video_path)
+        if existing_identities:
+            kept: List[dict] = []
+            for item in srt_items:
+                identity = SubtitleIdentity(
+                    lang=item["language"],
+                    kind=item.get("kind", "normal"),
+                )
+                if identity in existing_identities:
+                    try:
+                        item["srt"].unlink()
+                    except OSError:
+                        pass
+                else:
+                    kept.append(item)
+            if not kept:
+                print(f"[sweep/srt] skipped {video_path.name} — all langs already embedded")
+                return 0
+            srt_items = kept
+
+        # Dot-prefix hides from media scanners (Radarr/Sonarr) so they
+        # don't index the temp file and mark the movie as deleted when it
+        # gets cleaned up.
+        output_path = video_path.parent / f".{video_path.stem}.srtremux.tmp.mkv"
+
+        # mkvmerge syntax: each --language flag applies to the *next* input file's
+        # track 0 (SRT files are always single-track).  Track indexing is handled
+        # automatically — no need to probe existing subtitle count.
+        args: List[str] = ["mkvmerge", "--quiet", "-o", str(output_path), str(video_path)]
+        for item in srt_items:
+            args.extend([
+                "--language", f"0:{item['language']}",
+                "--default-track-flag", "0:no",
+            ])
+            if item.get("kind") == "forced":
+                args.extend(["--forced-display-flag", "0:yes"])
+            elif item.get("kind") == "hearing_impaired":
+                args.extend(["--hearing-impaired-flag", "0:yes"])
+            args.append(str(item["srt"]))
+
+        # Scale timeout by file size.  mkvmerge is I/O bound — it copies
+        # tracks raw without decoding — but still rewrites the whole MKV.
+        file_size = video_path.stat().st_size if video_path.exists() else 0
+        timeout_s = max(1800, int(file_size / (50 * 1024 * 1024)))
+
+        try:
+            result = subprocess.run(
+                args, capture_output=True, text=True, timeout=timeout_s,
+            )
+            # mkvmerge: 0=success, 1=success-with-warnings, 2=hard error.
+            # Negative or other non-zero values indicate signal-killed (SIGKILL,
+            # SIGSEGV) — the partial output is unreliable and must not replace
+            # the original.
+            if result.returncode not in (0, 1):
+                err = (result.stderr.strip() or result.stdout.strip())[-200:]
+                print(f"[sweep/srt] FAILED to embed into {video_path.name} (rc={result.returncode}): {err}")
+                self._cleanup(output_path)
+                return 0
+
+            if not output_path.exists() or output_path.stat().st_size < 1024:
+                print(f"[sweep/srt] FAILED: output too small for {video_path.name}")
+                self._cleanup(output_path)
+                return 0
+
+            _safe_replace(output_path, video_path)
+            print(f"[sweep/srt] embedded {len(srt_items)} SRT(s) into {video_path.name}")
+
+            for item in srt_items:
+                try:
+                    item["srt"].unlink()
+                except OSError:
+                    pass
+            return len(srt_items)
+
+        except subprocess.TimeoutExpired:
+            print(f"[sweep/srt] TIMEOUT embedding into {video_path.name}")
+            self._cleanup(output_path)
+            return 0
+        except OSError as exc:
+            print(f"[sweep/srt] ERROR embedding {video_path.name}: {exc}")
+            self._cleanup(output_path)
+            return 0
+
+    def embed_orphaned_srt(self, dry_run: bool = False, max_workers: int = 1) -> int:
         """Scan and embed all orphaned .srt files into their parent MKVs.
 
         For each video with external .srt files:
         1. Validates the SRT timing against the video
-        2. Remuxes the SRT into the MKV (ffmpeg copy mode)
+        2. Remuxes the SRT into the MKV via mkvmerge (bitstream-safe)
         3. Replaces the original MKV atomically
         4. Deletes the source .srt file
 
+        Uses a thread pool to process multiple videos in parallel since the
+        bottleneck is I/O wait per mkvmerge process.
+
         Args:
             dry_run: If True, scan only — don't modify any files.
+            max_workers: Number of parallel mkvmerge processes (default 4).
 
         Returns:
             Number of SRT files embedded.
         """
-        from .subtitle_align import remux_subtitle_into_mkv
-
         srt_list = self.scan_orphaned_srt()
         if not srt_list:
             return 0
@@ -708,12 +1034,12 @@ class LibrarySweeper:
         if dry_run:
             for item in srt_list:
                 print(
-                    f"[sweep/srt] would embed {item['srt'].name} ({item['language']}, "
+                    f"[sweep/srt] would embed {item['srt'].name} "
+                    f"({item['language']}, {item.get('kind', 'normal')}, "
                     f"{item['entries']} cues) into {item['video'].name}"
                 )
             return 0
 
-        embedded_count = 0
         scratch = self._resolve_scratch()
 
         # Group SRTs by video file (embed all at once)
@@ -722,54 +1048,22 @@ class LibrarySweeper:
         for item in srt_list:
             by_video[item["video"]].append(item)
 
-        for video_path, srt_items in by_video.items():
-            current_input = video_path
+        print(f"[sweep/srt] embedding {len(srt_list)} SRT(s) across {len(by_video)} videos ({max_workers} workers)")
 
-            for i, item in enumerate(srt_items):
-                srt_path = item["srt"]
-                lang = item["language"]
-
-                # Stage in scratch or beside the video
-                if scratch:
-                    output_path = scratch / f"{video_path.stem}.srtremux{i}.tmp.mkv"
-                else:
-                    output_path = video_path.with_suffix(f".srtremux{i}.tmp.mkv")
-
-                ok = remux_subtitle_into_mkv(
-                    video_path=current_input,
-                    srt_path=srt_path,
-                    output_path=output_path,
-                    language=lang,
-                )
-
-                if not ok or not output_path.exists():
-                    print(f"[sweep/srt] FAILED to embed {srt_path.name}")
-                    self._cleanup(output_path)
-                    break
-
-                # If we had an intermediate staging file, clean it up
-                if current_input != video_path:
-                    self._cleanup(current_input)
-
-                current_input = output_path
-
-            # Atomic replacement: final staging → original video
-            if current_input != video_path and current_input.exists():
+        # Process videos in parallel
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        embedded_count = 0
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {
+                pool.submit(self._embed_srt_for_video, video_path, srt_items, scratch): video_path
+                for video_path, srt_items in by_video.items()
+            }
+            for future in as_completed(futures):
                 try:
-                    os.replace(current_input, video_path)
-                    print(f"[sweep/srt] embedded {len(srt_items)} SRT(s) into {video_path.name}")
-
-                    # Delete source SRT files
-                    for item in srt_items:
-                        try:
-                            item["srt"].unlink()
-                        except OSError:
-                            pass
-                    embedded_count += len(srt_items)
-
-                except OSError as exc:
-                    print(f"[sweep/srt] atomic replace failed: {exc}")
-                    self._cleanup(current_input)
+                    embedded_count += future.result()
+                except Exception as exc:
+                    video_path = futures[future]
+                    print(f"[sweep/srt] error processing {video_path.name}: {exc}")
 
         if embedded_count > 0:
             print(f"[sweep/srt] embedded {embedded_count} subtitle file(s) total")
@@ -779,14 +1073,202 @@ class LibrarySweeper:
 
     def _detect_srt_lang(self, srt_path: Path, video_stem: str) -> str:
         """Detect subtitle language from SRT filename suffix."""
-        full_stem = srt_path.stem
-        suffix = full_stem[len(video_stem):]
-        parts = [p.lower() for p in suffix.split(".") if p]
+        return subtitle_identity_from_srt_filename(srt_path, video_stem).lang
 
-        for part in reversed(parts):
-            if part in self._SUBTITLE_HINTS:
+    # ------------------------------------------------------------------
+    # Embedded subtitle quality scan — detect and strip bad subtitle tracks
+    # ------------------------------------------------------------------
+
+    _SIGNS_PATTERNS: Set[str] = {"signs", "songs", "signs/songs", "signs & songs", "s&s", "sign/song"}
+    _MIN_CUES_PER_MINUTE = 3  # Same threshold as SRT embed guard
+
+    def scan_bad_embedded_subs(self) -> List[dict]:
+        """Scan library for MKV files with sparse/signs-only embedded subtitles.
+
+        For each text-based subtitle track (SRT, ASS), extracts and checks
+        cue density.  Tracks below 3 cues/min are flagged.
+
+        Returns a list of dicts:
+            [{
+                "video": Path,
+                "bad_tracks": [{
+                    "index": str,
+                    "lang": str,
+                    "codec": str,
+                    "title": str,
+                    "reason": str,
+                    "cues_per_min": float | None,
+                }],
+            }, ...]
+        """
+        results: List[dict] = []
+        media_root = self.pool_root / "media"
+        if not media_root.exists():
+            media_root = self.pool_root
+
+        for video_path in self._walk_video_files(media_root):
+            bad_tracks = self._check_embedded_subs(video_path)
+            if bad_tracks:
+                results.append({"video": video_path, "bad_tracks": bad_tracks})
+
+        print(f"[sweep/sub-quality] found {sum(len(r['bad_tracks']) for r in results)} bad subtitle tracks across {len(results)} files")
+        return results
+
+    def _check_embedded_subs(self, video_path: Path) -> List[dict]:
+        """Check all embedded subtitle tracks in a video for quality issues."""
+        from .subtitle_align import probe_video_duration
+
+        raw_streams = probe_raw_streams(video_path)
+        if not raw_streams:
+            return []
+
+        duration = probe_video_duration(video_path)
+        if not duration or duration < 60:
+            return []
+
+        duration_min = duration / 60
+
+        bad: List[dict] = []
+        for stream in raw_streams:
+            if stream.get("codec_type") != "subtitle":
                 continue
-            if part in self._KNOWN_LANG_CODES:
-                return part
 
-        return "und"
+            idx = str(stream.get("index", ""))
+            lang = stream.get("tags", {}).get("language", "und")
+            codec = stream.get("codec_name", "").lower()
+            title = stream.get("tags", {}).get("title", "")
+
+            # Quick reject: signs/songs by title
+            title_lower = title.lower()
+            if any(p in title_lower for p in self._SIGNS_PATTERNS):
+                # Signs tracks are intentional — skip, don't flag
+                continue
+
+            # Only check text-based subs (can extract and count cues)
+            if codec not in ("subrip", "srt", "ass", "ssa"):
+                continue
+
+            # Extract and count cues
+            cue_count = self._count_embedded_cues(video_path, idx)
+            if cue_count is None:
+                continue
+
+            cues_per_min = cue_count / max(duration_min, 1)
+            if cues_per_min < self._MIN_CUES_PER_MINUTE:
+                bad.append({
+                    "index": idx,
+                    "lang": lang,
+                    "codec": codec,
+                    "title": title,
+                    "reason": f"sparse ({cue_count} cues in {duration_min:.0f}min = {cues_per_min:.1f}/min)",
+                    "cues_per_min": cues_per_min,
+                })
+
+        return bad
+
+    def _count_embedded_cues(self, video_path: Path, stream_index: str) -> Optional[int]:
+        """Extract a subtitle track and count its cues."""
+        import tempfile
+
+        # Extract to SRT format (ffmpeg converts ASS→SRT automatically)
+        with tempfile.NamedTemporaryFile(suffix=".srt", delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+
+        try:
+            result = subprocess.run(
+                [
+                    "ffmpeg", "-y", "-hide_banner", "-loglevel", "warning",
+                    "-i", str(video_path),
+                    "-map", f"0:{stream_index}",
+                    "-c:s", "srt",
+                    str(tmp_path),
+                ],
+                capture_output=True, text=True, timeout=60,
+            )
+            if result.returncode != 0:
+                return None
+
+            if not tmp_path.exists():
+                return None
+
+            from .subtitle_align import parse_srt
+            entries = parse_srt(tmp_path)
+            return len(entries)
+        except (subprocess.TimeoutExpired, OSError):
+            return None
+        finally:
+            try:
+                tmp_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+    def strip_bad_embedded_subs(self, max_workers: int = 4) -> int:
+        """Scan and strip bad embedded subtitle tracks from library MKVs.
+
+        Returns the number of files fixed.
+        """
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
+        scan_results = self.scan_bad_embedded_subs()
+        if not scan_results:
+            return 0
+
+        scratch = self._resolve_scratch()
+        fixed = 0
+
+        def _strip_one(item: dict) -> bool:
+            video_path: Path = item["video"]
+            bad_indices = {t["index"] for t in item["bad_tracks"]}
+            return self._strip_subtitle_tracks(video_path, bad_indices, scratch)
+
+        with ThreadPoolExecutor(max_workers=max_workers) as pool:
+            futures = {pool.submit(_strip_one, item): item for item in scan_results}
+            for future in as_completed(futures):
+                item = futures[future]
+                try:
+                    if future.result():
+                        fixed += 1
+                        reasons = ", ".join(t["reason"] for t in item["bad_tracks"])
+                        print(f"[sweep/sub-quality] stripped {len(item['bad_tracks'])} bad track(s) from {item['video'].name} ({reasons})")
+                except Exception as exc:
+                    print(f"[sweep/sub-quality] error on {item['video'].name}: {exc}")
+
+        if fixed > 0:
+            print(f"[sweep/sub-quality] fixed {fixed} file(s)")
+            self._trigger_arr_rescans()
+        return fixed
+
+    def _strip_subtitle_tracks(self, video_path: Path, bad_indices: Set[str], scratch: Optional[Path]) -> bool:
+        """Remove specific subtitle tracks from a video via copy-mode remux."""
+        if scratch:
+            staging = scratch / f"{video_path.stem}.subfix.tmp.mkv"
+        else:
+            # Dot-prefix hides from media scanners (Radarr/Sonarr)
+            staging = video_path.parent / f".{video_path.stem}.subfix.tmp.mkv"
+
+        args = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "warning", "-i", str(video_path)]
+
+        # Map everything
+        args.extend(["-map", "0"])
+
+        # Negative-map the bad subtitle tracks
+        for idx in bad_indices:
+            args.extend(["-map", f"-0:{idx}"])
+
+        args.extend(["-c", "copy", str(staging)])
+
+        try:
+            file_size = video_path.stat().st_size if video_path.exists() else 0
+            timeout_s = max(3600, int(file_size / (25 * 1024 * 1024)))
+            result = subprocess.run(args, capture_output=True, text=True, timeout=timeout_s)
+            if result.returncode != 0:
+                self._cleanup(staging)
+                return False
+            if not staging.exists() or staging.stat().st_size < 1024:
+                self._cleanup(staging)
+                return False
+            _safe_replace(staging, video_path)
+            return True
+        except (subprocess.TimeoutExpired, OSError):
+            self._cleanup(staging)
+            return False

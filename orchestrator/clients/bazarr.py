@@ -43,7 +43,6 @@ _DEFAULT_PROVIDERS = [
     "subf2m",             # Broad English coverage, no auth
     "gestdown",           # Addic7ed mirror, good for TV, no auth
     "yifysubtitles",      # Movie-focused, no auth
-    "embeddedsubtitles",  # Extracts subs already in the file, no auth
     "tvsubtitles",        # TV-focused, no auth
 ]
 
@@ -354,17 +353,26 @@ class BazarrClient(ServiceClient):
 
         general = settings.get("general") or {}
         current_providers = general.get("enabled_providers") or []
-        if current_providers:
+        desired_providers = [
+            provider
+            for provider in current_providers
+            if provider != "embeddedsubtitles"
+        ]
+        for provider in _DEFAULT_PROVIDERS:
+            if provider not in desired_providers:
+                desired_providers.append(provider)
+
+        if current_providers == desired_providers:
             return _EnsureResult(False, f"providers=ready ({', '.join(current_providers)})")
 
         try:
             # Form data with repeated key for list values
             form: list[tuple[str, str]] = [
                 ("settings-general-enabled_providers", p)
-                for p in _DEFAULT_PROVIDERS
+                for p in desired_providers
             ]
             self._post_form(client, form)
-            return _EnsureResult(True, f"providers={'+'.join(_DEFAULT_PROVIDERS)}")
+            return _EnsureResult(True, f"providers={'+'.join(desired_providers)}")
         except httpx.HTTPError as exc:
             log.debug("Could not configure providers: %s", exc)
             return _EnsureResult(False, "providers=auto-config failed")
@@ -383,9 +391,15 @@ class BazarrClient(ServiceClient):
         2. Create a language profile with those languages
         3. Set the profile as default for both series and movies
         """
-        # Derive desired subtitle languages from media_policy.keep_subs
-        # (ISO 639-2/B codes like "eng", "spa", etc.)
-        desired_iso3 = config.media_policy.movies.keep_subs
+        # Derive desired subtitle languages from all media policies
+        # (ISO 639-2/B codes like "eng", "spa", etc.).
+        desired_iso3: list[str] = []
+        for policy in (config.media_policy.movies, config.media_policy.anime):
+            for code in policy.keep_subs:
+                code = code.lower()
+                if code == "forced" or code in desired_iso3:
+                    continue
+                desired_iso3.append(code)
         if not desired_iso3:
             return _EnsureResult(False, "languages=skipped (no keep_subs configured)")
 

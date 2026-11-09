@@ -343,6 +343,69 @@ class ConfigRepository:
             data["recommender"] = recommender
             self._save_section(section="pipeline", data=data)
 
+    # ------------------------------------------------------------------ Pipeline events
+
+    MAX_PIPELINE_EVENTS = 500
+
+    def emit_event(
+        self,
+        phase: str,
+        level: str,
+        msg: str,
+        detail: dict[str, Any] | None = None,
+    ) -> None:
+        """Append a structured event to the pipeline event ring buffer.
+
+        Events are stored in pipeline.json under the "events" key,
+        capped at MAX_PIPELINE_EVENTS (oldest evicted).
+        """
+        import time
+
+        event: dict[str, Any] = {
+            "ts": time.time(),
+            "phase": phase,
+            "level": level,
+            "msg": msg,
+        }
+        if detail:
+            event["detail"] = detail
+
+        with self._section_lock("pipeline"):
+            data = self._load_section("pipeline") or {}
+            events = data.setdefault("events", [])
+            events.append(event)
+            # Trim to cap
+            if len(events) > self.MAX_PIPELINE_EVENTS:
+                data["events"] = events[-self.MAX_PIPELINE_EVENTS :]
+            self._save_section(section="pipeline", data=data)
+
+    def load_pipeline_events(
+        self,
+        since: float = 0,
+        limit: int = 100,
+        phase: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query pipeline events with optional filters.
+
+        Args:
+            since: Only return events with ts > since (unix timestamp).
+            limit: Maximum number of events to return.
+            phase: Filter to a specific phase (e.g. "enrichment").
+
+        Returns newest events first (descending ts).
+        """
+        pipeline = self.load_pipeline_state()
+        events = pipeline.get("events", [])
+
+        # Filter
+        if since > 0:
+            events = [e for e in events if e.get("ts", 0) > since]
+        if phase:
+            events = [e for e in events if e.get("phase") == phase]
+
+        # Return newest first, limited
+        return list(reversed(events[-limit:]))
+
     def has_users(self) -> bool:
         """Check if any users exist in auth state."""
         auth = self.get_auth_state()
@@ -436,7 +499,9 @@ class ConfigRepository:
 
         def _raise_permission_error(path: Path) -> None:
             """Build an actionable error message and raise."""
-            import pwd, grp
+            import grp
+            import pwd
+
             try:
                 st = path.stat() if path.exists() else path.parent.stat()
                 try:
@@ -519,12 +584,17 @@ class ConfigRepository:
         # Category sub-dirs
         categories = config.download_policy.categories
         complete = download_root / "complete"
-        for suffix in (categories.radarr, categories.sonarr, "enrichment"):
+        for suffix in (
+            categories.radarr,
+            categories.sonarr,
+            categories.anime,
+            "enrichment",
+        ):
             _ensure(complete / suffix)
 
         # Media library
         media_root = pool / "media"
-        for section in ("movies", "tv"):
+        for section in ("movies", "tv", "anime"):
             _ensure(media_root / section)
 
         return created

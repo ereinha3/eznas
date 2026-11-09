@@ -5,6 +5,8 @@ import type {
   EnrichmentScanResponse,
   SweepScanResponse,
   SweepStatusResponse,
+  RemediationPlanResponse,
+  RemediationStatusResponse,
 } from '../components/types'
 import {
   enrichmentStatus,
@@ -12,6 +14,11 @@ import {
   sweepScan,
   sweepStart,
   sweepStatus,
+  mediaAuditScan,
+  remediationPlan,
+  remediationStart,
+  remediationStatus,
+  remediationCancel,
 } from '../api'
 import { formatBytes, formatDuration, timeAgo } from '../utils'
 
@@ -234,8 +241,8 @@ function EnrichmentConfigCard({ config, onChange, onSave }: {
 }) {
   const defaults = {
     enabled: false,
-    search_interval_hours: 24,
-    max_grabs_per_cycle: 2,
+    max_concurrent_downloads: 1,
+    queue_rescan_hours: 6,
     search_queries: ['dual audio', 'english dub', 'multi'],
     min_seeders: 3,
     correlation_threshold: 0.7,
@@ -340,24 +347,24 @@ function EnrichmentConfigCard({ config, onChange, onSave }: {
       <div className="form-section">
         <h4>Search Settings</h4>
         <div className="form-row inline">
-          <label>Search Interval</label>
+          <label>Queue Rescan Interval</label>
           <input
             type="number"
             min={1}
-            value={enrich.search_interval_hours}
-            onChange={(e) => update('search_interval_hours', parseInt(e.target.value) || 24)}
+            value={enrich.queue_rescan_hours}
+            onChange={(e) => update('queue_rescan_hours', parseInt(e.target.value) || 6)}
             className="input-field input-narrow"
           />
           <span className="input-suffix">hours</span>
         </div>
         <div className="form-row inline">
-          <label>Max Grabs Per Cycle</label>
+          <label>Max Concurrent Downloads</label>
           <input
             type="number"
             min={1}
-            max={10}
-            value={enrich.max_grabs_per_cycle}
-            onChange={(e) => update('max_grabs_per_cycle', parseInt(e.target.value) || 2)}
+            max={5}
+            value={enrich.max_concurrent_downloads}
+            onChange={(e) => update('max_concurrent_downloads', parseInt(e.target.value) || 1)}
             className="input-field input-narrow"
           />
         </div>
@@ -537,12 +544,208 @@ function SweepCard() {
   )
 }
 
+// ── Remediation Card ───────────────────────────────────────────────
+
+function RemediationCard() {
+  const [plan, setPlan] = useState<RemediationPlanResponse | null>(null)
+  const [status, setStatus] = useState<RemediationStatusResponse | null>(null)
+  const [isAuditing, setIsAuditing] = useState(false)
+  const [isPlanning, setIsPlanning] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const stopPolling = useCallback(() => {
+    if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null }
+  }, [])
+
+  const refreshStatus = useCallback(async () => {
+    const data = await remediationStatus()
+    setStatus(data)
+    if (!['queued', 'scanning', 'running'].includes(data.status)) {
+      stopPolling()
+    }
+  }, [stopPolling])
+
+  const startPolling = useCallback(() => {
+    stopPolling()
+    pollRef.current = setInterval(() => {
+      refreshStatus().catch(() => stopPolling())
+    }, 2000)
+  }, [refreshStatus, stopPolling])
+
+  const refreshPlan = useCallback(async () => {
+    setIsPlanning(true)
+    setError(null)
+    try {
+      setPlan(await remediationPlan())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Plan failed')
+    } finally {
+      setIsPlanning(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    refreshPlan()
+    refreshStatus().catch(() => undefined)
+    return () => stopPolling()
+  }, [refreshPlan, refreshStatus, stopPolling])
+
+  const handleAudit = async () => {
+    setIsAuditing(true)
+    setError(null)
+    try {
+      await mediaAuditScan()
+      await refreshPlan()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Audit failed')
+    } finally {
+      setIsAuditing(false)
+    }
+  }
+
+  const handleStart = async (batchName: string, dryRun: boolean) => {
+    setError(null)
+    try {
+      const started = await remediationStart(batchName, dryRun)
+      setStatus({
+        status: 'queued',
+        job_id: started.job_id,
+        batch_name: started.batch_name,
+        mode: 'lossless_remux',
+        dry_run: started.dry_run,
+        progress_current: 0,
+        progress_total: started.total_files,
+        current_file: null,
+        succeeded: 0,
+        failed: 0,
+        skipped: 0,
+        errors: [],
+        started_at: null,
+        updated_at: null,
+        ended_at: null,
+        input_audit_path: plan?.audit_path || null,
+      })
+      startPolling()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Start failed')
+    }
+  }
+
+  const handleCancel = async () => {
+    try {
+      setStatus(await remediationCancel())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Cancel failed')
+    }
+  }
+
+  const isRunning = status?.status === 'queued' || status?.status === 'scanning' || status?.status === 'running'
+  const progressPct = status && status.progress_total > 0
+    ? Math.round((status.progress_current / status.progress_total) * 100) : 0
+
+  return (
+    <div className="card">
+      <div className="card-header-row">
+        <div>
+          <h3>Media Remediation</h3>
+          <p className="card-description">Audit playback risks and run staged lossless cleanup batches.</p>
+        </div>
+        <div className="card-actions compact">
+          <button className="btn btn-secondary" onClick={refreshPlan} disabled={isPlanning || isAuditing}>
+            {isPlanning ? 'Planning...' : 'Refresh'}
+          </button>
+          <button className="btn btn-primary" onClick={handleAudit} disabled={isAuditing || isRunning}>
+            {isAuditing ? 'Auditing...' : 'Run Audit'}
+          </button>
+        </div>
+      </div>
+
+      {error && <p className="field-error">{error}</p>}
+
+      {plan?.needs_audit && (
+        <p className="card-description">No audit report is available yet.</p>
+      )}
+
+      {plan && !plan.needs_audit && (
+        <div className="scan-results">
+          <div className="stats-grid">
+            <div className="stat-item">
+              <span className="stat-value">{plan.total_files}</span>
+              <span className="stat-label">Audited Files</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{plan.batches.reduce((sum, b) => sum + b.file_count, 0)}</span>
+              <span className="stat-label">Batch Hits</span>
+            </div>
+            <div className="stat-item">
+              <span className="stat-value">{plan.started_at ? timeAgo(Date.parse(plan.started_at) / 1000) : '-'}</span>
+              <span className="stat-label">Audit Age</span>
+            </div>
+          </div>
+
+          <div className="remediation-batches">
+            {plan.batches.map(batch => (
+              <div key={batch.name} className={`remediation-batch${batch.file_count === 0 ? ' empty' : ''}`}>
+                <div className="remediation-batch-top">
+                  <div>
+                    <h4>{batch.label}</h4>
+                    <span className="remediation-mode">{batch.mode.replaceAll('_', ' ')}</span>
+                  </div>
+                  <span className="stat-value small">{batch.file_count}</span>
+                </div>
+                <p className="card-description">{batch.description}</p>
+                <div className="remediation-meta">
+                  <span>{formatBytes(batch.total_bytes)}</span>
+                  <span>{Object.entries(batch.severity_counts).map(([k, v]) => `${k}: ${v}`).join(', ') || 'clean'}</span>
+                </div>
+                {batch.remuxable && batch.file_count > 0 && (
+                  <div className="card-actions compact">
+                    <button className="btn btn-ghost" onClick={() => handleStart(batch.name, true)} disabled={isRunning}>
+                      Dry Run
+                    </button>
+                    <button className="btn btn-primary" onClick={() => handleStart(batch.name, false)} disabled={isRunning}>
+                      Start
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isRunning && status && (
+        <div className="sweep-progress">
+          <div className="progress-bar-container">
+            <div className="progress-bar" style={{ width: `${progressPct}%` }} />
+          </div>
+          <p>{status.batch_name}: {status.progress_current} / {status.progress_total} ({progressPct}%)
+            {status.current_file && <> - {status.current_file.split('/').pop()}</>}
+          </p>
+          <button className="btn btn-ghost" onClick={handleCancel}>Cancel</button>
+        </div>
+      )}
+
+      {status && ['completed', 'failed', 'cancelled'].includes(status.status) && (
+        <div className="sweep-complete">
+          <p>
+            {status.status}: {status.succeeded} succeeded, {status.failed} failed, {status.skipped} skipped
+          </p>
+          {status.errors.length > 0 && <p className="field-error">{status.errors[0]}</p>}
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ── Main Media Page ─────────────────────────────────────────────────
 
-type MediaTab = 'enrichment' | 'sweep' | 'policy'
+type MediaTab = 'enrichment' | 'remediation' | 'sweep' | 'policy'
 
 const MEDIA_TABS: { id: MediaTab; label: string }[] = [
   { id: 'enrichment', label: 'Enrichment' },
+  { id: 'remediation', label: 'Remediation' },
   { id: 'sweep', label: 'Library Sweep' },
   { id: 'policy', label: 'Language Policy' },
 ]
@@ -622,6 +825,12 @@ export function MediaPage({ config, onChange, onSave, onApply, isApplying }: Med
       {activeTab === 'sweep' && (
         <div className="tab-content">
           <SweepCard />
+        </div>
+      )}
+
+      {activeTab === 'remediation' && (
+        <div className="tab-content">
+          <RemediationCard />
         </div>
       )}
 

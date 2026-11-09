@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import type { HealthResponse, RunRecord, ServiceKey, StackConfig } from '../components/types'
+import type { HealthResponse, ServiceKey, StackConfig } from '../components/types'
 import { StatusDot } from '../components/common/StatusDot'
 import { ServiceLinkDropdown } from '../components/common/ServiceLinkDropdown'
-import { fetchRecentRuns } from '../api'
+import { ActivityEvent } from '../components/common/ActivityEvent'
+import { fetchPipelineEvents, pipelineHealth } from '../api'
+import type { PipelineEvent } from '../api'
 
 const SERVICE_METADATA: Record<ServiceKey, { label: string; icon: string }> = {
   qbittorrent: { label: 'qBittorrent', icon: 'QB' },
@@ -34,40 +36,35 @@ interface DashboardPageProps {
   health: HealthResponse | null
 }
 
-/** Format a run_id (typically a UUID or timestamp-based ID) into a short display string. */
-function shortRunId(runId: string): string {
-  // If it looks like a UUID, show first 8 chars
-  if (runId.length > 12) return runId.slice(0, 8)
-  return runId
-}
-
-/** Derive a relative timestamp from a run_id (many run IDs embed a timestamp). */
-function runTimestamp(runId: string): string {
-  // run_ids are often UUIDs or timestamps; just show the ID for now
-  return shortRunId(runId)
-}
-
 export function DashboardPage({ config, health }: DashboardPageProps) {
-  const [recentRuns, setRecentRuns] = useState<RunRecord[]>([])
-  const [runsLoading, setRunsLoading] = useState(true)
+  const [recentEvents, setRecentEvents] = useState<PipelineEvent[]>([])
+  const [eventsLoading, setEventsLoading] = useState(true)
+  const [pipelineStatus, setPipelineStatus] = useState<{ status: string; last_tick: string | null } | null>(null)
 
-  const loadRuns = useCallback(async () => {
+  const loadEvents = useCallback(async () => {
     try {
-      const data = await fetchRecentRuns(5)
-      setRecentRuns(data.runs)
+      const data = await fetchPipelineEvents(10)
+      setRecentEvents(data.events)
     } catch {
-      // Runs endpoint may not be available
+      // Events endpoint may not be available
     } finally {
-      setRunsLoading(false)
+      setEventsLoading(false)
     }
   }, [])
 
+  const loadPipelineStatus = useCallback(async () => {
+    try {
+      const data = await pipelineHealth()
+      setPipelineStatus(data)
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
-    loadRuns()
-    // Refresh every 15 seconds
-    const id = setInterval(loadRuns, 15000)
+    loadEvents()
+    loadPipelineStatus()
+    const id = setInterval(() => { loadEvents(); loadPipelineStatus() }, 10000)
     return () => clearInterval(id)
-  }, [loadRuns])
+  }, [loadEvents, loadPipelineStatus])
 
   // Compute health summary
   const enabledServices = SERVICE_ORDER.filter((key) => config.services[key].enabled)
@@ -161,19 +158,26 @@ export function DashboardPage({ config, health }: DashboardPageProps) {
 
       {/* Two-column bottom: Activity + Storage */}
       <div className="dashboard-bottom-grid">
-        {/* Activity feed */}
+        {/* Pipeline activity feed */}
         <div className="dashboard-section">
-          <h2 className="dashboard-section-title">Recent Activity</h2>
+          <h2 className="dashboard-section-title">
+            Pipeline Activity
+            {pipelineStatus && (
+              <span className={`pipeline-status-inline ${pipelineStatus.status}`}>
+                {pipelineStatus.status}
+              </span>
+            )}
+          </h2>
           <div className="activity-feed">
-            {runsLoading ? (
+            {eventsLoading ? (
               <div className="activity-empty">Loading activity...</div>
-            ) : recentRuns.length === 0 ? (
+            ) : recentEvents.length === 0 ? (
               <div className="activity-empty">
-                No apply runs yet. Deploy your stack from Settings to get started.
+                No pipeline events yet. Events appear as the pipeline processes media.
               </div>
             ) : (
-              recentRuns.map((run) => (
-                <ActivityItem key={run.run_id} run={run} />
+              recentEvents.map((event, idx) => (
+                <ActivityEvent key={`${event.ts}-${idx}`} event={event} compact />
               ))
             )}
           </div>
@@ -246,63 +250,6 @@ export function DashboardPage({ config, health }: DashboardPageProps) {
               </div>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-/** Renders a single activity item from a run record. */
-function ActivityItem({ run }: { run: RunRecord }) {
-  const isRunning = run.ok === null
-  const isSuccess = run.ok === true
-
-  // Count event stages
-  const totalStages = run.events.length
-  const okStages = run.events.filter((e) => e.status === 'ok').length
-  const failedStages = run.events.filter((e) => e.status === 'failed').length
-
-  // Find the last meaningful event for the summary
-  const lastEvent = run.events.length > 0 ? run.events[run.events.length - 1] : null
-
-  return (
-    <div className={`activity-item ${isRunning ? 'running' : isSuccess ? 'success' : 'failed'}`}>
-      <div className="activity-item-icon">
-        {isRunning ? (
-          <span className="activity-spinner" />
-        ) : isSuccess ? (
-          <span className="activity-check">&#10003;</span>
-        ) : (
-          <span className="activity-x">&#10007;</span>
-        )}
-      </div>
-      <div className="activity-item-content">
-        <div className="activity-item-header">
-          <span className="activity-item-title">
-            {isRunning ? 'Applying...' : isSuccess ? 'Apply Succeeded' : 'Apply Failed'}
-          </span>
-          <span className="activity-item-id">{runTimestamp(run.run_id)}</span>
-        </div>
-        <div className="activity-item-detail">
-          {run.summary ? (
-            <span>{run.summary}</span>
-          ) : lastEvent ? (
-            <span>
-              {lastEvent.stage}: {lastEvent.detail || lastEvent.status}
-            </span>
-          ) : (
-            <span>Starting...</span>
-          )}
-        </div>
-        <div className="activity-item-progress">
-          <span className="activity-stage-count">
-            {okStages}/{totalStages} stages
-          </span>
-          {failedStages > 0 && (
-            <span className="activity-failed-count">
-              {failedStages} failed
-            </span>
-          )}
         </div>
       </div>
     </div>

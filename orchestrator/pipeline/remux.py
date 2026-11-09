@@ -2,16 +2,28 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence, Set
+from typing import Dict, Iterable, List, Literal, Optional, Sequence, Set, Tuple
 
 
 @dataclass
 class TrackSelection:
     audio: Sequence[str]
     subtitles: Sequence[str]
+
+
+SubtitleKind = Literal["normal", "forced", "hearing_impaired"]
+
+
+@dataclass(frozen=True)
+class SubtitleIdentity:
+    """Language + semantic kind for subtitle de-duplication."""
+
+    lang: str
+    kind: SubtitleKind
 
 
 # Audio codecs that cannot be copy-muxed into MKV containers.
@@ -21,6 +33,18 @@ _MKV_INCOMPATIBLE_AUDIO_CODECS = {"pcm_bluray"}
 # Subtitle codecs that cannot be copy-muxed into MKV containers.
 # mov_text is an MP4-native subtitle format (MPEG-4 Part 17).
 _MKV_INCOMPATIBLE_SUBTITLE_CODECS = {"mov_text"}
+
+# Text subtitle codecs are cheaper for Jellyfin clients than image-based
+# subtitles such as PGS, which often force server-side subtitle burn-in.
+_TEXT_SUBTITLE_CODECS = {
+    "subrip",
+    "srt",
+    "ass",
+    "ssa",
+    "webvtt",
+    "text",
+    "hdmv_text_subtitle",
+}
 
 # ISO 639-2 has 20 languages with two 3-letter codes: a "bibliographic" (B)
 # code derived from the English name and a "terminological" (T) code derived
@@ -52,15 +76,71 @@ _ISO639_BT_PAIRS: Dict[str, str] = {
     "cym": "wel",   # Welsh
 }
 
+# ISO 639-1 (2-letter) to ISO 639-2/B (3-letter) mapping.
+# ffprobe returns 2-letter codes from some muxers (mkvtoolnix, HandBrake),
+# but our targets use 3-letter codes.  Without this, "ja" != "jpn" causes
+# the gap scanner to flag files as missing languages they already have.
+_ISO639_1_TO_2: Dict[str, str] = {
+    "aa": "aar", "ab": "abk", "af": "afr", "ak": "aka", "am": "amh",
+    "an": "arg", "ar": "ara", "as": "asm", "av": "ava", "ay": "aym",
+    "az": "aze", "ba": "bak", "be": "bel", "bg": "bul", "bh": "bih",
+    "bi": "bis", "bm": "bam", "bn": "ben", "bo": "tib", "br": "bre",
+    "bs": "bos", "ca": "cat", "ce": "che", "ch": "cha", "co": "cos",
+    "cr": "cre", "cs": "cze", "cu": "chu", "cv": "chv", "cy": "wel",
+    "da": "dan", "de": "ger", "dv": "div", "dz": "dzo", "ee": "ewe",
+    "el": "gre", "en": "eng", "eo": "epo", "es": "spa", "et": "est",
+    "eu": "baq", "fa": "per", "ff": "ful", "fi": "fin", "fj": "fij",
+    "fo": "fao", "fr": "fre", "fy": "fry", "ga": "gle", "gd": "gla",
+    "gl": "glg", "gn": "grn", "gu": "guj", "gv": "glv", "ha": "hau",
+    "he": "heb", "hi": "hin", "ho": "hmo", "hr": "hrv", "ht": "hat",
+    "hu": "hun", "hy": "arm", "hz": "her", "ia": "ina", "id": "ind",
+    "ie": "ile", "ig": "ibo", "ii": "iii", "ik": "ipk", "io": "ido",
+    "is": "ice", "it": "ita", "iu": "iku", "ja": "jpn", "jv": "jav",
+    "ka": "geo", "kg": "kon", "ki": "kik", "kj": "kua", "kk": "kaz",
+    "kl": "kal", "km": "khm", "kn": "kan", "ko": "kor", "kr": "kau",
+    "ks": "kas", "ku": "kur", "kv": "kom", "kw": "cor", "ky": "kir",
+    "la": "lat", "lb": "ltz", "lg": "lug", "li": "lim", "ln": "lin",
+    "lo": "lao", "lt": "lit", "lu": "lub", "lv": "lav", "mg": "mlg",
+    "mh": "mah", "mi": "mao", "mk": "mac", "ml": "mal", "mn": "mon",
+    "mr": "mar", "ms": "may", "mt": "mlt", "my": "bur", "na": "nau",
+    "nb": "nob", "nd": "nde", "ne": "nep", "ng": "ndo", "nl": "dut",
+    "nn": "nno", "no": "nor", "nr": "nbl", "nv": "nav", "ny": "nya",
+    "oc": "oci", "oj": "oji", "om": "orm", "or": "ori", "os": "oss",
+    "pa": "pan", "pi": "pli", "pl": "pol", "ps": "pus", "pt": "por",
+    "qu": "que", "rm": "roh", "rn": "run", "ro": "rum", "ru": "rus",
+    "rw": "kin", "sa": "san", "sc": "srd", "sd": "snd", "se": "sme",
+    "sg": "sag", "si": "sin", "sk": "slo", "sl": "slv", "sm": "smo",
+    "sn": "sna", "so": "som", "sq": "alb", "sr": "srp", "ss": "ssw",
+    "st": "sot", "su": "sun", "sv": "swe", "sw": "swa", "ta": "tam",
+    "te": "tel", "tg": "tgk", "th": "tha", "ti": "tir", "tk": "tuk",
+    "tl": "tgl", "tn": "tsn", "to": "ton", "tr": "tur", "ts": "tso",
+    "tt": "tat", "tw": "twi", "ty": "tah", "ug": "uig", "uk": "ukr",
+    "ur": "urd", "uz": "uzb", "ve": "ven", "vi": "vie", "vo": "vol",
+    "wa": "wln", "wo": "wol", "xh": "xho", "yi": "yid", "yo": "yor",
+    "za": "zha", "zh": "chi", "zu": "zul",
+}
+
 
 def _normalize_lang(code: str) -> str:
-    """Normalise an ISO 639-2 language code to its bibliographic form.
+    """Normalise a language code to its ISO 639-2/B (bibliographic) form.
 
-    This ensures that e.g. "fra" and "fre" both resolve to "fre", so
-    language comparisons work regardless of which variant the source uses.
+    Handles three cases:
+    1. ISO 639-1 two-letter codes (e.g. "ja" → "jpn" → stays "jpn")
+    2. ISO 639-2/T terminological codes (e.g. "fra" → "fre")
+    3. ISO 639-2/B codes pass through unchanged (e.g. "eng" → "eng")
     """
     code = code.lower()
+    # Step 1: expand 2-letter → 3-letter (already maps to B form)
+    if len(code) == 2:
+        return _ISO639_1_TO_2.get(code, code)
+    # Step 2: normalise T → B for 3-letter codes
     return _ISO639_BT_PAIRS.get(code, code)
+
+
+def normalize_language_code(code: str) -> str:
+    """Normalize a language code to the stack's canonical ISO 639-2/B form."""
+    return _normalize_lang(code)
+
 
 # Audio codec quality ranking (higher = better).
 # Within the same channel count, prefer lossless > lossy high-bitrate > lossy.
@@ -89,6 +169,54 @@ _COMMENTARY_KEYWORDS = {
     "descriptive", "audio description", "ad track",
     "visually impaired",
 }
+
+_SUBTITLE_COMMENTARY_KEYWORDS = {
+    "commentary",
+    "director",
+    "filmmaker",
+    "trivia",
+}
+
+_SUBTITLE_FORCED_KEYWORDS = {
+    "forced",
+    "foreign only",
+    "foreign parts",
+    "foreign audio",
+    "signs only",
+    "signs/songs",
+}
+
+_SUBTITLE_HI_KEYWORDS = {
+    "sdh",
+    "hearing impaired",
+    "hearing-impaired",
+    "hearing_impaired",
+    "closed captions",
+    "closed-caption",
+    "captions",
+    "cc",
+}
+
+_SUBTITLE_PROVIDER_KEYWORDS = {
+    "bazarr",
+    "opensubtitles",
+    "open subtitles",
+    "subdl",
+    "yify",
+}
+
+_KNOWN_SUBTITLE_LANG_CODES = set(_ISO639_1_TO_2) | set(_ISO639_1_TO_2.values()) | {
+    "chi",
+    "cze",
+    "dut",
+    "fre",
+    "ger",
+    "gre",
+    "rum",
+    "und",
+}
+
+_SUBTITLE_FILENAME_HINTS = {"forced", "hi", "cc", "sdh"}
 
 
 @dataclass
@@ -201,7 +329,7 @@ def _select_best_audio(
         main_tracks = tracks
 
     # Filter to allowed languages (normalise all codes to bibliographic form)
-    allowed = {_normalize_lang(l) for l in keep_audio_langs}
+    allowed = {_normalize_lang(lang) for lang in keep_audio_langs}
     if original_language:
         allowed.add(_normalize_lang(original_language))
     allowed.add("und")
@@ -256,6 +384,375 @@ def _select_best_audio(
     order = {t.stream_index: i for i, t in enumerate(tracks)}
     selected.sort(key=lambda t: order.get(t.stream_index, 0))
     return selected
+
+
+@dataclass
+class _SubtitleTrack:
+    """Parsed subtitle metadata for policy-based selection."""
+
+    stream_index: str
+    lang: str
+    codec: str
+    title: str
+    is_default: bool
+    is_forced: bool
+    is_hearing_impaired: bool
+    is_commentary: bool
+    is_text: bool
+
+
+def _keyword_in_text(text: str, keywords: Set[str]) -> bool:
+    """Return true when a title contains one of the policy keywords."""
+    haystack = text.lower()
+    if any(keyword in haystack for keyword in keywords if len(keyword) > 2):
+        return True
+
+    # Short hints like "cc" should match tokens only, not arbitrary words.
+    tokens = set(re.findall(r"[a-z0-9]+", haystack))
+    return any(keyword in tokens for keyword in keywords if len(keyword) <= 2)
+
+
+def _parse_subtitle_track(
+    stream: dict,
+    lang_override: Optional[str] = None,
+) -> Optional[_SubtitleTrack]:
+    """Parse an ffprobe subtitle stream into ranking metadata."""
+    if stream.get("codec_type") != "subtitle":
+        return None
+
+    codec = stream.get("codec_name", "").lower()
+    if codec in _MKV_INCOMPATIBLE_SUBTITLE_CODECS:
+        return None
+
+    idx = str(stream.get("index", ""))
+    raw_lang = lang_override or stream.get("tags", {}).get("language", "und").lower()
+    lang = _normalize_lang(raw_lang)
+    title = (stream.get("tags", {}).get("title", "") or "").lower()
+    disposition = stream.get("disposition", {})
+
+    is_forced = (
+        disposition.get("forced", 0) == 1
+        or _keyword_in_text(title, _SUBTITLE_FORCED_KEYWORDS)
+    )
+    is_hearing_impaired = (
+        disposition.get("hearing_impaired", 0) == 1
+        or disposition.get("captions", 0) == 1
+        or disposition.get("descriptions", 0) == 1
+        or _keyword_in_text(title, _SUBTITLE_HI_KEYWORDS)
+    )
+    is_commentary = (
+        disposition.get("comment", 0) == 1
+        or _keyword_in_text(title, _SUBTITLE_COMMENTARY_KEYWORDS)
+    )
+
+    return _SubtitleTrack(
+        stream_index=idx,
+        lang=lang,
+        codec=codec,
+        title=title,
+        is_default=disposition.get("default", 0) == 1,
+        is_forced=is_forced,
+        is_hearing_impaired=is_hearing_impaired,
+        is_commentary=is_commentary,
+        is_text=codec in _TEXT_SUBTITLE_CODECS,
+    )
+
+
+def _stream_index_sort_key(stream_index: str) -> int:
+    try:
+        return int(stream_index)
+    except ValueError:
+        return 0
+
+
+def _subtitle_bucket(track: _SubtitleTrack) -> str:
+    if track.is_forced:
+        return "forced"
+    if track.is_hearing_impaired:
+        return "hearing_impaired"
+    return "normal"
+
+
+def _subtitle_kind(
+    *,
+    forced: bool = False,
+    hearing_impaired: bool = False,
+) -> SubtitleKind:
+    if forced:
+        return "forced"
+    if hearing_impaired:
+        return "hearing_impaired"
+    return "normal"
+
+
+def subtitle_identity_from_srt_filename(
+    srt_path: Path,
+    video_stem: str,
+) -> SubtitleIdentity:
+    """Infer subtitle language/kind from a Bazarr-style external SRT name.
+
+    Examples:
+    - ``Movie.en.srt`` -> ``eng`` normal
+    - ``Movie.en.forced.srt`` -> ``eng`` forced
+    - ``Movie.en.sdh.srt`` -> ``eng`` hearing_impaired
+    """
+    full_stem = srt_path.stem
+    suffix = full_stem[len(video_stem):] if full_stem.startswith(video_stem) else full_stem
+    parts = [part.lower() for part in re.split(r"[._ -]+", suffix) if part]
+
+    forced = any(part == "forced" for part in parts)
+    hearing_impaired = any(part in {"hi", "cc", "sdh"} for part in parts)
+
+    lang = "und"
+    for part in reversed(parts):
+        if part in _SUBTITLE_FILENAME_HINTS:
+            continue
+        normalized = _normalize_lang(part)
+        if part in _KNOWN_SUBTITLE_LANG_CODES or normalized in _KNOWN_SUBTITLE_LANG_CODES:
+            lang = normalized
+            break
+
+    return SubtitleIdentity(
+        lang=lang,
+        kind=_subtitle_kind(
+            forced=forced,
+            hearing_impaired=hearing_impaired,
+        ),
+    )
+
+
+def subtitle_identity_from_mkvmerge_track(track: dict) -> Optional[SubtitleIdentity]:
+    """Return the policy identity for an embedded MKV subtitle track."""
+    if track.get("type") != "subtitles":
+        return None
+
+    props = track.get("properties", {}) or {}
+    lang = props.get("language")
+    if not lang:
+        return None
+
+    forced = bool(props.get("forced_track", False))
+    hearing_impaired = bool(props.get("flag_hearing_impaired", False))
+    title = (props.get("track_name", "") or "").lower()
+
+    if _keyword_in_text(title, _SUBTITLE_FORCED_KEYWORDS):
+        forced = True
+    if _keyword_in_text(title, _SUBTITLE_HI_KEYWORDS):
+        hearing_impaired = True
+
+    return SubtitleIdentity(
+        lang=_normalize_lang(lang),
+        kind=_subtitle_kind(
+            forced=forced,
+            hearing_impaired=hearing_impaired,
+        ),
+    )
+
+
+def _score_subtitle_track(track: _SubtitleTrack, bucket: str) -> int:
+    """Score a subtitle track within a normal/forced/HI bucket."""
+    score = 100 if track.is_text else 25
+
+    if _keyword_in_text(track.title, _SUBTITLE_PROVIDER_KEYWORDS):
+        score += 20
+    if track.is_default:
+        score += 8
+    if track.title:
+        score += 2
+
+    if bucket == "forced":
+        score += 30 if track.is_forced else 0
+    elif bucket == "hearing_impaired":
+        score += 30 if track.is_hearing_impaired else 0
+
+    if track.is_commentary:
+        score -= 200
+
+    return score
+
+
+def _select_best_subtitles(
+    tracks: List[_SubtitleTrack],
+    keep_sub_langs: Set[str],
+    include_forced_subs: bool,
+) -> List[_SubtitleTrack]:
+    """Select at most one normal, forced, and SDH subtitle per language.
+
+    Text subtitles are preferred over image-based subtitles to avoid
+    unnecessary Jellyfin burn-in on smart-TV clients. Default subtitle flags
+    are treated only as a weak ranking hint; output defaults are normalized
+    later so clients do not auto-select stale release-group defaults.
+    """
+    allowed = {_normalize_lang(lang) for lang in keep_sub_langs}
+    if not allowed and not include_forced_subs:
+        return []
+
+    selected_by_bucket: Dict[Tuple[str, str], _SubtitleTrack] = {}
+
+    for track in tracks:
+        if track.is_commentary:
+            continue
+
+        lang_allowed = track.lang in allowed
+        forced_allowed = track.is_forced and include_forced_subs
+        if not lang_allowed and not forced_allowed:
+            continue
+
+        bucket = _subtitle_bucket(track)
+        if bucket != "forced" and not lang_allowed:
+            continue
+
+        key = (track.lang, bucket)
+        current = selected_by_bucket.get(key)
+        if current is None:
+            selected_by_bucket[key] = track
+            continue
+
+        current_score = _score_subtitle_track(current, bucket)
+        candidate_score = _score_subtitle_track(track, bucket)
+        if (
+            candidate_score,
+            -_stream_index_sort_key(track.stream_index),
+        ) > (
+            current_score,
+            -_stream_index_sort_key(current.stream_index),
+        ):
+            selected_by_bucket[key] = track
+
+    language_order = {lang: idx for idx, lang in enumerate(sorted(allowed))}
+    bucket_order = {"forced": 0, "normal": 1, "hearing_impaired": 2}
+
+    selected = list(selected_by_bucket.values())
+    selected.sort(
+        key=lambda track: (
+            language_order.get(track.lang, len(language_order)),
+            bucket_order[_subtitle_bucket(track)],
+            _stream_index_sort_key(track.stream_index),
+        )
+    )
+    return selected
+
+
+def _subtitle_disposition_value(track: _SubtitleTrack) -> str:
+    """Build the normalized output disposition for a subtitle stream."""
+    flags: List[str] = []
+    if track.is_forced:
+        flags.append("forced")
+    if track.is_hearing_impaired:
+        flags.append("hearing_impaired")
+    return "+".join(flags) if flags else "0"
+
+
+def _stream_language_map(
+    stream_languages: Optional[List[Dict[str, str]]],
+) -> Dict[str, str]:
+    if not stream_languages:
+        return {}
+    return {
+        str(entry.get("index", "")): entry.get("lang", "und")
+        for entry in stream_languages
+    }
+
+
+def _select_policy_tracks(
+    streams: List[dict],
+    selection: TrackSelection,
+    *,
+    original_language: Optional[str] = None,
+    stream_languages: Optional[List[Dict[str, str]]] = None,
+) -> tuple[List[_AudioTrack], List[_SubtitleTrack]]:
+    """Return the audio/subtitle tracks that satisfy the media policy."""
+    clpi_map = _stream_language_map(stream_languages)
+
+    keep_audio_langs = {_normalize_lang(c) for c in _normalized(selection.audio)}
+    keep_sub_langs = {_normalize_lang(c) for c in _normalized(selection.subtitles)}
+    include_forced_subs = "forced" in keep_sub_langs
+    if include_forced_subs:
+        keep_sub_langs.discard("forced")
+    if original_language:
+        keep_audio_langs.add(_normalize_lang(original_language))
+
+    audio_tracks: List[_AudioTrack] = []
+    subtitle_tracks: List[_SubtitleTrack] = []
+
+    for stream in streams:
+        idx = str(stream.get("index", ""))
+        lang_override = clpi_map.get(idx)
+        if lang_override:
+            lang_override = lang_override.lower()
+
+        if stream.get("codec_type") == "audio":
+            track = _parse_audio_track(stream, lang_override=lang_override)
+            if track is not None:
+                audio_tracks.append(track)
+        elif stream.get("codec_type") == "subtitle":
+            track = _parse_subtitle_track(stream, lang_override=lang_override)
+            if track is not None:
+                subtitle_tracks.append(track)
+
+    selected_audio = (
+        _select_best_audio(audio_tracks, original_language, keep_audio_langs)
+        if audio_tracks else []
+    )
+    selected_subtitles = _select_best_subtitles(
+        subtitle_tracks, keep_sub_langs, include_forced_subs,
+    )
+    return selected_audio, selected_subtitles
+
+
+def detect_stream_policy_changes(
+    streams: List[dict],
+    selection: TrackSelection,
+    *,
+    original_language: Optional[str] = None,
+    stream_languages: Optional[List[Dict[str, str]]] = None,
+) -> tuple[List[str], List[str]]:
+    """Describe audio/subtitle streams that would change under remux policy."""
+    selected_audio, selected_subtitles = _select_policy_tracks(
+        streams,
+        selection,
+        original_language=original_language,
+        stream_languages=stream_languages,
+    )
+    selected_audio_indices = {track.stream_index for track in selected_audio}
+    selected_subtitle_indices = {track.stream_index for track in selected_subtitles}
+
+    clpi_map = _stream_language_map(stream_languages)
+    unwanted_audio: List[str] = []
+    unwanted_subtitles: List[str] = []
+
+    for stream in streams:
+        idx = str(stream.get("index", ""))
+        lang_override = clpi_map.get(idx)
+        if lang_override:
+            lang_override = lang_override.lower()
+
+        if stream.get("codec_type") == "audio":
+            track = _parse_audio_track(stream, lang_override=lang_override)
+            codec = stream.get("codec_name", "unknown").lower()
+            if track is None:
+                unwanted_audio.append(f"stream {idx} ({codec}, incompatible)")
+            elif idx not in selected_audio_indices:
+                unwanted_audio.append(
+                    f"stream {idx} ({track.lang}, {track.codec}, lower priority)"
+                )
+
+        elif stream.get("codec_type") == "subtitle":
+            track = _parse_subtitle_track(stream, lang_override=lang_override)
+            codec = stream.get("codec_name", "unknown").lower()
+            if track is None:
+                unwanted_subtitles.append(f"stream {idx} ({codec}, incompatible)")
+            elif idx not in selected_subtitle_indices:
+                bucket = _subtitle_bucket(track)
+                unwanted_subtitles.append(
+                    f"stream {idx} ({track.lang}, {track.codec}, {bucket})"
+                )
+            elif track.is_default:
+                unwanted_subtitles.append(
+                    f"stream {idx} ({track.lang}, {track.codec}, clear default)"
+                )
+
+    return unwanted_audio, unwanted_subtitles
 
 
 @dataclass
@@ -515,6 +1012,7 @@ def build_ffmpeg_command(
 
     # Probe the source to get stream layout
     streams: list = []
+    selected_subtitles_for_disposition: List[_SubtitleTrack] = []
     try:
         probe_cmd = ["ffprobe", "-v", "quiet"]
         if source.suffix.lower() in (".m2ts", ".ts"):
@@ -536,10 +1034,7 @@ def build_ffmpeg_command(
         streams = data.get("streams", [])
 
         # Build a per-stream language map, optionally overridden by CLPI data
-        clpi_map: Dict[str, str] = {}  # stream_index -> lang
-        if stream_languages:
-            for entry in stream_languages:
-                clpi_map[str(entry.get("index", ""))] = entry.get("lang", "und")
+        clpi_map = _stream_language_map(stream_languages)
 
         # --- Audio filtering ---
         audio_maps: List[str] = []
@@ -609,28 +1104,56 @@ def build_ffmpeg_command(
             args.extend(["-map", mapping])
 
         # --- Subtitle filtering ---
+        all_subtitle_tracks: List[_SubtitleTrack] = []
         for stream in streams:
             if stream.get("codec_type") != "subtitle":
                 continue
 
-            sub_codec = stream.get("codec_name", "").lower()
-            if sub_codec in _MKV_INCOMPATIBLE_SUBTITLE_CODECS:
-                continue  # e.g. mov_text from MP4 can't go in MKV
-
             idx = str(stream.get("index", ""))
+            lang_override = clpi_map.get(idx)
+            if lang_override:
+                lang_override = lang_override.lower()
 
-            if idx in clpi_map:
-                lang = _normalize_lang(clpi_map[idx])
-            else:
-                lang = _normalize_lang(
-                    stream.get("tags", {}).get("language", "und")
+            track = _parse_subtitle_track(stream, lang_override=lang_override)
+            if track is None:
+                codec_name = stream.get("codec_name", "").lower()
+                print(
+                    f"[remux] skipping subtitle stream {idx}: codec "
+                    f"'{codec_name}' is not supported in MKV containers"
                 )
+                continue
+            all_subtitle_tracks.append(track)
 
-            disposition = stream.get("disposition", {})
-            is_forced = disposition.get("forced", 0) == 1
+        selected_subtitles = _select_best_subtitles(
+            all_subtitle_tracks,
+            keep_sub_langs,
+            include_forced_subs,
+        )
+        selected_subtitles_for_disposition = selected_subtitles
 
-            if lang in keep_sub_langs or (is_forced and include_forced_subs):
-                args.extend(["-map", f"0:{idx}"])
+        for track in selected_subtitles:
+            args.extend(["-map", f"0:{track.stream_index}"])
+            print(
+                f"[remux] keeping subtitle stream {track.stream_index}: "
+                f"{track.codec} {track.lang} {_subtitle_bucket(track)}"
+            )
+
+        selected_subtitle_indices = {
+            track.stream_index for track in selected_subtitles
+        }
+        for track in all_subtitle_tracks:
+            if track.stream_index in selected_subtitle_indices:
+                continue
+            reason = (
+                "commentary"
+                if track.is_commentary
+                else "duplicate/lower priority/unwanted lang"
+            )
+            print(
+                f"[remux] dropping subtitle stream {track.stream_index}: "
+                f"{track.codec} {track.lang} {_subtitle_bucket(track)} "
+                f"({reason})"
+            )
 
     except Exception:
         # Fallback: copy all streams if filtering fails entirely
@@ -701,6 +1224,9 @@ def build_ffmpeg_command(
                 f"[remux] injected language '{original_language}' for "
                 f"'und'-tagged audio tracks"
             )
+
+    for idx, track in enumerate(selected_subtitles_for_disposition):
+        args.extend([f"-disposition:s:{idx}", _subtitle_disposition_value(track)])
 
     args.extend(["-c", "copy", str(destination)])
     return args
@@ -785,8 +1311,8 @@ def find_all_enrichment_audio_tracks(
     library_audio_languages, selects the best candidate audio track.
     Returns a list of tracks to cross-mux (may be empty).
     """
-    missing = {_normalize_lang(l) for l in target_languages} - {
-        _normalize_lang(l) for l in library_audio_languages
+    missing = {_normalize_lang(lang) for lang in target_languages} - {
+        _normalize_lang(lang) for lang in library_audio_languages
     }
     missing.discard("und")
 
@@ -836,40 +1362,40 @@ def find_useful_candidate_subtitles(
     Returns subtitles in target languages that are absent from the library
     file.  Filters out MKV-incompatible codecs (e.g., mov_text).
     """
-    missing = {_normalize_lang(l) for l in target_languages} - {
-        _normalize_lang(l) for l in library_sub_languages
+    target = {_normalize_lang(lang) for lang in target_languages}
+    include_forced_subs = "forced" in target
+    target.discard("forced")
+
+    missing = target - {
+        _normalize_lang(lang) for lang in library_sub_languages
     }
     missing.discard("und")
 
     if not missing:
         return []
 
-    result: List[_SubtitleCandidate] = []
+    candidates: List[_SubtitleTrack] = []
     for stream in cand_streams:
         if stream.get("codec_type") != "subtitle":
             continue
 
-        codec = stream.get("codec_name", "").lower()
-        if codec in _MKV_INCOMPATIBLE_SUBTITLE_CODECS:
+        track = _parse_subtitle_track(stream)
+        if track is None:
             continue
 
-        lang = _normalize_lang(
-            stream.get("tags", {}).get("language", "und")
+        candidates.append(track)
+
+    selected = _select_best_subtitles(candidates, missing, include_forced_subs)
+    result: List[_SubtitleCandidate] = [
+        _SubtitleCandidate(
+            stream_index=track.stream_index,
+            lang=track.lang,
+            codec=track.codec,
+            forced=track.is_forced,
+            title=track.title,
         )
-        if lang not in missing:
-            continue
-
-        disp = stream.get("disposition", {})
-        forced = bool(disp.get("forced", 0))
-        title = stream.get("tags", {}).get("title", "")
-
-        result.append(_SubtitleCandidate(
-            stream_index=str(stream.get("index", "")),
-            lang=lang,
-            codec=codec,
-            forced=forced,
-            title=title,
-        ))
+        for track in selected
+    ]
 
     return result
 
@@ -962,7 +1488,7 @@ def build_crossmux_command(
             ])
             if sub.forced:
                 args.extend([
-                    f"-disposition:s:s:{idx}", "forced",
+                    f"-disposition:s:{idx}", "forced",
                 ])
 
     args.append(str(destination))
@@ -1046,5 +1572,3 @@ def build_video_upgrade_command(
 
     args.append(str(destination))
     return args
-
-

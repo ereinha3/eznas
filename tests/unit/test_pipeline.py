@@ -11,8 +11,11 @@ import sys
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from orchestrator.pipeline.remux import (
+    SubtitleIdentity,
     build_ffmpeg_command,
     probe_streams,
+    subtitle_identity_from_mkvmerge_track,
+    subtitle_identity_from_srt_filename,
     TrackSelection,
     StreamInfo,
 )
@@ -82,19 +85,38 @@ class TestProbeStreams:
 class TestBuildFFmpegCommand:
     """Tests for FFmpeg command building."""
 
+    def _with_ffprobe(self, media_info: Dict[str, Any], returncode: int = 0):
+        stdout = json.dumps(media_info) if returncode == 0 else ""
+        return patch(
+            "orchestrator.pipeline.remux.subprocess.run",
+            return_value=MagicMock(returncode=returncode, stdout=stdout),
+        )
+
     def test_basic_command(self):
         """Basic command should include essential options."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
+        media_info = {
+            "streams": [
+                {"index": 0, "codec_type": "video", "codec_name": "h264"},
+                {
+                    "index": 1,
+                    "codec_type": "audio",
+                    "codec_name": "ac3",
+                    "channels": 6,
+                    "tags": {"language": "eng"},
+                    "disposition": {"default": 1},
+                },
+                {
+                    "index": 2,
+                    "codec_type": "subtitle",
+                    "codec_name": "subrip",
+                    "tags": {"language": "eng"},
+                    "disposition": {},
+                },
+            ]
+        }
 
-        with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
-            mock_probe.return_value = StreamInfo(
-                audio_languages={"eng"},
-                subtitle_languages={"eng"},
-                has_video=True,
-                audio_count=1,
-                subtitle_count=1,
-            )
-
+        with self._with_ffprobe(media_info):
             cmd = build_ffmpeg_command(
                 Path("/input.mkv"),
                 Path("/output.mkv"),
@@ -112,38 +134,7 @@ class TestBuildFFmpegCommand:
         """English-only selection should filter out other languages."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
 
-        with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
-            mock_probe.return_value = StreamInfo(
-                audio_languages={"eng", "rus", "jpn"},
-                subtitle_languages={"eng", "rus"},
-                has_video=True,
-                audio_count=3,
-                subtitle_count=2,
-            )
-
-            cmd = build_ffmpeg_command(
-                Path("/input.mkv"),
-                Path("/output.mkv"),
-                selection
-            )
-
-            # Should map English audio
-            assert "0:a:m:language:eng" in " ".join(cmd)
-            # Should NOT map Russian (except as fallback 'und' might be added)
-
-    def test_anime_dual_audio(self):
-        """Anime selection should keep Japanese and English."""
-        selection = TrackSelection(audio=["jpn", "eng"], subtitles=["eng"])
-
-        with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
-            mock_probe.return_value = StreamInfo(
-                audio_languages={"eng", "jpn"},
-                subtitle_languages={"eng"},
-                has_video=True,
-                audio_count=2,
-                subtitle_count=1,
-            )
-
+        with self._with_ffprobe(sample_media_info):
             cmd = build_ffmpeg_command(
                 Path("/input.mkv"),
                 Path("/output.mkv"),
@@ -151,22 +142,74 @@ class TestBuildFFmpegCommand:
             )
 
             cmd_str = " ".join(cmd)
-            assert "0:a:m:language:eng" in cmd_str
-            assert "0:a:m:language:jpn" in cmd_str
+            assert "-map 0:1" in cmd_str
+            assert "-map 0:4" in cmd_str
+            assert "-map 0:2" not in cmd_str
+            assert "-map 0:3" not in cmd_str
+            assert "-map 0:5" not in cmd_str
+
+    def test_anime_dual_audio(self):
+        """Anime selection should keep Japanese and English."""
+        selection = TrackSelection(audio=["jpn", "eng"], subtitles=["eng"])
+        media_info = {
+            "streams": [
+                {"index": 0, "codec_type": "video", "codec_name": "h264"},
+                {
+                    "index": 1,
+                    "codec_type": "audio",
+                    "codec_name": "aac",
+                    "channels": 2,
+                    "tags": {"language": "jpn"},
+                    "disposition": {"default": 1},
+                },
+                {
+                    "index": 2,
+                    "codec_type": "audio",
+                    "codec_name": "ac3",
+                    "channels": 6,
+                    "tags": {"language": "eng"},
+                    "disposition": {},
+                },
+                {
+                    "index": 3,
+                    "codec_type": "subtitle",
+                    "codec_name": "subrip",
+                    "tags": {"language": "eng"},
+                    "disposition": {},
+                },
+            ]
+        }
+
+        with self._with_ffprobe(media_info):
+            cmd = build_ffmpeg_command(
+                Path("/input.mkv"),
+                Path("/output.mkv"),
+                selection,
+                original_language="jpn",
+            )
+
+            cmd_str = " ".join(cmd)
+            assert "-map 0:1" in cmd_str
+            assert "-map 0:2" in cmd_str
 
     def test_no_matching_audio(self):
         """When no audio matches, should fall back to first track."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
+        media_info = {
+            "streams": [
+                {"index": 0, "codec_type": "video", "codec_name": "h264"},
+                {
+                    "index": 1,
+                    "codec_type": "audio",
+                    "codec_name": "ac3",
+                    "channels": 6,
+                    "tags": {"language": "fre"},
+                    "disposition": {"default": 1},
+                },
+            ]
+        }
 
-        with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
-            mock_probe.return_value = StreamInfo(
-                audio_languages={"fra"},  # Only French
-                subtitle_languages={"fra"},
-                has_video=True,
-                audio_count=1,
-                subtitle_count=1,
-            )
-
+        with self._with_ffprobe(media_info):
             cmd = build_ffmpeg_command(
                 Path("/input.mkv"),
                 Path("/output.mkv"),
@@ -174,15 +217,13 @@ class TestBuildFFmpegCommand:
             )
 
             # Should fall back to first audio track
-            assert "0:a:0" in " ".join(cmd)
+            assert "-map 0:1" in " ".join(cmd)
 
     def test_probe_failure_fallback(self):
         """When probe fails, should copy all streams."""
         selection = TrackSelection(audio=["eng"], subtitles=["eng"])
 
-        with patch("orchestrator.pipeline.remux.probe_streams") as mock_probe:
-            mock_probe.return_value = None  # Probe failed
-
+        with self._with_ffprobe({}, returncode=1):
             cmd = build_ffmpeg_command(
                 Path("/input.mkv"),
                 Path("/output.mkv"),
@@ -193,6 +234,105 @@ class TestBuildFFmpegCommand:
             cmd_str = " ".join(cmd)
             assert "0:a" in cmd_str
             assert "0:s" in cmd_str
+
+    def test_duplicate_subtitles_are_pruned_and_defaults_cleared(self):
+        """Only one normal and one SDH subtitle should survive per language."""
+        selection = TrackSelection(audio=["eng"], subtitles=["eng"])
+        media_info = {
+            "streams": [
+                {"index": 0, "codec_type": "video", "codec_name": "hevc"},
+                {
+                    "index": 1,
+                    "codec_type": "audio",
+                    "codec_name": "dts",
+                    "profile": "DTS-HD Master Audio",
+                    "channels": 6,
+                    "tags": {"language": "eng"},
+                    "disposition": {"default": 1},
+                },
+                {
+                    "index": 2,
+                    "codec_type": "subtitle",
+                    "codec_name": "hdmv_pgs_subtitle",
+                    "tags": {"language": "eng", "title": "English SDH"},
+                    "disposition": {"default": 1, "hearing_impaired": 1},
+                },
+                {
+                    "index": 3,
+                    "codec_type": "subtitle",
+                    "codec_name": "subrip",
+                    "tags": {"language": "eng", "title": "EN (Bazarr)"},
+                    "disposition": {},
+                },
+                {
+                    "index": 4,
+                    "codec_type": "subtitle",
+                    "codec_name": "subrip",
+                    "tags": {"language": "eng"},
+                    "disposition": {"default": 1},
+                },
+                {
+                    "index": 5,
+                    "codec_type": "subtitle",
+                    "codec_name": "subrip",
+                    "tags": {"language": "eng"},
+                    "disposition": {"default": 1},
+                },
+            ]
+        }
+
+        with self._with_ffprobe(media_info):
+            cmd = build_ffmpeg_command(
+                Path("/input.mkv"),
+                Path("/output.mkv"),
+                selection,
+            )
+
+        cmd_str = " ".join(cmd)
+        assert "-map 0:3" in cmd_str
+        assert "-map 0:2" in cmd_str
+        assert "-map 0:4" not in cmd_str
+        assert "-map 0:5" not in cmd_str
+        assert "-disposition:s:0 0" in cmd_str
+        assert "-disposition:s:1 hearing_impaired" in cmd_str
+
+
+class TestSubtitlePolicy:
+    """Tests for shared subtitle identity helpers."""
+
+    def test_srt_filename_identity_detects_language_and_kind(self):
+        video_stem = "Movie Name (2024)"
+
+        assert subtitle_identity_from_srt_filename(
+            Path("Movie Name (2024).en.srt"),
+            video_stem,
+        ) == SubtitleIdentity(lang="eng", kind="normal")
+
+        assert subtitle_identity_from_srt_filename(
+            Path("Movie Name (2024).en.forced.srt"),
+            video_stem,
+        ) == SubtitleIdentity(lang="eng", kind="forced")
+
+        assert subtitle_identity_from_srt_filename(
+            Path("Movie Name (2024).eng.sdh.srt"),
+            video_stem,
+        ) == SubtitleIdentity(lang="eng", kind="hearing_impaired")
+
+    def test_mkvmerge_identity_uses_track_flags(self):
+        track = {
+            "type": "subtitles",
+            "codec": "SubRip/SRT",
+            "properties": {
+                "language": "en",
+                "forced_track": False,
+                "flag_hearing_impaired": True,
+            },
+        }
+
+        assert subtitle_identity_from_mkvmerge_track(track) == SubtitleIdentity(
+            lang="eng",
+            kind="hearing_impaired",
+        )
 
 
 class TestPipelineWorker:

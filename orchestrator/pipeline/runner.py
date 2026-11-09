@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -262,6 +263,8 @@ class QbittorrentAPI:
 
 
 class PipelineRunner:
+    _SRT_EMBED_INTERVAL = 6 * 3600  # Run SRT embed every 6 hours
+
     def __init__(self, repo: ConfigRepository) -> None:
         self.repo = repo
         self._backfill = BackfillEngine(repo)
@@ -270,6 +273,8 @@ class PipelineRunner:
         self._fallback = ProwlarrDirectGrab(repo)
         from .enrichment import EnrichmentEngine
         self._enrichment = EnrichmentEngine(repo)
+        self._last_srt_embed: float = 0.0
+        self._srt_embed_thread: Optional[threading.Thread] = None
 
     def run_forever(self, interval: float = 60.0) -> None:
         log.info("starting worker loop (interval=%ss)", interval)
@@ -391,6 +396,10 @@ class PipelineRunner:
                         "removed %d stale torrent(s) from qBittorrent",
                         len(stale_hashes),
                     )
+                    self.repo.emit_event(
+                        "process", "info",
+                        f"Cleaned up {len(stale_hashes)} stale torrent(s)",
+                    )
 
                 # Filter to processable torrents, then sort smallest-first.
                 pending = [
@@ -410,7 +419,17 @@ class PipelineRunner:
                             dest_free / (1024**3),
                         )
                         continue
-                    ok = self._process_torrent(api, config, torrent)
+                    # One bad torrent must not abort the tick and stall
+                    # everything queued behind it.
+                    try:
+                        ok = self._process_torrent(api, config, torrent)
+                    except Exception as exc:
+                        log.exception("failed to process %s", torrent.name[:80])
+                        self.repo.emit_event(
+                            "process", "error",
+                            f"Failed to process {torrent.name[:80]}: {exc}",
+                        )
+                        continue
                     if ok:
                         needs_refresh[torrent.category] = True
 
@@ -424,6 +443,7 @@ class PipelineRunner:
             self._health.maybe_check(config)
         except Exception as exc:
             log.error("health monitor error: %s", exc)
+            self.repo.emit_event("health", "error", f"Health monitor error: {exc}")
 
         # ── Phase 1.9: Clean up source files for already-processed items ──
         try:
@@ -485,9 +505,51 @@ class PipelineRunner:
         if enrich_cfg and enrich_cfg.enabled:
             try:
                 self._enrichment.process_completed(config)
-                self._enrichment.maybe_run(config)
+                self._enrichment.maybe_grab_next(config)
             except Exception as exc:
                 log.error("enrichment error: %s", exc)
+
+        # ── Phase 8: Embed orphaned SRT subtitles into MKVs ─────────
+        # Runs every 6 hours in a background thread so it doesn't block
+        # the main tick loop. Bazarr downloads external .srt files next
+        # to videos — this phase remuxes them into the MKV container and
+        # deletes the originals so the library is single-file-per-media.
+        # Never spawn a new sweep while one is still running — Python can't
+        # safely kill a thread, and racing mkvmerge processes corrupt the
+        # library by writing concurrent tmp files and duplicating tracks.
+        # A sweep over a large library legitimately takes many hours; that
+        # is steady state, not a hang.
+        if self._srt_embed_thread is not None and self._srt_embed_thread.is_alive():
+            age_h = (time.time() - self._last_srt_embed) / 3600
+            log.debug("srt-embed: previous run still active (%.1fh), skipping", age_h)
+        elif time.time() - self._last_srt_embed > self._SRT_EMBED_INTERVAL:
+            self._last_srt_embed = time.time()
+            self._srt_embed_thread = threading.Thread(
+                target=self._run_srt_embed,
+                args=(config,),
+                daemon=True,
+                name="srt-embed",
+            )
+            self._srt_embed_thread.start()
+            log.info("srt-embed: started background thread")
+
+    def _run_srt_embed(self, config: StackConfig) -> None:
+        """Background thread: scan and embed orphaned SRT files."""
+        try:
+            from .sweep import LibrarySweeper
+            sweeper = LibrarySweeper(config, self.repo)
+            count = sweeper.embed_orphaned_srt()
+            if count:
+                log.info("srt-embed: embedded %d subtitle file(s) into MKVs", count)
+                self.repo.emit_event(
+                    "pipeline", "info",
+                    f"Embedded {count} orphaned subtitle(s) into MKVs",
+                    {"count": count},
+                )
+            else:
+                log.info("srt-embed: no orphaned SRT files to embed")
+        except Exception as exc:
+            log.error("srt-embed error: %s", exc)
 
     # ------------------------------------------------------------------
     # Nightly missing-content search — triggers Sonarr/Radarr to search
@@ -664,7 +726,7 @@ class PipelineRunner:
                 for rec in records:
                     date_str = rec.get("date", "")
                     if date_str:
-                        from datetime import datetime, timezone
+                        from datetime import datetime
                         try:
                             entry_time = datetime.fromisoformat(
                                 date_str.replace("Z", "+00:00")
@@ -890,7 +952,11 @@ class PipelineRunner:
                 break
 
         categories = config.download_policy.categories
-        return normalized in {categories.radarr, categories.sonarr}
+        return normalized in {
+            categories.radarr,
+            categories.sonarr,
+            categories.anime,
+        }
 
     # ------------------------------------------------------------------
     # Processed-source cleanup — delete source files that were already
@@ -925,7 +991,7 @@ class PipelineRunner:
 
         # Scan all items (including inside category sub-dirs)
         categories = config.download_policy.categories
-        category_dirs = {categories.radarr, categories.sonarr}
+        category_dirs = {categories.radarr, categories.sonarr, categories.anime}
 
         scan_items: list[tuple[Path, str | None]] = []
         for item in sorted(complete_dir.iterdir()):
@@ -1049,7 +1115,11 @@ class PipelineRunner:
         # (e.g. complete/movies/, complete/tv/), so we need to look inside
         # those rather than treating them as orphans themselves.
         categories = config.download_policy.categories
-        category_dirs = {categories.radarr, categories.sonarr}  # e.g. {"movies", "tv"}
+        category_dirs = {
+            categories.radarr,
+            categories.sonarr,
+            categories.anime,
+        }
         # Skip the enrichment category directory — those downloads belong to
         # the enrichment engine (Phase 7), not the orphan scanner.
         skip_dirs = {"enrichment", "postproc", "transcode"}
@@ -1350,7 +1420,7 @@ class PipelineRunner:
             if plan.final_output.exists():
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
-                if existing_size > new_size:
+                if existing_size > new_size and not plan.replace_existing:
                     log.warning(
                         "  [%d/%d] REFUSED to overwrite existing %s "
                         "(%.2f GB) with smaller file (%.2f GB)",
@@ -1491,7 +1561,7 @@ class PipelineRunner:
 
         now = time.time()
         categories = config.download_policy.categories
-        category_dirs = {categories.radarr, categories.sonarr}
+        category_dirs = {categories.radarr, categories.sonarr, categories.anime}
 
         # Collect all items (top-level + inside category subdirs)
         items: list[Path] = []
@@ -2251,7 +2321,7 @@ class PipelineRunner:
             if plan.final_output.exists():
                 existing_size = plan.final_output.stat().st_size
                 new_size = plan.staging_output.stat().st_size
-                if existing_size > new_size:
+                if existing_size > new_size and not plan.replace_existing:
                     log.warning(
                         "  [%d/%d] REFUSED to overwrite existing %s "
                         "(%.2f GB) with smaller file (%.2f GB)",
@@ -2337,6 +2407,12 @@ class PipelineRunner:
                 "completed: %s (%d/%d files)",
                 torrent.name, succeeded, total,
             )
+            self.repo.emit_event(
+                "process", "info",
+                f"Processed {torrent.name[:60]} ({succeeded}/{total} files)",
+                {"torrent": torrent.name, "files": succeeded, "total": total,
+                 "size_gb": round(torrent.size / (1024**3), 1)},
+            )
             return True
         elif succeeded > 0:
             # Task 1b: Partial success — clean up the source files that DID
@@ -2355,6 +2431,11 @@ class PipelineRunner:
                 "partial: %s (%d/%d ok, %d/%d failed)",
                 torrent.name, succeeded, total, failed, total,
             )
+            self.repo.emit_event(
+                "process", "warn",
+                f"Partial: {torrent.name[:60]} ({succeeded}/{total} ok, {failed} failed)",
+                {"torrent": torrent.name, "succeeded": succeeded, "failed": failed},
+            )
             return True  # still trigger refresh for the files that did succeed
         else:
             # Total failure — clean up source immediately to free scratch space.
@@ -2371,6 +2452,11 @@ class PipelineRunner:
                 torrent.hash, "ffmpeg_failed",
                 f"all {total} files failed",
                 torrent_name=torrent.name,
+            )
+            self.repo.emit_event(
+                "process", "error",
+                f"Failed: {torrent.name[:60]} (all {total} files failed)",
+                {"torrent": torrent.name, "total": total},
             )
             return False
 
@@ -2565,8 +2651,12 @@ class PipelineRunner:
                         )
                         audio_langs.add(lang)
 
-                preferred = {_normalize_lang(l) for l in keep_audio_langs if l.lower() != "und"}
-                actual = {l for l in audio_langs if l != "und"}
+                preferred = {
+                    _normalize_lang(lang)
+                    for lang in keep_audio_langs
+                    if lang.lower() != "und"
+                }
+                actual = {lang for lang in audio_langs if lang != "und"}
 
                 if preferred and actual and not preferred.intersection(actual):
                     log.warning(
@@ -2892,4 +2982,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

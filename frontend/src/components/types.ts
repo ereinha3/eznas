@@ -284,12 +284,74 @@ export interface SweepStatusResponse {
   errors: string[]
 }
 
+// Media audit / remediation types
+export interface MediaAuditBatchSummary {
+  name: string
+  label: string
+  description: string
+  mode: string
+  remuxable: boolean
+  file_count: number
+  total_bytes: number
+  severity_counts: Record<string, number>
+  issue_counts: Record<string, number>
+}
+
+export interface MediaAuditScanResponse {
+  summary: Record<string, unknown>
+  json_path: string
+  markdown_path: string
+}
+
+export interface MediaAuditLatestResponse {
+  available: boolean
+  summary: Record<string, unknown>
+  json_path: string | null
+  markdown_path: string | null
+}
+
+export interface RemediationPlanResponse {
+  needs_audit: boolean
+  audit_path: string | null
+  markdown_path: string | null
+  started_at: string | null
+  total_files: number
+  batches: MediaAuditBatchSummary[]
+}
+
+export interface RemediationStartResponse {
+  job_id: string
+  batch_name: string
+  status: string
+  total_files: number
+  dry_run: boolean
+}
+
+export interface RemediationStatusResponse {
+  status: 'idle' | 'queued' | 'scanning' | 'running' | 'completed' | 'failed' | 'cancelled'
+  job_id: string | null
+  batch_name: string | null
+  mode: string | null
+  dry_run: boolean
+  progress_current: number
+  progress_total: number
+  current_file: string | null
+  succeeded: number
+  failed: number
+  skipped: number
+  errors: string[]
+  started_at: string | null
+  updated_at: string | null
+  ended_at: string | null
+  input_audit_path: string | null
+}
+
 // Enrichment types
 
 export interface EnrichmentConfig {
   enabled: boolean
-  search_interval_hours: number
-  max_grabs_per_cycle: number
+  max_concurrent_downloads: number
+  queue_rescan_hours: number
   search_queries: string[]
   min_seeders: number
   correlation_threshold: number
@@ -309,6 +371,14 @@ export interface EnrichmentStatusResponse {
   failed: number
   active_downloads: EnrichmentActiveDownload[]
   recent: EnrichmentRecentItem[]
+  recent_failures: EnrichmentFailureItem[]
+  queue_size: number
+}
+
+export interface EnrichmentFailureItem {
+  path: string
+  reason: string
+  timestamp: number
 }
 
 export interface EnrichmentActiveDownload {

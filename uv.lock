@@ -431,6 +431,7 @@ dependencies = [
     { name = "fastapi" },
     { name = "httpx" },
     { name = "jinja2" },
+    { name = "netifaces" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
     { name = "pyyaml" },
@@ -452,6 +453,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.27" },
     { name = "jinja2", specifier = ">=3.1" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9" },
+    { name = "netifaces", specifier = ">=0.11" },
     { name = "pydantic", specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.5" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4" },
@@ -462,6 +464,12 @@ requires-dist = [
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.32" },
 ]
 provides-extras = ["dev"]
+
+[[package]]
+name = "netifaces"
+version = "0.11.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/a6/91/86a6eac449ddfae239e93ffc1918cf33fd9bab35c04d1e963b311e347a73/netifaces-0.11.0.tar.gz", hash = "sha256:043a79146eb2907edf439899f262b3dfe41717d34124298ed281139a8b93ca32", size = 30106, upload-time = "2021-05-31T08:33:02.506Z" }
 
 [[package]]
 name = "packaging"

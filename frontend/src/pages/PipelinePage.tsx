@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import type { PipelineHealthResponse, RecommenderStatusResponse, StackConfig } from '../components/types'
-import { pipelineHealth, recommenderStatus } from '../api'
+import type { EnrichmentStatusResponse, PipelineHealthResponse, RecommenderStatusResponse, StackConfig } from '../components/types'
+import { enrichmentStatus, pipelineHealth, recommenderStatus } from '../api'
 import { timeAgo } from '../utils'
 
 interface PipelinePageProps {
@@ -10,17 +10,20 @@ interface PipelinePageProps {
 export function PipelinePage({ config }: PipelinePageProps) {
   const [health, setHealth] = useState<PipelineHealthResponse | null>(null)
   const [recStatus, setRecStatus] = useState<RecommenderStatusResponse | null>(null)
+  const [enrichStatus, setEnrichStatus] = useState<EnrichmentStatusResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const refresh = useCallback(async () => {
     try {
-      const [h, r] = await Promise.all([
+      const [h, r, e] = await Promise.all([
         pipelineHealth(),
         recommenderStatus().catch(() => null),
+        enrichmentStatus().catch(() => null),
       ])
       setHealth(h)
       setRecStatus(r)
+      setEnrichStatus(e)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to fetch pipeline health')
@@ -76,8 +79,58 @@ export function PipelinePage({ config }: PipelinePageProps) {
         )}
       </div>
 
-      <div className="card">
-        <h3>Pipeline Phases</h3>
+      {enrichCfg?.enabled && enrichStatus && (
+        <div className="card">
+          <h3>Enrichment Status</h3>
+          <div className="pipeline-status">
+            <div className="status-row">
+              <span className="status-label">Succeeded / Failed</span>
+              <span>
+                <span className="text-success">{enrichStatus.succeeded}</span>
+                {' / '}
+                <span className={enrichStatus.failed > 0 ? 'field-error' : ''}>{enrichStatus.failed}</span>
+              </span>
+            </div>
+            <div className="status-row">
+              <span className="status-label">Queue Size</span>
+              <span>{enrichStatus.queue_size} files</span>
+            </div>
+            <div className="status-row">
+              <span className="status-label">Active Downloads</span>
+              <span>{enrichStatus.active_downloads.length}</span>
+            </div>
+            {enrichStatus.active_downloads.map((dl, i) => (
+              <div key={i} className="status-row" style={{ paddingLeft: '1.5rem' }}>
+                <span className="status-label" style={{ fontSize: '0.8rem' }}>{dl.target}</span>
+                <span style={{ fontSize: '0.8rem' }}>
+                  {dl.language} {dl.video_upgrade ? '+ video' : ''}
+                </span>
+              </div>
+            ))}
+            {enrichStatus.recent.length > 0 && (
+              <details style={{ marginTop: '0.5rem' }}>
+                <summary style={{ cursor: 'pointer', fontSize: '0.85rem', color: 'var(--color-text-secondary, #888)' }}>
+                  Recent enrichments ({enrichStatus.recent.length})
+                </summary>
+                <div style={{ marginTop: '0.3rem' }}>
+                  {enrichStatus.recent.slice(0, 10).map((item, i) => (
+                    <div key={i} className="status-row" style={{ fontSize: '0.8rem' }}>
+                      <span className="status-label">{item.path}</span>
+                      <span>
+                        {item.operation}
+                        {item.chromaprint_score != null && ` (${(item.chromaprint_score * 100).toFixed(0)}%)`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </details>
+            )}
+          </div>
+        </div>
+      )}
+
+      <details className="card">
+        <summary><h3 style={{ display: 'inline' }}>Pipeline Phases</h3></summary>
         <p className="card-description">
           The pipeline runs every 60 seconds. Each tick executes these phases in order:
         </p>
@@ -122,7 +175,7 @@ export function PipelinePage({ config }: PipelinePageProps) {
             {!enrichCfg?.enabled && <span className="phase-tag">Disabled</span>}
           </div>
         </div>
-      </div>
+      </details>
 
       <div className="card">
         <h3>Configuration Summary</h3>

@@ -12,12 +12,11 @@ for rapid iteration.
 from __future__ import annotations
 
 import logging
-import os
 import re
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Optional, Tuple
+from typing import List, Optional
 
 log = logging.getLogger(__name__)
 
@@ -423,7 +422,11 @@ def _count_subtitle_streams(path: Path) -> int:
         )
         if result.returncode != 0:
             return 0
-        lines = [l.strip() for l in result.stdout.strip().splitlines() if l.strip()]
+        lines = [
+            line.strip()
+            for line in result.stdout.strip().splitlines()
+            if line.strip()
+        ]
         return len(lines)
     except Exception:
         return 0
@@ -437,6 +440,7 @@ def remux_subtitle_into_mkv(
     language: str = "eng",
     title: Optional[str] = None,
     forced: bool = False,
+    hearing_impaired: bool = False,
 ) -> bool:
     """Embed an SRT subtitle file into an MKV container.
 
@@ -450,6 +454,7 @@ def remux_subtitle_into_mkv(
         language: ISO 639-2 language code (default: 'eng').
         title: Optional subtitle track title.
         forced: Whether to mark the track as forced.
+        hearing_impaired: Whether to mark the track as SDH/HI.
 
     Returns:
         True on success, False on failure.
@@ -479,8 +484,12 @@ def remux_subtitle_into_mkv(
 
     if title:
         args.extend([f"-metadata:s:s:{sub_index}", f"title={title}"])
+    disposition = "0"
     if forced:
-        args.extend([f"-disposition:s:s:{sub_index}", "forced"])
+        disposition = "forced"
+    elif hearing_impaired:
+        disposition = "hearing_impaired"
+    args.extend([f"-disposition:s:{sub_index}", disposition])
 
     args.append(str(output_path))
 
@@ -491,18 +500,33 @@ def remux_subtitle_into_mkv(
         output_path.name,
     )
 
+    # Scale timeout by file size: ~60 MB/s copy throughput baseline,
+    # minimum 1 hour, allows 78 GB files ~22 minutes at that rate but
+    # with I/O contention 4x slower → ~90 min.  Use 2 hours per 50 GB.
     try:
-        result = subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            timeout=3600,
+        file_size = video_path.stat().st_size if video_path.exists() else 0
+        timeout_s = max(3600, int(file_size / (25 * 1024 * 1024)))  # ~25 MB/s conservative
+
+        # Use Popen + communicate to avoid hung pipe reads after timeout.
+        # subprocess.run with capture_output=True can hang if the child
+        # process doesn't close its stdout/stderr pipes after timeout fires.
+        proc = subprocess.Popen(
+            args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
         )
-        if result.returncode != 0:
+        try:
+            _stdout, stderr_bytes = proc.communicate(timeout=timeout_s)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.communicate()  # Drain pipes after kill
+            log.error("[subtitle] remux timed out for %s", video_path.name)
+            return False
+
+        if proc.returncode != 0:
+            stderr_text = (stderr_bytes or b"").decode("utf-8", errors="replace").strip()
             log.error(
                 "[subtitle] ffmpeg remux failed for %s: %s",
                 video_path.name,
-                result.stderr.strip()[-300:],
+                stderr_text[-300:],
             )
             return False
 
@@ -518,9 +542,6 @@ def remux_subtitle_into_mkv(
         )
         return True
 
-    except subprocess.TimeoutExpired:
-        log.error("[subtitle] remux timed out for %s", video_path.name)
-        return False
     except OSError as exc:
         log.error("[subtitle] remux failed to start: %s", exc)
         return False

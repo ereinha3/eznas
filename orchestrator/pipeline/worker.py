@@ -8,12 +8,12 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 from .bdmv import (
     detect_bdmv,
-    find_main_feature,
     find_main_feature_extended,
     get_bdmv_stream_languages,
     map_clpi_to_ffprobe_indices,
 )
-from .remux import TrackSelection, build_ffmpeg_command
+from ..clients.quality_target import resolution_height, should_replace_existing, target_height
+from .remux import TrackSelection, build_ffmpeg_command, probe_video_quality
 from ..models import StackConfig
 
 
@@ -100,6 +100,47 @@ def parse_movie_name(torrent_name: str) -> Tuple[str, Optional[str]]:
     title = re.sub(r'\s+', ' ', title).strip()
 
     return (title, year)
+
+
+_EXPLICIT_SEASON_RE = re.compile(
+    r"S\d{1,2}\s*EP?\d{1,3}"           # S01E15, S01EP15
+    r"|(?<!\d)\d{1,2}x\d{1,3}(?!\d)"   # 1x15
+    r"|Season\s*\d+.*?Episode\s*\d+"   # Season 1 Episode 15
+    r"|(?<![A-Za-z])S\d{1,2}\s*-\s*\d",  # Show S1 - 15
+    re.IGNORECASE,
+)
+
+
+def has_explicit_season(name: str) -> bool:
+    """True when ``name`` states its season explicitly (S01E15, 1x15, ...).
+
+    Absolute-numbered anime names ("Show - 50") return False: their parsed
+    season 1 is only a default and may need Sonarr's absolute map.
+    """
+    return bool(_EXPLICIT_SEASON_RE.search(name))
+
+
+_SPECIAL_RE = re.compile(r"(?<![A-Za-z])(?:SP|OVA|OAD|ONA)\s*\d{1,3}(?![0-9])", re.IGNORECASE)
+_EXTRA_RE = re.compile(
+    r"(?<![A-Za-z])(?:NC\s*OP|NC\s*ED|NCOP|NCED|Creditless|PV|CM|Preview|Trailer|Teaser|Menu"
+    r"|Featurette|Bonus|Extras?|Making[ .]of|Behind[ .]the[ .]Scenes|Interview|Special)(?![A-Za-z])",
+    re.IGNORECASE,
+)
+
+
+def classify_extra(name: str) -> Optional[str]:
+    """Return the Jellyfin folder for an unmatched pack file, or None.
+
+    Numbered specials (SP08, OVA 2) go to ``Specials`` (Season 0).
+    Creditless OP/ED, previews, trailers and other bonus material go to
+    ``extras`` so Jellyfin lists them as extras instead of episodes.
+    """
+    stripped = re.sub(r"^\[[^\]]*\]\s*", "", name)
+    if _SPECIAL_RE.search(stripped):
+        return "Specials"
+    if _EXTRA_RE.search(stripped):
+        return "extras"
+    return None
 
 
 def parse_tv_episode(name: str) -> Optional[Tuple[str, int, int, Optional[int]]]:
@@ -278,6 +319,9 @@ class PipelinePlan:
     selection: TrackSelection
     original_language: Optional[str] = None
     is_bdmv: bool = False
+    # True when the existing library file is knowingly replaced by a higher
+    # resolution one within the central quality target.
+    replace_existing: bool = False
 
 
 class PipelineWorker:
@@ -296,6 +340,7 @@ class PipelineWorker:
         self.destinations = {
             categories.radarr: self.pool_root / "movies",
             categories.sonarr: self.pool_root / "tv",
+            categories.anime: self.pool_root / "anime",
         }
 
     def _normalize_category(self, category: str) -> str:
@@ -409,7 +454,7 @@ class PipelineWorker:
 
             # SAFETY: Skip if this output path is already claimed by another
             # plan in this batch — prevents the overwrite-chain bug.
-            existing_outputs = {p.final_output for p in plans}
+            existing_outputs = {p.final_output for p in plans if p is not None}
             if final_output in existing_outputs:
                 print(
                     f"[pipeline] skipping {source.name}: output path "
@@ -419,12 +464,19 @@ class PipelineWorker:
 
             # SAFETY: Skip if this file already exists in the library.
             # Avoids redundant ffmpeg runs for already-imported episodes.
+            replace_existing = False
             if final_output.exists():
+                if not self._is_quality_upgrade(source, final_output):
+                    print(
+                        f"[pipeline] skipping {source.name}: already exists "
+                        f"in library at {final_output.name}"
+                    )
+                    continue
                 print(
-                    f"[pipeline] skipping {source.name}: already exists "
-                    f"in library at {final_output.name}"
+                    f"[pipeline] replacing {final_output.name}: {source.name} "
+                    f"is a higher resolution within the quality target"
                 )
-                continue
+                replace_existing = True
 
             final_output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -494,6 +546,7 @@ class PipelineWorker:
                 ffmpeg_command=command,
                 selection=selection,
                 original_language=original_language,
+                replace_existing=replace_existing,
             ))
 
         # Filter out any plans that were nullified by overlap replacement
@@ -737,6 +790,20 @@ class PipelineWorker:
         # Return the plan for the largest source file
         return max(plans, key=lambda p: p.source.stat().st_size if p.source.exists() else 0)
 
+    def _is_quality_upgrade(self, source: Path, existing: Path) -> bool:
+        """Central quality rule: replace only for an upgrade within target."""
+        target = target_height(self.config)
+        allow = bool(self.config.quality.allow_upgrades)
+        if target is None or not allow:
+            return False
+        incoming = probe_video_quality(source)
+        current = probe_video_quality(existing)
+        if not incoming or not current:
+            return False
+        return should_replace_existing(
+            resolution_height(current), resolution_height(incoming), target, allow,
+        )
+
     def _compute_final_path(
         self,
         source: Path,
@@ -780,10 +847,12 @@ class PipelineWorker:
         elif normalized_category == categories.sonarr:
             # TV: try parsing episode info from the FILE name first
             # (season packs have episode info in files, not torrent name)
-            episode_info = parse_tv_episode(source.stem)
+            parsed_from = source.stem
+            episode_info = parse_tv_episode(parsed_from)
             if not episode_info:
                 # Fall back to torrent name (single-episode downloads)
-                episode_info = parse_tv_episode(torrent.name)
+                parsed_from = torrent.name
+                episode_info = parse_tv_episode(parsed_from)
 
             if episode_info:
                 _, season, episode, end_episode = episode_info
@@ -800,8 +869,10 @@ class PipelineWorker:
                 #     episode list (wrong numbering scheme)
                 if absolute_episode_map:
                     should_remap = False
-                    if season == 1:
-                        # Classic case: absolute numbered, default season 1
+                    if season == 1 and not has_explicit_season(parsed_from):
+                        # Classic case: absolute numbered ("Show - 50"),
+                        # parser defaulted to season 1.  An explicit S01Exx
+                        # is trusted unless Sonarr lacks it (branch below).
                         should_remap = True
                     else:
                         # Check if this (season, episode) actually exists
@@ -852,8 +923,20 @@ class PipelineWorker:
                     file_name = f"{show_name} - S{season:02d}E{episode:02d}.mkv"
                 return season_dir / file_name
 
-            # Couldn't parse episode — try season-level info for directory,
-            # keep original filename
+            # Couldn't parse episode.  Specials and bonus material go to
+            # Specials/ or extras/ under the show, keeping the release name.
+            extra_folder = classify_extra(source.stem)
+            if extra_folder:
+                if library_path:
+                    show_dir = library_path
+                else:
+                    show_info = parse_tv_season(torrent.name)
+                    show_dir = base_dir / _sanitize_filename(
+                        show_info[0] if show_info else _clean_show_name(torrent.name)
+                    )
+                return show_dir / extra_folder / f"{source.stem}.mkv"
+
+            # Otherwise try season-level info for directory, keep original filename
             season_info = parse_tv_season(torrent.name)
             if season_info:
                 parsed_show_name, season = season_info
@@ -870,10 +953,15 @@ class PipelineWorker:
         # Unknown category
         return base_dir / f"{source.stem}.mkv"
 
-    def _policy_for_category(self, _category: str) -> TrackSelection:
-        # Use the same media policy for all categories
-        # Original language detection ensures foreign content keeps native audio
-        policy = self.config.media_policy.movies
+    def _policy_for_category(self, category: str) -> TrackSelection:
+        normalized = self._normalize_category(category)
+        categories = self.config.download_policy.categories
+        if normalized == categories.anime:
+            policy = self.config.media_policy.anime
+        else:
+            # TV and movies share the standard policy unless a category gets
+            # its own explicit media policy.
+            policy = self.config.media_policy.movies
         return TrackSelection(
             audio=list(policy.keep_audio),
             subtitles=list(policy.keep_subs),
@@ -903,4 +991,3 @@ class PipelineWorker:
             if candidate.exists():
                 return candidate
         return Path(config.paths.pool)
-

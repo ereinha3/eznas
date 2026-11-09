@@ -12,6 +12,7 @@ import httpx
 from .arr import ArrAPI, describe_changes, set_field_values, wait_for_http_ready
 from .base import EnsureOutcome, ServiceClient
 from .qb import QBittorrentClient
+from .quality_target import ensure_quality_target
 from .util import (
     arr_password_matches,
     get_service_config_dir,
@@ -197,8 +198,10 @@ class RadarrClient(ServiceClient):
                     prev_dl_username,
                     prev_dl_password,
                 )
+                qt_changed, qt_msg, qt_warnings = ensure_quality_target(api, config)
+                detail_messages.extend(qt_warnings)
                 changed_any, aggregated = describe_changes(
-                    [(rf_changed, rf_msg), (dl_changed, dl_msg)]
+                    [(rf_changed, rf_msg), (dl_changed, dl_msg), (qt_changed, qt_msg)]
                 )
                 if aggregated:
                     detail_messages.append(aggregated)

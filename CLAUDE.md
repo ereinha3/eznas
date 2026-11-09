@@ -2,6 +2,12 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+> **If you are picking this project up from a prior session, read
+> [`docs/SESSION_HANDOFF.md`](docs/SESSION_HANDOFF.md) FIRST.** It documents
+> in-flight bug fixes, outstanding work, deferred repairs, and the state of
+> the pipeline as of the last hiatus. CLAUDE.md describes steady-state; the
+> handoff describes what's changing right now.
+
 ## Project Overview
 
 NAS Orchestrator (EZNAS) is an automated, zero-touch provisioning system for a NAS media stack. It provides a FastAPI backend with React frontend that renders Docker Compose from Jinja2 templates, deploys services, configures them via their APIs, and runs a media processing pipeline with subtitle enrichment.
@@ -198,6 +204,14 @@ Disabled. Was causing false "not found" results due to provider rate limits, whi
 - **Indexing**: Prowlarr (25 indexers), FlareSolverr (CloudFlare bypass)
 
 ## Known Issues / Outstanding Work
+
+### In-flight (see `docs/SESSION_HANDOFF.md` for full context)
+- **Bug #3** — `failed_torrents` historical entries with `cooldown=0d`. Code paths now set cooldown correctly; only historical state remains. Decide whether to migrate or let natural decay handle it.
+- **Bug #4** — Per-(show, lang) blacklist missing. Alt-title releases (e.g. Hunter x Hunter re-releases under varying names) each create a fresh `failed_torrents` entry and bypass per-torrent cooldown. ~30 lines, new state field `failed_show_langs`.
+- **Bug #5** — Prowlarr-fallback ranks by seeders/age without a fuzzy-title floor or year check. Has grabbed wrong shows ("Rio 3" → Rio Rainbow Gate, "Rurouni Kenshin S03" → 2023 reboot). ~10 lines.
+- **Subtitle-track duplicate repair deferred** — `scripts/dedup_subtitle_tracks.py` is ready; ~24 h runtime for TV, ~50-100 h for full library. Idempotency guard in `sweep.py` prevents new duplicates so this is purely cosmetic cleanup.
+
+### Long-standing
 - Overwrite protection only compares file size (should also consider resolution, subtitle count, audio tracks)
 - ~200 anime files missing English subtitles (free provider coverage gap)
 - S00 special episodes not mapped in absolute numbering
@@ -207,6 +221,11 @@ Disabled. Was causing false "not found" results due to provider rate limits, whi
 - ~~Cyrillic/Unicode filenames fail in ffmpeg~~ — Fixed via ASCII symlink approach in `_run_ffmpeg()`
 - ~~Audio dedup / commentary stripping~~ — Implemented in `remux.py` audio track selection (commentary/descriptive filtering, best-per-language selection)
 - ~~Audio language stripping~~ — Implemented in `remux.py` + `sweep.py` (keeps only preferred languages per MediaPolicy)
+- ~~SRT-embed thread leak~~ — Fixed in `runner.py:507-524` — racing sweep threads were the root cause of mass subtitle-track duplication
+- ~~Cross-show enrichment matching (Bug #1)~~ — Fixed in `enrichment.py` `_find_all_pack_targets` (~line 2371): bails for movies, validates show_dir is one level under library root
+- ~~Subtitle duplicate on every sweep (Bug #2)~~ — Idempotency guard in `sweep.py:766-786` probes existing SubRip languages before mkvmerge and drops orphan `.srt` files for already-embedded langs
+- ~~Enrichment gap scan blocking main tick~~ — Moved to background thread in `enrichment.py:680-743` with 2 h watchdog; same single-thread-at-a-time pattern as SRT sweep
+- ~~Prowlarr-fallback re-grabbed completed downloads~~ — Removed premature grab-entry deletion in `prowlarr_fallback.py:_is_grabbed`; grab cooldown now persists for the full 48 h
 
 ## Media Enrichment Pipeline
 
