@@ -27,6 +27,14 @@ from ..storage import ConfigRepository
 log = logging.getLogger("pipeline")
 
 
+def _strip_arr_suffix(category: str) -> str:
+    """Normalise *arr-suffixed qBT categories ('tv-sonarr' -> 'tv')."""
+    for suffix in ("-sonarr", "-radarr"):
+        if category.endswith(suffix):
+            return category[: -len(suffix)]
+    return category
+
+
 class DownloadHealthMonitor:
     """Watches active downloads and handles stalls via blocklist + re-search."""
 
@@ -89,13 +97,18 @@ class DownloadHealthMonitor:
             log.debug("health: qBittorrent unavailable: %s", exc)
             return
 
-        # Filter to only downloading torrents
+        # Filter to downloading torrents in pipeline-managed categories only.
+        # Other apps share qBittorrent (e.g. Bookshelf's "audiobooks"), and a
+        # stall removal deletes files, so never touch categories we don't own.
+        cats = config.download_policy.categories
+        managed = {cats.radarr, cats.sonarr, cats.anime}
         downloading = [
             t for t in torrents
             if t.get("state") in (
                 "downloading", "stalledDL", "metaDL", "forcedDL",
                 "forcedMetaDL", "queuedDL",
             )
+            and _strip_arr_suffix(t.get("category", "")) in managed
         ]
 
         if not downloading:
@@ -225,13 +238,7 @@ class DownloadHealthMonitor:
                 # Category-aware: check the matching service FIRST based
                 # on the torrent's qBT category, then fall back to the
                 # other service.  This prevents misrouted blocklisting.
-                normalized_cat = torrent_category
-                for suffix in ("-sonarr", "-radarr"):
-                    if torrent_category.endswith(suffix):
-                        normalized_cat = torrent_category[: -len(suffix)]
-                        break
-
-                if normalized_cat == cat_config.sonarr:
+                if _strip_arr_suffix(torrent_category) == cat_config.sonarr:
                     primary = ("sonarr", sonarr_queue, sonarr_host, 8989, sonarr_key)
                     secondary = ("radarr", radarr_queue, radarr_host, 7878, radarr_key)
                 else:
