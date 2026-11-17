@@ -13,10 +13,10 @@ from orchestrator.models import StackConfig
 from orchestrator.pipeline.enrichment import EnrichmentCandidate, EnrichmentEngine
 
 
-def _candidate(video_below_target: bool) -> EnrichmentCandidate:
+def _candidate(title: str, video_below_target: bool) -> EnrichmentCandidate:
     return EnrichmentCandidate(
-        path=Path("/data/movies/Film (2020)/Film (2020).mkv"),
-        title="Film",
+        path=Path(f"/data/movies/{title} (2020)/{title} (2020).mkv"),
+        title=title,
         year=2020,
         original_language="jpn",
         missing_languages=["eng"],
@@ -48,13 +48,13 @@ def _engine() -> EnrichmentEngine:
 def test_grab_from_queue_searches_candidates(stack_config: StackConfig) -> None:
     engine = _engine()
     # A video upgrade exercises the branch of _build_queries that reads config.
-    engine._queue = [_candidate(video_below_target=True), _candidate(video_below_target=False)]
+    engine._queue = [_candidate("Film A", video_below_target=True), _candidate("Film B", video_below_target=False)]
     state: dict = {}
 
     grabbed = engine._grab_from_queue(stack_config, stack_config.services.pipeline.enrichment, state)
 
     assert grabbed == 0
     assert len(engine.searched) == 2  # type: ignore[attr-defined]
-    assert all(q and all("Film" in s for s in q) for q in engine.searched)  # type: ignore[attr-defined]
+    assert all(q and all(s.startswith("Film") for s in q) for q in engine.searched)  # type: ignore[attr-defined]
     # The no-result path recorded a search miss for backoff.
-    assert len(state["search_misses"]) == 1
+    assert len(state["search_misses"]) == 2
