@@ -7,6 +7,7 @@ the new port every time gluetun obtains one.
 """
 from __future__ import annotations
 
+import ipaddress
 from pathlib import Path
 from typing import Any, Dict
 
@@ -60,3 +61,18 @@ def test_port_forwarding_sets_provider_and_qbittorrent_hook(
     assert '\\"listen_port\\":{{PORTS}}' in hook
     assert "http://127.0.0.1:8080/api/v2/app/setPreferences" in hook
     assert "--retry-connrefused" in hook
+
+
+def test_port_forwarding_keeps_vpn_gateway_inside_tunnel(
+    sample_config: Dict[str, Any], tmp_path: Path
+) -> None:
+    # Gluetun routes FIREWALL_OUTBOUND_SUBNETS via the LAN, so a subnet that
+    # covers Proton's gateway sends the NAT-PMP request out the wrong interface.
+    env = _gluetun_env(sample_config, tmp_path, port_forwarding=True)
+
+    subnets = [ipaddress.ip_network(s) for s in env["FIREWALL_OUTBOUND_SUBNETS"].split(",")]
+    gateway = ipaddress.ip_address("10.2.0.1")
+    assert not any(gateway in net for net in subnets)
+    # The rest of 10.0.0.0/8 stays reachable for LANs that use it.
+    assert any(ipaddress.ip_address("10.0.0.5") in net for net in subnets)
+    assert any(ipaddress.ip_address("10.200.1.1") in net for net in subnets)
