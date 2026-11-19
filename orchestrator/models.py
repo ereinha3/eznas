@@ -330,6 +330,9 @@ class GluetunConfig(ServiceBaseConfig):
     port: Optional[int] = Field(default=None, ge=1, le=65535)
     proxy_url: Optional[str] = None
     wireguard_config: str = ""
+    # Needs a provider key generated with port forwarding enabled (Proton: NAT-PMP).
+    port_forwarding: bool = False
+    port_forwarding_provider: str = "protonvpn"
 
 
 class TraefikConfig(BaseModel):
